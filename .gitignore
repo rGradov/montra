@@ -1,0 +1,14 @@
+.DS_Store
+build/
+DerivedData/
+*.xcuserstate
+xcuserdata/
+*.xccheckout
+*.xcscmblueprint
+.DS_Store
+mcp/.venv/
+mcp/.build/
+mcp/.cache/
+__pycache__/
+*.pyc
+Montra 20*/

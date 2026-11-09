@@ -1,0 +1,47 @@
+# Feature-sync allowlist
+#
+# Every line says: "this check may ignore this name, on purpose, because ...".
+# Format:  <check>:<scope>.<name>   # reason
+#
+# Checks: backup, api, mcp.
+# Scopes: model names, SettingsStore, LocalIntegration, or an input struct.
+#
+# Do not add a line just to make the audit green. If a user can create or edit
+# the value, it belongs in the backup and, when relevant, in the API and MCP.
+# Add an entry only when the value is machine-local, server-assigned, derived,
+# or has no meaning outside this Mac.
+
+# --- Backup -----------------------------------------------------------------
+
+# "Last saved" describes this Mac, not the person's money; a restore must not
+# overwrite the date of the backup the person just made.
+backup:SettingsStore.lastBackupAt        # machine-local timestamp, deliberately not restored
+backup:LocalIntegration.active           # transient: the HTTP server is running right now
+backup:LocalIntegration.failure          # transient: last server error text, not a preference
+
+# --- Local API --------------------------------------------------------------
+
+# Backup and restore are file operations on this Mac, not HTTP data mutations.
+# The API deliberately has no file paths (see Docs/Backup.md, "Ограничения");
+# the data itself is already fully readable and writable through the actions.
+
+# Server-assigned metadata and ordering. Clients never set these, and the API
+# already exposes ordering through the order of its lists.
+api:Account.createdAt                    # server-assigned creation date
+api:Account.sortIndex                    # sidebar order is applied server-side
+api:Category.createdAt                   # server-assigned creation date
+api:Category.sortIndex                   # category order is applied server-side
+api:Operation.createdAt                  # server-assigned creation date
+api:PlannedOperation.createdAt           # server-assigned creation date
+
+# Coordinates are a UI convenience; the API accepts a human-readable place.
+api:Operation.latitude                   # location is UI-only; API accepts `place` text
+api:Operation.longitude                  # location is UI-only; API accepts `place` text
+
+# The weekly mask is stored as an integer but serialized as a `weekdays` array,
+# which is what a client actually reads and writes.
+api:PlannedOperation.weekdayMask         # exposed as `weekdays` in planJSON/create_plan
+
+# Periods are derived app state. The local API has no period commands yet, so
+# Period is not part of API_FIELD_CONTEXT. If period commands are added, cover
+# Period there and remove this note.

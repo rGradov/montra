@@ -57,6 +57,7 @@ final class SettingsStore: ObservableObject {
         static let periodAnchor = "montra.periodAnchor"
         static let didSeed = "montra.didSeedDemo"
         static let onboardingCompleted = "montra.onboarding.completed"
+        static let onboardingStarted = "montra.onboarding.started"
         static let lastBackup = "montra.backup.lastSavedAt"
     }
 
@@ -101,7 +102,20 @@ final class SettingsStore: ObservableObject {
     /// have accounts are marked complete at launch, so nobody is shown a first
     /// run on top of their own data.
     @Published var hasCompletedOnboarding: Bool {
-        didSet { defaults.set(hasCompletedOnboarding, forKey: Key.onboardingCompleted) }
+        didSet {
+            defaults.set(hasCompletedOnboarding, forKey: Key.onboardingCompleted)
+            // Unfinished means started: this keeps a reset (delete all data, an
+            // empty restore) from looking like a legacy install on the next launch.
+            if !hasCompletedOnboarding, !hasStartedOnboarding { hasStartedOnboarding = true }
+        }
+    }
+
+    /// True from the first launch that opens the welcome flow, including one
+    /// interrupted after the first account. It separates "the person quit in the
+    /// middle of onboarding" from "this store predates onboarding", which both
+    /// end up as `hasCompletedOnboarding == false` with accounts on disk.
+    @Published var hasStartedOnboarding: Bool {
+        didSet { defaults.set(hasStartedOnboarding, forKey: Key.onboardingStarted) }
     }
 
     /// When a backup was last written from this Mac. It describes the machine,
@@ -127,6 +141,7 @@ final class SettingsStore: ObservableObject {
         }
         didSeedDemo = defaults.bool(forKey: Key.didSeed)
         hasCompletedOnboarding = defaults.bool(forKey: Key.onboardingCompleted)
+        hasStartedOnboarding = defaults.bool(forKey: Key.onboardingStarted)
         lastBackupAt = defaults.object(forKey: Key.lastBackup) as? Date
         applyAppearance()
     }
@@ -147,5 +162,26 @@ final class SettingsStore: ObservableObject {
 
     private func applyAppearance() {
         NSApplication.shared.appearance = appearance.nsAppearance
+    }
+}
+
+/// The one place that decides whether a launch opens the welcome flow.
+///
+/// Accounts on disk mean two different things. A store from a Montra that
+/// predates onboarding belongs to someone who has already used the app: it is
+/// marked complete once, so a first run is never put on top of real data. A
+/// store from a flow that was closed after the first account does not: the
+/// account is a step inside onboarding, so the flow comes back until the person
+/// actually finishes it.
+@MainActor
+enum OnboardingLaunch {
+    static func needsOnboarding(accountCount: Int, settings: SettingsStore) -> Bool {
+        if accountCount > 0, !settings.hasCompletedOnboarding, !settings.hasStartedOnboarding {
+            settings.hasCompletedOnboarding = true
+        }
+
+        let needsOnboarding = !settings.hasCompletedOnboarding
+        if needsOnboarding { settings.hasStartedOnboarding = true }
+        return needsOnboarding
     }
 }

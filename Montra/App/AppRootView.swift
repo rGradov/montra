@@ -45,7 +45,10 @@ struct AppRootView: View {
                 .allowsHitTesting(!showsOnboarding)
 
             if showsOnboarding {
-                OnboardingFlowView(onFinish: completeOnboarding)
+                OnboardingFlowView(
+                    resumeAccount: didBootstrap ? nil : accounts.first,
+                    onFinish: completeOnboarding
+                )
                     .background(AppColors.surfaceBase)
                     .opacity(isOnboardingExiting ? 0 : 1)
                     .blur(radius: isOnboardingExiting ? 12 : 0)

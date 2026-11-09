@@ -43,12 +43,13 @@ struct MontraApp: App {
 
         // A store that already has accounts belongs to someone who has used the
         // app before the welcome flow existed: never put a first run on top of
-        // their data.
+        // their data. Once the flow has been opened, only finishing it counts —
+        // see `OnboardingLaunch`.
         let accountCount = previewOnboarding
             ? 0
             : ((try? container.mainContext.fetchCount(FetchDescriptor<Account>())) ?? 0)
-        if !previewOnboarding, accountCount > 0 { settings.hasCompletedOnboarding = true }
-        needsOnboarding = previewOnboarding || (accountCount == 0 && !settings.hasCompletedOnboarding)
+        needsOnboarding = previewOnboarding
+            || OnboardingLaunch.needsOnboarding(accountCount: accountCount, settings: settings)
 
         if #available(macOS 26.0, *) {
             let isPersistent = container.configurations.contains { !$0.isStoredInMemoryOnly }

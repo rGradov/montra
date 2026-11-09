@@ -133,6 +133,10 @@ struct SettingsBackup: Codable, Equatable {
     var periodAnchor: Date
     var didSeedDemo: Bool
     var hasCompletedOnboarding: Bool
+    /// Whether the welcome flow was ever opened here. Optional so a copy made
+    /// before the flag existed still restores; absent means the store predates
+    /// onboarding, not that the flow is half-finished.
+    var hasStartedOnboarding: Bool? = nil
 }
 
 struct RatesBackup: Codable, Equatable {
@@ -174,7 +178,7 @@ extension BackupPayload {
 
 enum BackupCoding {
     static let formatIdentifier = "montra.backup"
-    static let currentFormatVersion = 1
+    static let currentFormatVersion = 2
     static let currentSchemaVersion = 1
 
     /// Fills in the checksum so an in-memory archive always matches the bytes

@@ -127,6 +127,7 @@ struct OnboardingFlowView: View {
 
     init(
         initialStep: OnboardingStep = .welcome,
+        resumeAccount: Account? = nil,
         previewAccount: Account? = nil,
         previewExpense: Operation? = nil,
         isPreview: Bool = false,
@@ -134,14 +135,17 @@ struct OnboardingFlowView: View {
     ) {
         self.onFinish = onFinish
         self.isPreview = isPreview
+        // An interrupted run already created its account; seeding it here lets
+        // the rest of the flow use it instead of asking for a second one.
+        let startingAccount = previewAccount ?? resumeAccount
         _step = State(initialValue: initialStep)
-        _createdAccount = State(initialValue: previewAccount)
+        _createdAccount = State(initialValue: startingAccount)
         _createdExpense = State(initialValue: previewExpense)
-        _accountName = State(initialValue: previewAccount?.name ?? "")
-        _currency = State(initialValue: previewAccount?.currency ?? .byn)
-        _accountIcon = State(initialValue: previewAccount?.iconName ?? "creditcard.fill")
-        _accountColor = State(initialValue: previewAccount?.color ?? .blue)
-        _accountAmountText = State(initialValue: previewAccount.map { Self.editable($0.initialAmount) } ?? "")
+        _accountName = State(initialValue: startingAccount?.name ?? "")
+        _currency = State(initialValue: startingAccount?.currency ?? .byn)
+        _accountIcon = State(initialValue: startingAccount?.iconName ?? "creditcard.fill")
+        _accountColor = State(initialValue: startingAccount?.color ?? .blue)
+        _accountAmountText = State(initialValue: startingAccount.map { Self.editable($0.initialAmount) } ?? "")
         _expenseAmountText = State(initialValue: previewExpense.map { Self.editable($0.amount) } ?? "")
         _categoryID = State(initialValue: previewExpense?.category?.id)
         _selectedExpenses = State(initialValue: SeedData.onboardingDefaultExpenses)
@@ -220,7 +224,7 @@ struct OnboardingFlowView: View {
             switch step {
             case .welcome:
                 OnboardingPrimaryButton(title: String(localized: "common.get_started"), systemImage: "arrow.forward") {
-                    advance(to: .account)
+                    advance(to: .afterWelcome(hasExistingAccount: createdAccount != nil))
                 }
             case .account:
                 OnboardingPrimaryButton(title: String(localized: "common.create_account"), leadingSystemImage: "plus") {
@@ -661,6 +665,13 @@ enum OnboardingStep: Int, CaseIterable, Hashable {
     case categories
     case expense
     case done
+
+    /// An interrupted run already created its account, so the welcome screen
+    /// continues to the categories instead of asking for a second account. A
+    /// first run still starts with the account form.
+    static func afterWelcome(hasExistingAccount: Bool) -> OnboardingStep {
+        hasExistingAccount ? .categories : .account
+    }
 }
 
 // MARK: - Welcome

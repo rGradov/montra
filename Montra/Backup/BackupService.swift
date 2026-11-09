@@ -269,6 +269,11 @@ enum BackupService {
         settings.fixedLengthDays = min(max(backup.fixedLengthDays, 1), 90)
         settings.periodAnchor = backup.periodAnchor
         settings.didSeedDemo = backup.didSeedDemo
+        // Restoring is something a person can only do from inside the app, so the
+        // welcome flow has already been opened on this Mac. A copy written before
+        // the flag existed must not make an interrupted run look like a legacy
+        // install on the next launch.
+        settings.hasStartedOnboarding = backup.hasStartedOnboarding ?? true
         settings.hasCompletedOnboarding = backup.hasCompletedOnboarding || hasAccounts
     }
 
@@ -469,7 +474,8 @@ private extension SettingsBackup {
             fixedLengthDays: settings.fixedLengthDays,
             periodAnchor: settings.periodAnchor,
             didSeedDemo: settings.didSeedDemo,
-            hasCompletedOnboarding: settings.hasCompletedOnboarding
+            hasCompletedOnboarding: settings.hasCompletedOnboarding,
+            hasStartedOnboarding: settings.hasStartedOnboarding
         )
     }
 }

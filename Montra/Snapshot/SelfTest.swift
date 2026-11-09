@@ -257,6 +257,34 @@ enum SelfTest {
         let freshSettings = SettingsStore(defaults: freshDefaults)
         check(!freshSettings.hasCompletedOnboarding, "знакомство не пройдено по умолчанию")
 
+        // 9-0. A launch opens the welcome flow until it is actually finished: the
+        // first account is a step inside onboarding, not a completion signal.
+        // A store that predates onboarding still opens as before, exactly once.
+        let launchSuite = "montra.selftest.onboarding.launch"
+        UserDefaults(suiteName: launchSuite)?.removePersistentDomain(forName: launchSuite)
+        let launchSettings = SettingsStore(defaults: UserDefaults(suiteName: launchSuite) ?? .standard)
+        check(OnboardingLaunch.needsOnboarding(accountCount: 0, settings: launchSettings),
+              "первый запуск открывает знакомство")
+        check(launchSettings.hasStartedOnboarding, "открытое знакомство запоминается")
+        check(OnboardingLaunch.needsOnboarding(accountCount: 1, settings: launchSettings),
+              "после перезапуска знакомство возвращается даже со счётом")
+        check(!launchSettings.hasCompletedOnboarding, "незавершённое знакомство не считается пройденным")
+        check(
+            OnboardingStep.afterWelcome(hasExistingAccount: true) == .categories
+                && OnboardingStep.afterWelcome(hasExistingAccount: false) == .account,
+            "прерванное знакомство не просит второй счёт"
+        )
+        launchSettings.hasCompletedOnboarding = true
+        check(!OnboardingLaunch.needsOnboarding(accountCount: 0, settings: launchSettings),
+              "пройденное знакомство не повторяется")
+
+        let legacySuite = "montra.selftest.onboarding.legacy"
+        UserDefaults(suiteName: legacySuite)?.removePersistentDomain(forName: legacySuite)
+        let legacySettings = SettingsStore(defaults: UserDefaults(suiteName: legacySuite) ?? .standard)
+        check(!OnboardingLaunch.needsOnboarding(accountCount: 3, settings: legacySettings),
+              "хранилище до знакомства не получает первый запуск")
+        check(legacySettings.hasCompletedOnboarding, "хранилище до знакомства считается пройденным")
+
         let freshContainer = ModelContainerFactory.make(inMemory: true)
         let freshContext = ModelContext(freshContainer)
         SeedData.bootstrap(context: freshContext, settings: freshSettings)
@@ -284,6 +312,7 @@ enum SelfTest {
         freshSettings.hasCompletedOnboarding = true
         SeedData.clearEverything(context: freshContext, settings: freshSettings)
         check(!freshSettings.hasCompletedOnboarding, "после удаления всех данных знакомство вернётся")
+        check(freshSettings.hasStartedOnboarding, "удаление данных помечает знакомство начатым")
         let leftoverPlans = (try? freshContext.fetchCount(FetchDescriptor<PlannedOperation>())) ?? -1
         check(leftoverPlans == 0, "удаление всех данных убирает и планы")
         let leftoverCategories = (try? freshContext.fetchCount(FetchDescriptor<Category>())) ?? -1
@@ -469,6 +498,7 @@ enum SelfTest {
         backupSettings.periodAnchor = base
         backupSettings.didSeedDemo = true
         backupSettings.hasCompletedOnboarding = true
+        backupSettings.hasStartedOnboarding = true
 
         let backupContainer = ModelContainerFactory.make(inMemory: true)
         let backupContext = ModelContext(backupContainer)
@@ -591,7 +621,11 @@ enum SelfTest {
             check(false, "копия собирается: \(error.localizedDescription)")
             exit(1)
         }
-        check(archive.format == "montra.backup" && archive.formatVersion == 1, "копия помечена собственным форматом")
+        check(
+            archive.format == BackupCoding.formatIdentifier
+                && archive.formatVersion == BackupCoding.currentFormatVersion,
+            "копия помечена собственным форматом"
+        )
         check(
             archive.summary.accounts == 2 && archive.summary.categories == 3
                 && archive.summary.operations == 4 && archive.summary.plans == 1
@@ -614,6 +648,17 @@ enum SelfTest {
                 "сумма операции хранится без потерь"
             )
             check(decoded.checksum == archive.checksum, "контрольная сумма сходится")
+
+            // A copy written before the flag existed has no such key. It must
+            // still decode and match its own checksum, or old files would be read
+            // as corrupted.
+            var oldPayload = decoded.payload
+            oldPayload.settings.hasStartedOnboarding = nil
+            var oldArchive = try BackupCoding.seal(oldPayload)
+            oldArchive.formatVersion = 2
+            let oldDecoded = try BackupCoding.decode(BackupCoding.encode(oldArchive))
+            check(oldDecoded.payload.settings.hasStartedOnboarding == nil,
+                  "старая копия без флага знакомства читается")
 
             let url = FileManager.default.temporaryDirectory
                 .appendingPathComponent("montra-selftest-\(UUID().uuidString).montra")
@@ -706,6 +751,7 @@ enum SelfTest {
                 "валюта и правило периодов восстановлены"
             )
             check(restoredSettings.hasCompletedOnboarding, "знакомство отмечено пройденным")
+            check(restoredSettings.hasStartedOnboarding, "запущенное знакомство восстановлено")
             check(report.rates?.rate(for: .usd) == decimal("3.1234"), "курсы из копии доступны для установки")
             check(
                 report.integration?.enabled == true && report.integration?.allowDelete == false,
@@ -830,6 +876,7 @@ enum SelfTest {
             freshSettings.hideBalances = true
             check(try saved.balance(id: card.id).amount == freshSettings.money(0, currency: .byn),
                   "Spotlight скрывает баланс по настройке Montra")
+
         } catch {
             check(false, "Spotlight: \(error.localizedDescription)")
         }

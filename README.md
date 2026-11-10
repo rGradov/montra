@@ -37,6 +37,7 @@
 |---|---|
 | ![Первый расход](Docs/screenshots/onboarding-expense.png) | ![Готово](Docs/screenshots/onboarding-done.png) |
 
+На шаге «Первый счёт» выбор валюты расположен под полем суммы.
 Поток открывается на чистом хранилище. Попробовать его, не трогая данные:
 `open -n -a Montra.app --args -preview-onboarding`.
 

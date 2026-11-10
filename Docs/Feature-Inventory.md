@@ -115,6 +115,7 @@ Use a 980×700 window with a 240 pt sidebar and `hiddenTitleBar`.
 | ACC-03 | Account deletion | Confirmation warns that transactions and planned payments cascade. The account route shows Account Not Found or returns to Overview | persistence/ui |
 | ACC-04 | Balance | `initial + income − expense`. Transfers count. Hide Amounts masks it | unit/ui |
 | ACC-05 | Account detail | Back, Edit, New Transaction, and Delete (N) on selection. Balance, account label, all-time value, and conversion to the primary currency | ui |
+| ACC-05a | Accounts in Overview | Account color or the chosen emoji, drawn without a tile backing. Amount and share on the right. Click opens the account | ui/visual |
 | ACC-06 | Account filters | All, Expenses, Income, counts, selection and Select All. Delete only selected rows | ui |
 | ACC-07 | Collapsing or lazy list | Up to 60 transactions use collapsing rows. Above 60 use LazyVStack. Filters preserve rows and scroll behavior. Plans appear in the list | ui/performance |
 | ACC-08 | Account plans | Only this account's plans in the current period. Linked plans are hidden. Plan, Today, or Missed badge. Click opens plan detail | ui |

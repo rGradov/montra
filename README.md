@@ -58,6 +58,7 @@ checks, and edge cases.
   accounts appear in a separate sidebar group and still support deposits and
   withdrawals. Accounts hidden from Overview stay in the sidebar, account detail,
   and Analytics. A row below the Overview list opens the hidden accounts.
+  In the Overview accounts and Period blocks the icons show without a backdrop.
 - **Transactions.** Record expenses and income in the account currency. In lists,
   transaction and plan icons show in the category color without a tile backing.
   The date defaults to now and can be changed. Enter a place by hand or use geolocation,

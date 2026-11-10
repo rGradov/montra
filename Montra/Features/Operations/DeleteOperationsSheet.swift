@@ -167,7 +167,7 @@ struct DeleteOperationsSheet: View {
 
     private func row(_ item: DeleteOperationItem) -> some View {
         HStack(spacing: AppStyle.Spacing.small) {
-            TransactionListIcon(symbol: item.icon, color: item.color, frameSize: 30)
+            ListRowIcon(symbol: item.icon, color: item.color, frameSize: 30)
 
             VStack(alignment: .leading, spacing: 1) {
                 Text(item.title)

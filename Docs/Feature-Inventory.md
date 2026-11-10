@@ -136,7 +136,7 @@ Use a 980×700 window with a 240 pt sidebar and `hiddenTitleBar`.
 | OPS-04 | Period | Current Period and All Time, inclusive boundaries, subtitle, and selection reset on change | ui/unit |
 | OPS-05 | Sort | By Date uses day groups. By Amount uses a flat list with Plans grouped separately. Stable ordering | ui |
 | OPS-06 | Selection and deletion | Checkboxes and Select All apply to visible rows. Confirm and show success. Expand transfer pairs. Reset selection on search, filter, period, or plan changes | ui/unit |
-| OPS-07 | Transaction row | Category, account, place, time, amount, and mandatory badge. Transfer row, Edit and Delete menu, and new-row highlight | ui |
+| OPS-07 | Transaction row | Icon in the category color without a tile backing in Overview, the operations list, account pages, and lists inside dialogs. Account, place, time, amount, and mandatory badge. Transfer row, Edit and Delete menu, and new-row highlight | ui/visual |
 | OPS-08 | Empty states | No transactions in period, no search matches, create or clear action | ui |
 | OPS-09 | Header subtitle | Transaction count, period or all-time total, and plan count. Show selected count on selection and Missed or Upcoming count on plan filters | ui |
 | OPS-10 | Plans in full list | Transaction-style cards in the period's day groups. No selection. Plan, Today, or Missed badge under amount. Click opens plan | ui |
@@ -204,7 +204,7 @@ Use a 980×700 window with a 240 pt sidebar and `hiddenTitleBar`.
 | PLN-01 | Series creation | Inclusive start and end, daily/weekly/monthly/yearly, start time, first and last occurrences, clamp the 31st and return to 31 in March, selected weekdays, max 1,000, and shared seriesID | unit |
 | PLN-02 | Balance | Plans leave `Operation` records, balances, and totals unchanged until recorded | unit |
 | PLN-03 | Status | Future, today, or missed. Hide linked from pending. Show Plan, Today, or Missed | unit |
-| PLN-04 | Plan row | Transaction-style row with IconTile, headline title, callout metadata, trailing amount, and status badge beneath it. No checkbox or ellipsis. Click opens detail | ui/visual |
+| PLN-04 | Plan row | Like a transaction row: icon in the category color without a tile backing, headline title, callout metadata, amount on the right, Plan/Today/Missed badge under the amount. No checkbox and no overflow menu. Click opens the plan | ui/visual |
 | PLN-05 | Plan detail | Amount, account, category, date, recurrence, end date, series count, place and note. Link, Record, and delete one or all | ui |
 | PLN-06 | Link to transaction | Candidates match kind and are unlinked to other plans. Search and sort by nearest date. Select to set plan.linkedOperationID, hide the plan, and retain the transaction. Empty state explains | ui/unit |
 | PLN-07 | Record as transaction | Prefilled form with editable date defaulting to today. Create and link the transaction. Cancel preserves the plan | ui/unit |

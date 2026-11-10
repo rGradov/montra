@@ -58,8 +58,9 @@ checks, and edge cases.
   accounts appear in a separate sidebar group and still support deposits and
   withdrawals. Accounts hidden from Overview stay in the sidebar, account detail,
   and Analytics. A row below the Overview list opens the hidden accounts.
-- **Transactions.** Record expenses and income in the account currency. The date
-  defaults to now and can be changed. Enter a place by hand or use geolocation,
+- **Transactions.** Record expenses and income in the account currency. In lists,
+  transaction and plan icons show in the category color without a tile backing.
+  The date defaults to now and can be changed. Enter a place by hand or use geolocation,
   and add a note. Edit or select multiple transactions, then review the deletion
   list and see a confirmation when deletion succeeds. Open the full list from
   Overview or with ⌘2.

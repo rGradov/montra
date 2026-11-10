@@ -666,7 +666,7 @@ private struct RecentOperationRow: View {
     var body: some View {
         Button(action: onOpen) {
             HStack(spacing: AppStyle.Spacing.small) {
-                IconTile(
+                TransactionListIcon(
                     symbol: operation.displayIcon,
                     color: operation.displayColor
                 )

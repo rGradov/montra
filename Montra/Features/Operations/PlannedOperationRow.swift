@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// A planned payment in the list. It uses the same card, icon tile, type scale
+/// A planned payment in the list. It uses the same card, icon, type scale
 /// and amount alignment as a recorded transaction. The status badge reads
 /// "Scheduled", "Today", or "Missed". The whole card opens the plan
 /// actions sheet, so there is no separate menu button.

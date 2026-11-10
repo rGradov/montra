@@ -267,7 +267,7 @@ struct PlanActionSheet: View {
                             dismiss()
                         } label: {
                             HStack(spacing: AppStyle.Spacing.small) {
-                                IconTile(symbol: operation.displayIcon, color: operation.displayColor)
+                                TransactionListIcon(symbol: operation.displayIcon, color: operation.displayColor)
 
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(operation.displayTitle)

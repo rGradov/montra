@@ -1,12 +1,5 @@
 import SwiftUI
 
-/// Icon names are ASCII. Account emoji are rendered as text.
-enum AppIconGlyph {
-    static func isEmoji(_ value: String) -> Bool {
-        value.unicodeScalars.contains { $0.value > 0x7F }
-    }
-}
-
 /// A fixed slot keeps row titles aligned regardless of the icon's proportions.
 struct ListRowIcon: View {
     let symbol: String

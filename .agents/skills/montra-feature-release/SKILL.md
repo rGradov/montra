@@ -3,18 +3,20 @@ name: montra-feature-release
 description: >
   Release Montra features and fixes for macOS (SwiftUI and SwiftData) from a
   dedicated Git branch through backup, Local API, MCP, localization, tests, and
-  DMG verification. Use for changes to
+  DMG verification. If GitHub is configured, open a pull request with a brief
+  summary and before and after visuals for UI changes. Use for changes to
   behavior, settings, screens, persisted data, Local API, MCP, or backups.
   For documentation-only or skill-only changes and behavior-preserving
-  refactors, run the applicable checks.
+  refactors, follow the applicable Git and pull request workflow.
 ---
 
-# Montra feature release
+# Montra feature release and pull requests
 
 ## 0. Release rules
 
-1. Implement the feature, then verify backup, Local API, MCP, localization,
-   and documentation. Run tests before packaging the DMG.
+1. Start each separate task on a dedicated branch. Verify backup, Local API,
+   MCP, localization, and documentation for feature changes. Run tests before
+   packaging the DMG. When GitHub is configured, deliver through a pull request.
 2. Include every new persisted setting, model field, and entity in backups.
    Document eligible exceptions and their reasons in
    `Scripts/feature-sync-allowlist.txt`.
@@ -37,7 +39,7 @@ state, API/MCP, or packaging, read the corresponding reference in section 15.
 Track the applicable steps.
 
 ```text
-[ ] 0. Baseline audit and tests
+[ ] 0. Task branch and baseline audit and tests
 [ ] 1. Feature code, model, localization
 [ ] 2. Backup capture, restore, versions, self-test
 [ ] 3. Local API JSON, input, actions, docs
@@ -46,14 +48,27 @@ Track the applicable steps.
 [ ] 6. Self-test, snapshots, MCP smoke as applicable
 [ ] 7. Synchronization audit
 [ ] 8. DMG via make-dmg.sh <tag> --open, then audit with --require-dmg
-[ ] 9. User report
+[ ] 9. Commit. When GitHub is configured, push and open a pull request
+[ ] 10. User report
 ```
 
-### 1.1. Documentation and skill changes
+### 1.1. Branches and commits
+
+- For each feature, fix, refactor, or standalone documentation task, create
+  `codex/<short-name>` from the current target branch. Continue the same task
+  on its existing branch. Use a separate worktree when the current one contains
+  changes for another task.
+- Commit only the current task's changes. Use Conventional Commits
+  (`type(scope): action`, with optional scope). Choose a suitable type such as
+  `feat`, `fix`, `refactor`, `docs`, or `test`. Start with an action verb,
+  omit the final period, aim for 50 characters, and stay within 72. Explain
+  migration and breaking-change consequences in the body.
+
+### 1.2. Documentation and skill changes
 
 For changes limited to documentation or skills, review the diff and run
 applicable documentation checks. Skip app builds, runtime tests, DMG packaging,
-app updates, and version bumps.
+app updates, and version bumps. Follow the branch and pull request rules.
 Write repository Markdown, including `AGENTS.md`, skills, playbooks, READMEs,
 and new documentation, in English. Preserve code identifiers, commands, and
 the product's localization requirements.
@@ -197,7 +212,9 @@ Require `ALL CHECKS PASSED` and exit code 0 before packaging.
 
 For screens, flows, and animations, compare changed PNGs with
 `build/snaps-current` or the previous snapshot folder. Use
-`-preview-onboarding` to preview onboarding with a temporary store.
+`-preview-onboarding` to preview onboarding with a temporary store. Capture
+the base and task branches with the same fixtures, window size, theme, and
+language. Refresh the evidence in the pull request after UI review changes.
 
 ### 8.3. API and MCP
 
@@ -263,9 +280,38 @@ when the installed copy will not update.
 - [ ] Snapshots have been reviewed for UI changes.
 - [ ] `audit-feature-sync.py --require-dmg` reports zero failures.
 - [ ] DMG has been built, mounted, and verified.
+- [ ] With GitHub configured, the branch is pushed and the PR includes a summary
+      and before and after evidence for UI changes.
 - [ ] The user has the report and DMG path.
 
-## 12. Final report
+## 12. Pull request and final report
+
+### 12.1. GitHub pull request
+
+When the GitHub remote and write access are available, push the task branch
+and open a PR against the intended target. Merge only on direct request.
+Report publication status when the remote or access is unavailable.
+
+Create and update PRs with GitHub CLI or the GitHub REST API. If `gh` is
+available and authenticated, pass explicit `--base`, `--head`, `--title`,
+and `--body-file` to `gh pr create`. Otherwise use an authenticated
+`POST /repos/{owner}/{repo}/pulls`. Verify the target and return the PR URL.
+If both routes are unavailable, explain why and link the branch comparison
+when the branch was pushed. Keep PR creation and editing in the CLI or API.
+
+Use a short title and a few bullets describing changes, checks, and applicable
+backup, Local API, and MCP updates. Add two to four manual steps when a reviewer
+can try the scenario.
+
+For UI changes, include labeled Before and After screenshots for affected
+screens or states. Show them side by side when helpful. For a new screen, show
+the former path or say the screen is new and include the After capture. Use a
+short video for animations or multistep flows where it helps. Use test data
+and verify reviewer access. Use `gh pr create --attach` if supported, otherwise
+include accessible URLs. If uploads are unavailable, attach the evidence to
+the user report and say so.
+
+### 12.2. User report
 
 Write a brief report in Russian.
 
@@ -278,11 +324,12 @@ Localization: <new ru/en keys>
 Tests: <self-test count, smoke, snapshots>
 Audit: <result>
 DMG: build/Montra-1.0-<tag>.dmg (<size>), version 1.0 (1)
+PR: <URL if opened>
 Manual verification: <two to four steps>
 ```
 
 For a deliberate API exclusion, explain why and point to the allowlist entry.
-For documentation-only work, report the docs and applicable checks.
+For documentation-only work, report the docs, applicable checks, and PR status.
 
 ## 13. Examples
 

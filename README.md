@@ -90,8 +90,9 @@ checks, and edge cases.
   spending, or create your own with an icon and color. Categories support one
   level of subcategories. Choose the parent at creation and its mandatory status
   is inherited. The transaction form shows the five most-used categories and a
-  searchable hierarchy under More. Deleting a category reassigns its transactions
-  to Other and promotes its subcategories to top-level categories.
+  searchable hierarchy under More. In the list and the picker the icons show in
+  the category color without a backdrop. Deleting a category reassigns its
+  transactions to Other and promotes its subcategories to top-level categories.
 - **Financial periods.** Use a payday or fixed length. Adjust individual months
   and neighboring boundaries update to keep the history continuous.
 - **Settings.** Choose system, light, or dark appearance, hide amounts, set the

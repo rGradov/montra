@@ -88,7 +88,7 @@ struct CategoryPickerPopover: View {
                         .padding(.leading, 8)
                 }
 
-                IconTile(symbol: category.iconName, color: category.color.tileColor, size: 24)
+                ListRowIcon(symbol: category.iconName, color: category.color.color, frameSize: 24)
 
                 VStack(alignment: .leading, spacing: 0) {
                     Text(category.displayName)

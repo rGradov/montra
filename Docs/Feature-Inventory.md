@@ -177,12 +177,12 @@ Use a 980×700 window with a 240 pt sidebar and `hiddenTitleBar`.
 
 | ID | Feature | Key checks | Type |
 |---|---|---|---|
-| CAT-01 | List | Expense and income groups. Indent subcategories with a guide line. Parent count aggregates children. Show mandatory status | ui |
+| CAT-01 | List | Expense and Income sections. Icons in the category color without a tile backing. Subcategories indented with a connector line. Parent count includes subcategory transactions. Mandatory categories are marked | ui/visual |
 | CAT-02 | Creation | Name, kind, color, icon, and mandatory status. Parent must be top-level and same kind. No Parent available. One nesting level | ui |
 | CAT-03 | Mandatory status | Applies to expenses and is inherited by subcategories. Reflected in the form and totals. Unavailable for income | unit/ui |
 | CAT-04 | Editing | Name, color, icon, mandatory status, and parent. Prevent choosing a child as parent and protect system categories | ui |
 | CAT-05 | Deletion | Protect system categories. Reassign transactions and plans to Other, promote children to top level, and update counts | unit/ui |
-| CAT-06 | Picker | Five frequent choices plus selected. More opens hierarchy search by name and parent. Show selection checkmark and filter by kind | ui |
+| CAT-06 | Picker | The five most frequent categories plus the selected one. More opens a search by name and parent with the hierarchy. Icons in the category color without a tile backing, a checkmark on the selected row, and the list limited to the operation kind | ui/visual |
 | CAT-07 | Empty state | If no categories match the kind, show guidance and block save. Other is the fallback | ui |
 | CAT-08 | Counts | Category count in Settings and sidebar. Transaction count updates after deletion and creation | ui |
 

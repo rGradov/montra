@@ -9,7 +9,6 @@ description: >
   plan option, local API action, MCP tool, or backup behavior in this repository.
   Also use for a feature request that sounds small ("just add a toggle") — the
   backup and integration consequences are the point of this skill.
-whenToUse: >
   Load before writing code for any Montra feature or behavior change. Skip only
   for read-only questions, code review, or refactors that provably change no
   behavior and no persisted state.
@@ -350,7 +349,25 @@ sandbox). Сборка и selftest при этом уже прошли; не п�
 - [ ] DMG собран, смонтирован и проверен.
 - [ ] Пользователь получил отчёт и путь к DMG.
 
-## 12. Финальный отчёт
+## 12. Pull request и финальный отчёт
+
+### Pull request в GitHub
+
+Если для задачи нужно открыть pull request, отправь рабочую ветку в GitHub.
+
+**Создавай и обновляй PR программно через GitHub CLI или GitHub REST API.**
+Если `gh` установлен и авторизован, используй `gh pr create` с явными
+`--base`, `--head`, `--title` и `--body-file`. Иначе используй
+`POST /repos/{owner}/{repo}/pulls` с доступной авторизацией GitHub.
+Проверь, что PR открыт в нужную ветку, и верни его URL. Если оба способа
+недоступны, укажи причину и дай ссылку на сравнение веток, если ветка отправлена.
+Браузер и Computer Use не используй для создания или редактирования PR.
+
+Для снимков «До» и «После» используй `gh pr create --attach`, если установленная
+версия `gh` поддерживает этот флаг. Иначе вставь доступные ревьюерам ссылки
+в описание. Если ссылок нет, приложи снимки к итоговому отчёту.
+
+### Финальный отчёт
 
 Пиши по-русски, коротко и по делу:
 

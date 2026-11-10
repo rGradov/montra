@@ -151,6 +151,49 @@ Scripts/make-dmg.sh <tag> --open
 Если `hdiutil` падает с `Operation not permitted` — sandbox не даёт доступ к raw
 disk; упаковку нужно запускать с full disk access. Это не ошибка кода.
 
+#### DMG для установки на других Mac
+
+Один раз настройте подпись и доступ к сервису нотарификации Apple.
+
+1. Откройте **Xcode → Settings → Accounts**, выберите команду проекта и в
+   **Manage Certificates** добавьте **Developer ID Application**. Если сертификат
+   уже выпущен на другом Mac, импортируйте его вместе с приватным ключом из
+   `.p12`. Проверьте, что `security find-identity -v -p codesigning` показывает
+   `Developer ID Application` для команды проекта.
+   [Сертификаты Developer ID](https://developer.apple.com/help/account/certificates/create-developer-id-certificates/)
+2. В корне репозитория создайте локальный файл `Montra.local.xcconfig`.
+   Git игнорирует этот файл. Укажите команду Apple и идентификатор приложения,
+   зарегистрированный для этой команды.
+
+   ```xcconfig
+   DEVELOPMENT_TEAM = YOUR_TEAM_ID
+   PRODUCT_BUNDLE_IDENTIFIER = com.example.montra
+   ```
+
+3. Создайте пароль приложения в Apple Account и сохраните его в связке ключей.
+   Введите его по запросу команды. Team ID должен совпадать с `DEVELOPMENT_TEAM`
+   в `Montra.local.xcconfig`.
+   [Настройка notarytool](https://developer.apple.com/documentation/security/customizing-the-notarization-workflow)
+
+   ```bash
+   xcrun notarytool store-credentials montra-notary \
+     --apple-id 'your-apple-id@example.com' --team-id 'YOUR_TEAM_ID'
+   ```
+
+Соберите образ командой ниже.
+
+```bash
+Scripts/make-dmg.sh <tag> --distribute --open
+```
+
+Режим `--distribute` собирает Release с Developer ID, подписывает DMG тем же
+сертификатом и отправляет образ в сервис нотарификации Apple. После статуса
+`Accepted` скрипт прикрепляет билет, проверяет его и Gatekeeper, затем сохраняет
+`build/Montra-1.0-<tag>-notarized.dmg`. Если профиль в связке ключей называется
+иначе, задайте `MONTRA_NOTARY_PROFILE`. Сборка без `--distribute` предназначена
+для локальной проверки. Публикация в Mac App Store для этого процесса не нужна.
+[Распространение через DMG](https://developer.apple.com/documentation/xcode/packaging-mac-software-for-distribution)
+
 ## Файлы
 
 | Файл | Роль |

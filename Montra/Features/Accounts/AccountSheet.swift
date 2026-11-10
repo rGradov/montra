@@ -22,7 +22,9 @@ struct AccountSheet: View {
     @State private var isHiddenFromOverview: Bool
     @State private var isConfirmingDelete = false
 
-    init(mode: Mode) {
+    /// `startsAsSavings` lets the sidebar's "Savings" header open the sheet
+    /// with the savings switch already on; the user still confirms the name.
+    init(mode: Mode, startsAsSavings: Bool = false) {
         self.mode = mode
         switch mode {
         case .create:
@@ -31,7 +33,7 @@ struct AccountSheet: View {
             _initialAmountText = State(initialValue: "")
             _icon = State(initialValue: "creditcard.fill")
             _color = State(initialValue: .blue)
-            _isSavings = State(initialValue: false)
+            _isSavings = State(initialValue: startsAsSavings)
             _isHiddenFromOverview = State(initialValue: false)
         case .edit(let account):
             _name = State(initialValue: account.name)
@@ -78,10 +80,9 @@ struct AccountSheet: View {
                     preview
                     hiddenFromOverviewRow
                     nameField
-                    currencyField
                     amountField
-                    iconField
-                    colorField
+                    currencyField
+                    appearanceField
                 }
                 .padding(.horizontal, AppStyle.Spacing.large)
                 .padding(.bottom, AppStyle.Spacing.medium)
@@ -102,7 +103,7 @@ struct AccountSheet: View {
                     .keyboardShortcut(.defaultAction)
             }
         }
-        .frame(width: 470, height: 680)
+        .frame(width: 470, height: 650)
         .background(AppColors.surfaceBase)
         .alert(String(localized: "common.delete_account"), isPresented: $isConfirmingDelete) {
             Button(String(localized: "common.delete"), role: .destructive) { deleteAccount() }
@@ -115,6 +116,8 @@ struct AccountSheet: View {
     private var preview: some View {
         HStack(alignment: .top, spacing: AppStyle.Spacing.small) {
             IconTile(symbol: icon, color: color.tileColor, size: 44)
+                .id(icon)
+                .transition(.opacity.combined(with: .scale(scale: 0.92)))
             VStack(alignment: .leading, spacing: AppStyle.Spacing.xxxSmall) {
                 Text(name.isEmpty ? String(localized: "account.new") : name)
                     .font(AppStyle.Typography.sectionTitle)
@@ -293,16 +296,17 @@ struct AccountSheet: View {
         }
     }
 
-    private var iconField: some View {
-        FormField(title: String(localized: "common.icon")) {
-            IconPicker(selection: $icon)
+    /// The sheet ends with how the account looks: glyph mode, the glyph itself
+    /// and the colour, under a hairline that separates "what the account is"
+    /// from "how it is drawn". Create and edit share it, so both read one way.
+    private var appearanceField: some View {
+        VStack(alignment: .leading, spacing: AppStyle.Spacing.small) {
+            Rectangle()
+                .fill(AppColors.borderSubtle)
+                .frame(height: 0.5)
+            AccountAppearancePicker(icon: $icon, color: $color)
         }
-    }
-
-    private var colorField: some View {
-        FormField(title: String(localized: "common.color")) {
-            ColorPickerRow(selection: $color)
-        }
+        .padding(.top, AppStyle.Spacing.xxSmall)
     }
 
     private func save() {

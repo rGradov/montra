@@ -20,21 +20,23 @@
 
 ## Шаги
 
-1. **Контейнер.** В аккаунте разработчика (Apple Developer → Certificates, Identifiers &
-   Profiles → iCloud Containers) создайте контейнер:
-   `iCloud.com.example.montra`. Если домен другой — поменяйте строку в
-   `SyncService.containerIdentifier` и в entitlements.
+1. **Контейнер.** Укажите команду Apple и зарегистрированный идентификатор
+   приложения в `Montra.local.xcconfig`, как описано в
+   [инструкции по подписи](Feature-Workflow.md#dmg-для-установки-на-других-mac).
+   В Apple Developer → Certificates, Identifiers & Profiles → iCloud Containers
+   создайте контейнер с префиксом `iCloud.` и этим идентификатором,
+   например `iCloud.com.example.montra`.
 
 2. **Права.** В таргете Montra → Signing & Capabilities добавьте **iCloud**:
    - CloudKit;
-   - контейнер `iCloud.com.example.montra`;
+   - созданный iCloud-контейнер;
    - галочка CloudKit включена.
    Xcode создаст `Montra.entitlements`; можно взять готовый шаблон:
    ```bash
    cp Docs/Montra.entitlements Montra/Montra.entitlements
    ```
-   и указать его в `CODE_SIGN_ENTITLEMENTS` таргета. Нужна команда разработчика
-   (без team iCloud entitlement не подпишется).
+   и указать `CODE_SIGN_ENTITLEMENTS = Montra/Montra.entitlements` в
+   `Montra.local.xcconfig`. Для подписи iCloud entitlement нужна команда разработчика.
 
 3. **Хранилище.** В `Montra/App/MontraApp.swift` в `ModelContainerFactory.make()`
    замените:

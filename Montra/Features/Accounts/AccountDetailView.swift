@@ -70,8 +70,8 @@ struct AccountDetailView: View {
     }
 
     /// Every plan still waiting for a fact, across all periods. The mixed
-    /// "Все/Расходы/Доходы" list trims this to the current period, while the
-    /// "Пропущенные"/"Будущие" chips look beyond it.
+    /// "All/Expenses/Income" list trims this to the current period, while the
+    /// "Missed"/"Upcoming" chips look beyond it.
     private var pendingPlans: [PlannedOperation] {
         allPlans.filter { plan in
             plan.account?.id == account.id && plan.linkedOperationID == nil
@@ -91,13 +91,13 @@ struct AccountDetailView: View {
         }
     }
 
-    /// Plans on past days that were never linked to a fact — the "Пропущенные"
+    /// Plans on past days that were never linked to a fact — the "Missed"
     /// list, newest missed first.
     private var missedPlans: [PlannedOperation] {
         pendingPlans.filter(\.isMissed).sorted { $0.date > $1.date }
     }
 
-    /// Plans from today through the two-year horizon — the "Будущие" list,
+    /// Plans from today through the two-year horizon — the "Upcoming" list,
     /// soonest first, so next week's rent sits right at the top.
     private var upcomingPlans: [PlannedOperation] {
         let horizon = PlanHorizon.limit()
@@ -297,8 +297,8 @@ struct AccountDetailView: View {
         }
     }
 
-    /// The active filter tells the sheet which tab to start on: after
-    /// "Доходы" the form must open on "Доход", not on "Расход".
+    /// The active filter sets the sheet's initial transaction type.
+    /// For example, the "Income" filter opens the sheet on the income tab.
     private var newOperationKind: OperationKind? {
         guard planFilter == .all else { return nil }
         switch filter {
@@ -372,8 +372,8 @@ struct AccountDetailView: View {
         )
     }
 
-    /// The plan-only lists group by day too: soonest first for "Будущие",
-    /// most recent first for "Пропущенные".
+    /// The plan-only lists group by day too: soonest first for "Upcoming",
+    /// most recent first for "Missed".
     private var planDaySections: [TransactionDaySection] {
         TransactionDaySection.sections(
             from: visiblePlans.map { .plan($0) },

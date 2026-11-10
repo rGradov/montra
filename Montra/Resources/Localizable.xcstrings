@@ -239,6 +239,40 @@
         }
       }
     },
+    "account.all_emojis": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "All emoji"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Все emoji"
+          }
+        }
+      }
+    },
+    "account.all_icons": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "All icons"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Все иконки"
+          }
+        }
+      }
+    },
     "account.all_past_scheduled_payments_are": {
       "extractionState": "manual",
       "localizations": {
@@ -371,6 +405,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Новый счёт"
+          }
+        }
+      }
+    },
+    "account.new_savings": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "New savings account"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Новый накопительный счёт"
           }
         }
       }
@@ -3516,6 +3567,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Редактировать"
+          }
+        }
+      }
+    },
+    "common.emoji": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Emoji"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Emoji"
           }
         }
       }

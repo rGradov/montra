@@ -38,7 +38,7 @@ final class SyncService: ObservableObject {
 
     /// The value the app will use once the container is created in the developer
     /// account and the entitlement is added. Kept here so no code has to guess it.
-    static let containerIdentifier = "iCloud.com.example.montra"
+    nonisolated static let containerIdentifier = "iCloud.\(Bundle.main.bundleIdentifier ?? "com.example.montra")"
 
     @Published private(set) var state: CloudSyncState = .notConfigured
 

@@ -25,6 +25,12 @@ enum SelfTest {
         check(["hand.heart.fill", "cigarette.fill"].allSatisfy {
             categorySymbols.contains(AppIconSymbol.resolved($0))
         }, "старые имена иконок заменяются доступными")
+        check(AppIconGlyph.isEmoji("💳") && !AppIconGlyph.isEmoji("creditcard.fill"),
+              "эмодзи-иконка отличается от имени символа")
+        let accountSymbols = AccountIconCatalog.options.map(\.symbol)
+        check(accountSymbols.allSatisfy {
+            NSImage(systemSymbolName: $0, accessibilityDescription: nil) != nil
+        }, "все иконки счетов доступны")
 
         let settings = SettingsStore(defaults: UserDefaults(suiteName: "montra.selftest") ?? .standard)
         settings.periodMode = .payday
@@ -124,7 +130,7 @@ enum SelfTest {
         check(Finance.mandatoryExpenses([income, expense], currency: .byn) == 20, "обязательные расходы посчитаны")
         check(Finance.shareText(0.5) == (english ? "50.0%" : "50,0%"), "доля печатается как процент")
 
-        // 6. Deleting a custom category moves its operations to "Прочее".
+        // 6. Deleting a custom category moves its operations to "Other".
         let fallback = Category(name: "Прочее", kind: .expense, color: .graphite, iconName: "ellipsis.circle.fill", isSystem: true)
         context.insert(fallback)
         let custom = Category(name: "Кофе", kind: .expense, color: .orange, iconName: "cup.and.saucer.fill", isSystem: false)
@@ -318,7 +324,7 @@ enum SelfTest {
         let leftoverCategories = (try? freshContext.fetchCount(FetchDescriptor<Category>())) ?? -1
         check(leftoverCategories == 0, "удаление всех данных очищает и категории")
 
-        // 9a. The onboarding category step: skips fall back to "Прочее", picks
+        // 9a. The onboarding category step: skips fall back to "Other", picks
         // are created alongside it, and replaying never duplicates rows.
         let skippedContainer = ModelContainerFactory.make(inMemory: true)
         let skippedContext = ModelContext(skippedContainer)
@@ -510,7 +516,7 @@ enum SelfTest {
         cash.createdAt = base
         let crypto = Account(
             name: "Крипто", currency: .btc, initialAmount: decimal("0.0128"),
-            iconName: "bitcoinsign.circle.fill", color: .amber,
+            iconName: "💰", color: .amber,
             isSavings: true, isHiddenFromOverview: true, sortIndex: 1
         )
         crypto.createdAt = base
@@ -707,6 +713,10 @@ enum SelfTest {
                 accounts.first { $0.id == crypto.id }?.isHiddenFromOverview == true,
                 "флаг скрытия счёта восстановлен"
             )
+            check(
+                accounts.first { $0.id == crypto.id }?.iconName == "💰",
+                "эмодзи-иконка счёта переживает копию"
+            )
 
             let categories = (try? restoreContext.fetch(FetchDescriptor<Category>())) ?? []
             check(
@@ -880,6 +890,44 @@ enum SelfTest {
         } catch {
             check(false, "Spotlight: \(error.localizedDescription)")
         }
+
+        // 12. Touch Bar: the strip fits the app area and lists every account.
+        check(TouchBarLayout.stripWidth(accountCount: 3, available: 373) == 366,
+              "полоса счетов занимает три ячейки, когда они влезают")
+        check(TouchBarLayout.stripWidth(accountCount: 8, available: 373) == 366,
+              "полоса счетов не растёт больше трёх ячеек")
+        check(TouchBarLayout.stripWidth(accountCount: 3, available: 240) == 240,
+              "полоса счетов ужимается до оставшегося места")
+        check(TouchBarLayout.stripWidth(accountCount: 1, available: 373) == TouchBarLayout.accountWidth,
+              "один счёт не растягивает полосу")
+
+        let card = MontraTouchBarController.Account(
+            id: UUID(), name: "Карта", iconName: "creditcard.fill", isSavings: false
+        )
+        let savingsAccount = MontraTouchBarController.Account(
+            id: UUID(), name: "Копилка", iconName: "banknote.fill", isSavings: true
+        )
+        let exchange = MontraTouchBarController.Account(
+            id: UUID(), name: "Биржа", iconName: "bitcoinsign.circle.fill", isSavings: true
+        )
+        let touchBar = MontraTouchBarController()
+        touchBar.update(accounts: [savingsAccount, card, exchange], route: .overview, isEnabled: true, actions: .init())
+        let bar = touchBar.bar
+        check(bar.defaultItemIdentifiers == [
+            NSTouchBarItem.Identifier("montra.touchbar.overview"),
+            NSTouchBarItem.Identifier("montra.touchbar.analytics"),
+            MontraTouchBarController.accountsIdentifier,
+            NSTouchBarItem.Identifier("montra.touchbar.newOperation"),
+        ], "тачбар: дорожки, полоса счетов и новая операция")
+        let strip = bar.item(forIdentifier: MontraTouchBarController.accountsIdentifier)?.view as? NSScrubber
+        check(strip?.numberOfItems == 3, "полоса тачбара показывает обычный и накопительные счета")
+        check(touchBar.accounts.map(\.name) == ["Карта", "Копилка", "Биржа"],
+              "накопительные счета идут после обычных")
+        touchBar.update(accounts: [savingsAccount, card, exchange], route: .account(exchange.id), isEnabled: true, actions: .init())
+        check(strip?.selectedIndex == 2, "открытый счёт подсвечен в полосе тачбара")
+        touchBar.update(accounts: [], route: .overview, isEnabled: false, actions: .init())
+        check(!bar.defaultItemIdentifiers.contains(MontraTouchBarController.accountsIdentifier),
+              "без счетов полоса тачбара не занимает место")
 
         print(failures == 0 ? "ALL CHECKS PASSED" : "\(failures) CHECK(S) FAILED")
         exit(failures == 0 ? 0 : 1)

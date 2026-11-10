@@ -1,0 +1,3 @@
+PRODUCT_BUNDLE_IDENTIFIER = com.example.montra
+
+#include? "Montra.local.xcconfig"

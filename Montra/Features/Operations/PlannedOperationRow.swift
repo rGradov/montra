@@ -1,14 +1,14 @@
 import SwiftUI
 
 /// A planned payment in the list. It uses the same card, icon tile, type scale
-/// and amount alignment as an operation; the "План/Сегодня/Пропущен" badge is
-/// the only mark that separates it from a fact. The whole card opens the plan
+/// and amount alignment as a recorded transaction. The status badge reads
+/// "Scheduled", "Today", or "Missed". The whole card opens the plan
 /// actions sheet, so there is no separate menu button.
 struct PlannedOperationRow: View {
     let plan: PlannedOperation
     let masked: Bool
     /// The account page already names the account in its header, so it hides
-    /// the repeated name; "Все операции" keeps it.
+    /// the repeated name; "All Transactions" keeps it.
     var showsAccount = true
     /// In a mixed list facts sit behind a checkbox, so the plan card reserves
     /// that slot and keeps its icon and title in the same column as the facts.

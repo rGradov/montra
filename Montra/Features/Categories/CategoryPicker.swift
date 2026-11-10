@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// The complete category choice, opened from the small "Ещё" chip in the
+/// The complete category choice, opened from the small "More" chip in the
 /// operation form: hierarchy, search, and the selected checkmark.
 struct CategoryPickerPopover: View {
     let categories: [Category]

@@ -35,7 +35,7 @@ enum SeedData {
     ]
 
     /// What the onboarding pre-selects: the three rows a budget starts with.
-    /// Транспорт and Здоровье stay unselected there even though they count as
+    /// Transport and Health stay unselected there even though they count as
     /// mandatory for the budget math.
     static let onboardingDefaultExpenses: Set<StarterCategory> = [.housing, .food]
     static let onboardingDefaultIncome: Set<StarterCategory> = [.salary]
@@ -60,7 +60,7 @@ enum SeedData {
         try? context.save()
     }
 
-    /// Creates only the categories picked during onboarding, plus the "Прочее"
+    /// Creates only the categories picked during onboarding, plus the "Other"
     /// fallback of each kind. The fallback is what the first expense uses when
     /// the person skips the step, and what category deletion falls back to.
     static func createStarterCategories(context: ModelContext, selected: [CategorySeed]) {

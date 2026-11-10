@@ -219,9 +219,7 @@ struct OverviewView: View {
     private var hoverLine: some View {
         HStack(spacing: AppStyle.Spacing.xxSmall) {
             if let account = hoveredAccount {
-                Image(systemName: account.iconName)
-                    .font(.system(size: 10, weight: .medium))
-                    .foregroundStyle(account.color.color)
+                AccountGlyph(icon: account.iconName, color: account.color.color, size: 10)
                     .frame(width: 12)
 
                 Text(account.name)

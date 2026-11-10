@@ -190,10 +190,10 @@ enum AppDate {
         return f
     }()
 
-    /// "9 нояб." — the row's trailing date.
+    /// "Nov 9" — the row's trailing date.
     static func short(_ date: Date) -> String { dayMonth.string(from: date) }
 
-    /// "15 нояб. — 14 дек."
+    /// "Nov 15 — Dec 14"
     static func range(_ start: Date, _ end: Date) -> String {
         if Calendar.current.isDate(start, inSameDayAs: end) { return short(start) }
         return "\(short(start)) — \(short(end))"

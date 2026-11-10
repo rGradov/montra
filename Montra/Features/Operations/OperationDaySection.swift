@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// One day's operations, newest day first. The header reads "Сегодня"/"Вчера"
+/// One day's operations, newest day first. The header reads "Today"/"Yesterday"
 /// and falls back to a localized calendar date.
 struct OperationDaySection: Identifiable {
     let day: Date

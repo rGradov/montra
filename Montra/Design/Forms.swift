@@ -291,7 +291,7 @@ struct NumberStepper: View {
     let range: ClosedRange<Int>
     var step: Int = 1
     let label: (Int) -> String
-    /// Shown after the editable number, e.g. "-е число" or "дней".
+    /// Shown after the editable number, for example an ordinal suffix or "days".
     var suffix: (Int) -> String = { _ in "" }
     var accessibilityTitle: String?
 
@@ -304,8 +304,8 @@ struct NumberStepper: View {
     private var canIncrease: Bool { value + step <= range.upperBound }
     private var maxDigits: Int { String(range.upperBound).count }
 
-    /// The unit follows what is typed, before it is committed: "1 день" updates
-    /// to "2 дня" as the number changes.
+    /// The unit updates as the user types, before they commit the value.
+    /// For example, "1 day" changes to "2 days" when they type 2.
     private var previewValue: Int {
         Int(text) ?? value
     }

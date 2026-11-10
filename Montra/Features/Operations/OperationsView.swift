@@ -119,7 +119,7 @@ struct OperationsView: View {
     }
 
     /// Everything in the chosen period that matches the query, before the kind
-    /// chip — the chips count against this, so "Все 2 / Расходы 1 / Доходы 1".
+    /// chip — the chips count against this, so "All 2 / Expenses 1 / Income 1".
     private var searchMatchedOperations: [Operation] {
         guard !searchTokens.isEmpty else { return scopedOperations }
         return scopedOperations.filter(matchesSearch)

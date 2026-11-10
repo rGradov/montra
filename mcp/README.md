@@ -76,7 +76,7 @@ OCR в сервере нет. Для скана проверьте распоз�
 | `status` | Версия и список команд, доступных в запущенной Montra |
 | `list_accounts`, `get_balances`, `list_categories` | Счета, итоги по валютам, категории и подкатегории |
 | `list_operations` | Поиск по одному или всем счетам с фильтрами и пагинацией |
-| `create_account`, `create_category` | Создание счёта (включая `is_savings` и `is_hidden_from_overview`), категории или подкатегории через `parent_id` |
+| `create_account`, `create_category` | Создание счёта (включая `is_savings`, `is_hidden_from_overview` и `icon_name` — SF Symbol или emoji), категории или подкатегории через `parent_id` |
 | `create_operation` | Одна операция. Сохраните `request_id` и используйте его при повторе |
 | `recategorize_operations` | Перенос от 1 до 100 выбранных расходов или доходов в категорию или подкатегорию того же типа |
 | `create_transfer`, `get_transfer` | Запись перевода между счетами и чтение обеих его частей |

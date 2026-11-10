@@ -41,7 +41,7 @@ struct ExchangeRates: Equatable {
     }
 
     /// A fixed table used only when there is no network and no cache. It is
-    /// labelled "примерный курс" everywhere it shows.
+    /// labelled "approximate rate" everywhere it shows.
     static let fallback = ExchangeRates(
         bynPerUnit: [
             .byn: 1,

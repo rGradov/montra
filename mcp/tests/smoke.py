@@ -83,12 +83,13 @@ async def exercise(port: int) -> None:
         assert len(accounts) == 1 and accounts[0]["balance"] == "25"
         account_args = {
             "name": "Тест EUR", "currency": "EUR", "initial_amount": "50.25",
-            "is_savings": True, "is_hidden_from_overview": True,
+            "is_savings": True, "is_hidden_from_overview": True, "icon_name": "💳",
         }
         created = await call("create_account", **account_args)
         assert created["created"]
         assert created["account"]["is_savings"] is True
         assert created["account"]["is_hidden_from_overview"] is True
+        assert created["account"]["icon_name"] == "💳"
         assert not (await call("create_account", **account_args))["created"]
         await reject("create_account", "already has this name",
                      **{**account_args, "is_hidden_from_overview": False})

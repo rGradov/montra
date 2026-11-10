@@ -214,6 +214,16 @@ enum AppIconSymbol {
     }
 }
 
+/// An account's glyph is one stored string: an SF Symbol name or an emoji. A
+/// symbol name is plain ASCII, so any non-ASCII scalar means the person picked
+/// an emoji and the UI draws it as text instead of looking it up as a symbol.
+/// Category icons share the field; they simply never offer emoji.
+enum AppIconGlyph {
+    static func isEmoji(_ value: String) -> Bool {
+        !value.isEmpty && value.unicodeScalars.contains { $0.value > 0x7F }
+    }
+}
+
 /// The 28pt tile from the reference: colour, soft top-to-bottom gradient, a
 /// hairline rim and a white glyph. `symbol` empty draws the dashed "free" tile.
 struct IconTile: View {
@@ -259,6 +269,14 @@ struct IconTile: View {
                     .interpolation(.high)
                     .scaledToFit()
                     .frame(width: size, height: size)
+            } else if let symbol, !symbol.isEmpty, AppIconGlyph.isEmoji(symbol) {
+                // An emoji keeps the colour tile: the tint still names the
+                // account in the bar and charts, the glyph names it in lists.
+                Text(symbol)
+                    .font(.system(size: size * 0.5))
+                    .frame(width: size, height: size)
+                    .background { tileBackground }
+                    .overlay { rim }
             } else if let symbol, !symbol.isEmpty {
                 Image(systemName: AppIconSymbol.resolved(symbol))
                     .font(.system(size: size * 0.46, weight: .medium))
@@ -275,6 +293,28 @@ struct IconTile: View {
         }
         .frame(width: size, height: size)
         .clipShape(shape)
+        .accessibilityHidden(true)
+    }
+}
+
+/// The account's glyph where there is no tile: a tight row, the balance bar's
+/// hover line. An SF Symbol takes the account's colour; an emoji has its own.
+struct AccountGlyph: View {
+    let icon: String
+    let color: Color
+    var size: CGFloat = 12
+
+    var body: some View {
+        Group {
+            if AppIconGlyph.isEmoji(icon) {
+                Text(icon)
+                    .font(.system(size: size + 1))
+            } else {
+                Image(systemName: AppIconSymbol.resolved(icon))
+                    .font(.system(size: size, weight: .medium))
+                    .foregroundStyle(color)
+            }
+        }
         .accessibilityHidden(true)
     }
 }
@@ -859,7 +899,7 @@ struct EmptyState: View {
 
 extension Text {
     /// Builds a `Text` from `string` with every figure in SF Rounded, so a
-    /// sentence like "12 операций · −1 240,50 Br" shows its numbers the way the
+    /// sentence like "12 transactions · −1,240.50 Br" shows its numbers the way the
     /// rest of the app does. Onest itself has no digits.
     init(figures string: String, style: AppStyle.TextStyle) {
         let figure = #/[0-9](?:[.,:/\s]?[0-9])*(?:\s?(?:Br|€|\$|₮|₿|Ξ|%|USDC))?/#

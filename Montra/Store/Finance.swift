@@ -61,7 +61,7 @@ enum Finance {
         return MoneyFormat.number(Decimal(share * 100), fractionDigits: 1) + "%"
     }
 
-    /// "на 5 счетах" — the hero's line under the total.
+    /// "across 5 accounts" — the hero's line under the total.
     static func onAccountsText(_ count: Int) -> String {
         String(localized: "finance.on_accounts \(count)")
     }

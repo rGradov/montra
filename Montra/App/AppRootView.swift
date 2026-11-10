@@ -85,28 +85,25 @@ struct AppRootView: View {
         .onPreferenceChange(OnboardingHeroSourceKey.self) { onboardingHeroSource = $0 }
         .onPreferenceChange(SidebarAccountFramesKey.self) { sidebarAccountFrames = $0 }
         .animation(.easeInOut(duration: 0.45), value: isOnboardingExiting)
-        .touchBar {
-            if canUseTouchBar {
-                touchBarDestination(String(localized: "navigation.overview"), icon: "square.grid.2x2", selectedIcon: "square.grid.2x2.fill", route: .overview)
-                touchBarDestination(String(localized: "navigation.analytics"), icon: "chart.bar", selectedIcon: "chart.bar.fill", route: .analytics)
-
-                Button {
-                    guard canUseTouchBar else { return }
-                    app.present(.newOperation(OperationSource(account: selectedAccount, kind: nil)))
-                } label: {
-                    Label(String(localized: "transaction.new"), systemImage: "plus")
-                }
-
-                if !accounts.isEmpty {
-                    TouchBarAccountPicker(
-                        accounts: accounts.map { .init(id: $0.id, name: $0.name, iconName: $0.iconName) },
-                        selection: selectedAccount?.id
-                    ) { id in
-                        guard canUseTouchBar, accounts.contains(where: { $0.id == id }) else { return }
+        .background {
+            TouchBarHost(
+                accounts: accounts.map {
+                    .init(id: $0.id, name: $0.name, iconName: $0.iconName, isSavings: $0.isSavings)
+                },
+                route: app.route,
+                isEnabled: canUseTouchBar,
+                actions: .init(
+                    openOverview: { app.open(.overview) },
+                    openAnalytics: { app.open(.analytics) },
+                    newOperation: {
+                        app.present(.newOperation(OperationSource(account: selectedAccount, kind: nil)))
+                    },
+                    openAccount: { id in
+                        guard accounts.contains(where: { $0.id == id }) else { return }
                         app.open(.account(id))
                     }
-                }
-            }
+                )
+            )
         }
         .sheet(item: $app.sheet) { sheet in
             sheetContent(sheet)
@@ -142,7 +139,7 @@ struct AppRootView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: .montraNewAccount)) { _ in
             guard !isCovered else { return }
-            app.present(.newAccount)
+            app.present(.newAccount(isSavings: false))
         }
         .onReceive(NotificationCenter.default.publisher(for: .montraGoOverview)) { _ in
             guard !isCovered else { return }
@@ -174,7 +171,8 @@ struct AppRootView: View {
                 categoryCount: categories.count,
                 iCloudConnected: false,
                 hiddenAccountID: hiddenSidebarAccountID,
-                onNewAccount: { app.present(.newAccount) },
+                onNewAccount: { app.present(.newAccount(isSavings: false)) },
+                onNewSavingsAccount: { app.present(.newAccount(isSavings: true)) },
                 onOpenAccount: { account in app.open(.account(account.id)) },
                 onOpenSettings: { app.open(.settings) },
                 onOpenAbout: { app.open(.about) },
@@ -205,17 +203,6 @@ struct AppRootView: View {
 
     private var canUseTouchBar: Bool {
         !isCovered && app.sheet == nil
-    }
-
-    private func touchBarDestination(_ title: String, icon: String, selectedIcon: String, route: Route) -> some View {
-        let isSelected = app.route == route
-        return Button {
-            guard canUseTouchBar else { return }
-            app.open(route)
-        } label: {
-            Label(title, systemImage: isSelected ? selectedIcon : icon)
-        }
-        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 
     private var selectedAccount: Account? {
@@ -420,7 +407,7 @@ struct AppRootView: View {
                         onNewOperation: { account in
                             app.present(.newOperation(OperationSource(account: account, kind: nil)))
                         },
-                        onNewAccount: { app.present(.newAccount) },
+                        onNewAccount: { app.present(.newAccount(isSavings: false)) },
                         onOpenAccount: { account in app.open(.account(account.id)) },
                         onOpenPeriods: { app.present(.periods) },
                         onOpenOperations: { app.open(.operations) },
@@ -508,8 +495,8 @@ struct AppRootView: View {
                     planned: plan
                 ))
             }
-        case .newAccount:
-            AccountSheet(mode: .create)
+        case .newAccount(let isSavings):
+            AccountSheet(mode: .create, startsAsSavings: isSavings)
         case .editAccount(let account):
             AccountSheet(mode: .edit(account))
         case .newCategory(let kind):

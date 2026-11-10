@@ -12,3 +12,32 @@ mcp/.cache/
 __pycache__/
 *.pyc
 Montra 20*/
+
+# Private ledger data, local signing settings, and packaged builds.
+/Montra-import-summary-*.md
+/Montra.local.xcconfig
+/Montra/Montra.entitlements
+*.montra
+*.csv
+*.sqlite
+*.sqlite-*
+*.sqlite3
+*.sqlite3-*
+*.store
+*.store-*
+*.dmg
+*.app/
+*.xcarchive/
+*.xcresult/
+
+# Local credentials and signing material.
+.env
+.env.*
+!.env.example
+**/LocalAPI/token
+*.p8
+*.p12
+*.pem
+*.key
+*.mobileprovision
+*.provisionprofile

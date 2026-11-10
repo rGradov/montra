@@ -166,7 +166,7 @@ enum PlanSchedule {
     }
 }
 
-/// How far ahead the "Будущие" lists look. Two years covers rent, utilities
+/// How far ahead the "Upcoming" lists look. Two years covers rent, utilities
 /// and yearly renewals; further out the list stops being a plan and becomes a
 /// wish.
 enum PlanHorizon {

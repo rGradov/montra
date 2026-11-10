@@ -71,8 +71,8 @@ enum SnapshotRunner {
         let snapshotAccounts = (try? context.fetch(FetchDescriptor<Account>(sortBy: [SortDescriptor(\.sortIndex)]))) ?? []
         let account = snapshotAccounts.first
 
-        // The demo seed marks «Сбережения» as a savings account, so the
-        // "Накопления" group and the savings labels render.
+        // The demo seed marks "Savings" as a savings account, so the
+        // "Savings" group and the savings labels render.
 
         // Two recurring plans: one overdue and one upcoming, so the plan rows,
         // the missed/upcoming filters and their actions are all visible.
@@ -390,9 +390,18 @@ enum SnapshotRunner {
 
         render(
             AccountSheet(mode: .create).environmentObject(settings).environmentObject(previewRates).modelContainer(container),
-            size: CGSize(width: 470, height: 680),
+            size: CGSize(width: 470, height: 650),
             colorScheme: .dark,
             name: "09-new-account",
+            in: directory
+        )
+
+        render(
+            AccountSheet(mode: .create, startsAsSavings: true)
+                .environmentObject(settings).environmentObject(previewRates).modelContainer(container),
+            size: CGSize(width: 470, height: 650),
+            colorScheme: .dark,
+            name: "09c-new-savings-account",
             in: directory
         )
 
@@ -403,7 +412,7 @@ enum SnapshotRunner {
 
             render(
                 AccountSheet(mode: .edit(savingsAccount)).environmentObject(settings).environmentObject(previewRates).modelContainer(container),
-                size: CGSize(width: 470, height: 680),
+                size: CGSize(width: 470, height: 650),
                 colorScheme: .dark,
                 name: "09b-account-hidden",
                 in: directory
@@ -411,6 +420,37 @@ enum SnapshotRunner {
 
             savingsAccount.isHiddenFromOverview = wasHidden
         }
+
+        // An emoji is stored in the same field as a symbol, so the sheet opens
+        // in Emoji mode with the matching favourite already selected.
+        render(
+            AccountSheet(mode: .edit(
+                Account(name: "Копилка", currency: .byn, initialAmount: 0, iconName: "💰", color: .amber)
+            ))
+            .environmentObject(settings).environmentObject(previewRates).modelContainer(container),
+            size: CGSize(width: 470, height: 650),
+            colorScheme: .dark,
+            name: "09d-account-emoji",
+            in: directory
+        )
+
+        // The full lists the sheet shows in a popover: the same grid view, so a
+        // missing symbol or an empty emoji tile is visible in a snapshot.
+        render(
+            AccountGlyphPickerPanel(mode: .icon, selection: "creditcard.fill", onSelect: { _ in }, onClose: {}),
+            size: CGSize(width: 310, height: 300),
+            colorScheme: .dark,
+            name: "09e-account-icon-grid",
+            in: directory
+        )
+
+        render(
+            AccountGlyphPickerPanel(mode: .emoji, selection: "💰", onSelect: { _ in }, onClose: {}),
+            size: CGSize(width: 310, height: 300),
+            colorScheme: .dark,
+            name: "09f-account-emoji-grid",
+            in: directory
+        )
 
         render(
             OperationSheet(mode: .create(OperationSource(account: account, kind: .expense)))

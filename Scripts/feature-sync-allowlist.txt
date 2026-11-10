@@ -22,8 +22,8 @@ backup:LocalIntegration.failure          # transient: last server error text, no
 # --- Local API --------------------------------------------------------------
 
 # Backup and restore are file operations on this Mac, not HTTP data mutations.
-# The API deliberately has no file paths (see Docs/Backup.md, "Ограничения");
-# the data itself is already fully readable and writable through the actions.
+# See the limitations section in Docs/Backup.md for why the API has no file paths.
+# The actions already provide full read and write access to the data.
 
 # Server-assigned metadata and ordering. Clients never set these, and the API
 # already exposes ordering through the order of its lists.

@@ -179,7 +179,7 @@ enum ModelContainerFactory {
     static let schema = Schema([Account.self, Category.self, Operation.self, Period.self, PlannedOperation.self])
 
     static func make(inMemory: Bool = false) -> ModelContainer {
-        // iCloud: switch `cloudKitDatabase` to `.private("iCloud.com.example.montra")`
+        // iCloud: switch `cloudKitDatabase` to `.private(SyncService.containerIdentifier)`
         // once the container exists in the developer account and the entitlement is
         // added. See Docs/iCloud-Setup.md. The models already satisfy CloudKit's rules.
         let configuration = ModelConfiguration(

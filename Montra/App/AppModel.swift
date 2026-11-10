@@ -32,7 +32,9 @@ enum AppSheet: Identifiable {
     case editOperation(Operation)
     case transferDetails(UUID)
     case planActions(UUID)
-    case newAccount
+    /// `isSavings` starts the create sheet with the savings switch already on,
+    /// so the sidebar's "Savings" header can add straight into its group.
+    case newAccount(isSavings: Bool)
     case editAccount(Account)
     case newCategory(OperationKind)
     case editCategory(Category)
@@ -49,8 +51,8 @@ enum AppSheet: Identifiable {
             "transfer-details-\(transferID)"
         case .planActions(let planID):
             "plan-actions-\(planID)"
-        case .newAccount:
-            "new-account"
+        case .newAccount(let isSavings):
+            "new-account-\(isSavings)"
         case .editAccount(let account):
             "edit-account-\(account.id)"
         case .newCategory(let kind):

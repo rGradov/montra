@@ -1,250 +1,236 @@
 # Montra
 
-Спокойный учёт личных денег для macOS: счета в разных валютах, расходы и доходы,
-категории с обязательностью и финансовый месяц **от зарплаты до зарплаты**.
+Montra is a personal finance app for macOS. Track accounts in multiple currencies,
+expenses and income, mandatory spending, and a financial month that runs **from
+payday to payday**.
 
-Сделан на SwiftUI и SwiftData, без сторонних зависимостей. Визуальный язык — в духе
-[Purge](https://github.com/jithin-sabu/purge-app): типографика Onest, числа SF Rounded,
-тёплый графит, приподнятые карточки.
+Built with SwiftUI and SwiftData without third-party dependencies. The interface
+uses Onest typography, SF Rounded numerals, warm graphite tones, and raised cards.
 
-![Обзор](Docs/screenshots/overview.png)
+![Overview](Docs/screenshots/overview.png)
 
-| Операции | Настройки |
+| Transactions | Settings |
 |---|---|
-| ![Операции](Docs/screenshots/operations.png) | ![Настройки](Docs/screenshots/settings.png) |
+| ![Transactions](Docs/screenshots/operations.png) | ![Settings](Docs/screenshots/settings.png) |
 
-| Поиск | Ничего не найдено |
+| Search | No results |
 |---|---|
-| ![Поиск](Docs/screenshots/search-hit.png) | ![Пустой поиск](Docs/screenshots/search-empty.png) |
+| ![Search](Docs/screenshots/search-hit.png) | ![Empty search results](Docs/screenshots/search-empty.png) |
 
-| Перевод | Детали перевода |
+| Transfer | Transfer details |
 |---|---|
-| ![Перевод](Docs/screenshots/transfer.png) | ![Детали перевода](Docs/screenshots/transfer-detail.png) |
+| ![Transfer](Docs/screenshots/transfer.png) | ![Transfer details](Docs/screenshots/transfer-detail.png) |
 
-![Новая операция](Docs/screenshots/new-operation.png)
+![New transaction](Docs/screenshots/new-operation.png)
 
-| Категории | Выбор категории |
+| Categories | Category picker |
 |---|---|
-| ![Категории](Docs/screenshots/categories.png) | ![Выбор категории](Docs/screenshots/category-picker.png) |
+| ![Categories](Docs/screenshots/categories.png) | ![Category picker](Docs/screenshots/category-picker.png) |
 
-## Знакомство
+## Onboarding
 
-| Приветствие | Первый счёт |
+| Welcome | First account |
 |---|---|
-| ![Приветствие](Docs/screenshots/onboarding-welcome.png) | ![Первый счёт](Docs/screenshots/onboarding-account.png) |
+| ![Welcome](Docs/screenshots/onboarding-welcome.png) | ![First account](Docs/screenshots/onboarding-account.png) |
 
-| Первый расход | Готово |
+| First expense | Done |
 |---|---|
-| ![Первый расход](Docs/screenshots/onboarding-expense.png) | ![Готово](Docs/screenshots/onboarding-done.png) |
+| ![First expense](Docs/screenshots/onboarding-expense.png) | ![Done](Docs/screenshots/onboarding-done.png) |
 
-На шаге «Первый счёт» выбор валюты расположен под полем суммы.
-Поток открывается на чистом хранилище. Попробовать его, не трогая данные:
+Onboarding opens on a fresh store. To preview it with a temporary store, run
 `open -n -a Montra.app --args -preview-onboarding`.
 
-> Полный инвентарь фич с ID, сценариями, проверками и edge cases для тестов —
-> [Docs/Feature-Inventory.md](Docs/Feature-Inventory.md).
+The [feature inventory](Docs/Feature-Inventory.md) lists feature IDs, scenarios,
+checks, and edge cases.
 
-## Что умеет
+## Features
 
-- **Знакомство** — на первом запуске: приветствие, один настоящий счёт, выбор стартовых
-  категорий (пропуск оставляет «Прочее»), первый расход (можно пропустить), финал и
-  перелёт счёта в сайдбар; при Reduce Motion — спокойное растворение. Появление Mori не
-  растворяется кроссфейдом: маскот улетает в иконку приветствия и уменьшается до
-  нарисованного в ней, а иконка доводится на фокус под ним. Если закрыть
-  приложение, не дойдя до финала, знакомство откроется снова при следующем запуске —
-  созданный счёт при этом остаётся и используется дальше, заново его создавать не нужно.
-- **Счета** — наличные, карта, банк, крипто. Иконка или emoji, цвет, одна из семи валют,
-  начальная сумма. В форме сначала название, сумма и валюта, а внешний вид —
-  иконка/emoji и цвет — последним блоком. Полный список значков открывается через
-  «…», значок выбирается нажатием на плитку. Баланс считается по операциям. Счёт можно отметить
-  **накопительным** — он уходит в группу «Накопления» в сайдбаре, но снимать и
-  пополнять его можно как обычно. Любой счёт можно **скрыть из обзора**: он
-  перестаёт попадать в итог, полосу и список счетов, но остаётся в сайдбаре,
-  на своей странице и в аналитике; под списком появляется тихая строка
-  «Скрыто из обзора».
-- **Операции** — расход и доход. Валюта подтягивается из счёта, дата по умолчанию
-  «сейчас» (можно выбрать другую), место текстом или из геолокации, комментарий.
-  Редактирование, удаление с подтверждением списка и экраном успеха, мультивыбор. Отдельной вкладки нет: полный список
-  открывается из обзора по «Все операции» (⌘2) как подстраница.
-- **Переводы между счетами** — третья вкладка «Перевод» в «Новой операции»: тот же
-  выбор счёта, что и у расхода/дохода; сумма списания и зачисления с кодом валюты;
-  при разных валютах сумма зачисления подставляется по курсу, но её можно вписать
-  руками — в историю попадёт фактическая. Две связанные операции, не искажающие
-  расходы/доходы периода.
-- **Повторяющиеся платежи** — в форме операции можно включить «Повторять»:
-  день/неделя/месяц/год, дни недели и дата «повторять до». Планы показываются в списке
-  (карточки как у операций, с бейджем «План») и не меняют баланс. Наступивший или пропущенный платёж можно
-  **связать с уже внесённым фактом** или **сохранить как факт**, а также удалить только
-  этот платёж или всю серию. В «Все операции» и на странице счёта есть фильтры
-  **«Пропущенные»** и **«Будущие»** (до двух лет или до конца серии).
-- **Удаление всех данных** сразу перезапускает знакомство на реальном хранилище;
-  созданный счёт сохраняется, после знакомства открывается «Обзор». Незавершённое
-  знакомство возвращается при следующем запуске, пока его не пройти; уже созданный
-  счёт переиспользуется. Знакомство из
-  «О программе» — предпросмотр без изменения данных (после него тоже «Обзор»).
-- **Списки по дням** — операции сгруппированы секциями «Сегодня», «Вчера», «Завтра»
-  и датами вроде «7 октября»; заголовки дней липкие при скролле.
-- **Поиск по операциям** — капсула в стиле референса: ищет по категории, счёту, месту,
-  комментарию, сумме и дате, с пересчётом счётчиков и суммы в хедере; пустое состояние
-  с «Очистить поиск». ⌘F — фокус в поиск, Escape — очистить.
-- **Категории** — 14 стартовых, обязательные и необязательные, свои с иконкой и цветом;
-  подкатегории одного уровня (родитель выбирается при создании, обязательность
-  наследуется). В операции — пять самых частых категорий и «Ещё» с поиском по всей
-  иерархии. При удалении категории операции переходят в «Прочее», подкатегории
-  становятся обычными.
-- **Финансовый период** — день зарплаты или фиксированная длина; каждый месяц можно
-  сдвинуть, соседние границы подтягиваются, история остаётся непрерывной.
-- **Настройки** — тема (авто / светлая / тёмная), скрытие сумм, основная валюта,
-  экспорт CSV, удаление всех данных.
-- **Резервная копия** — один файл `*.montra` со счетами, операциями, категориями,
-  плановыми платежами, периодами и настройками. Сохраняется из настроек, оттуда же загружается:
-  Montra проверяет версию, контрольную сумму и все связи, показывает содержимое и только
-  потом заменяет данные. Перед восстановлением можно сохранить текущее состояние.
-  Формат и правила — [Docs/Backup.md](Docs/Backup.md).
-- **О программе** — иллюстрация Montra, версия, общая сумма по счетам, «Что умеет Montra»
-  и кнопка «Пройти знакомство заново» (онбординг с начала на временных данных).
-- **Обзор** — деньги со всех видимых счетов в одной цифре по курсам, полоса
-  распределения, обязательные расходы и свободный остаток периода, последние операции.
-  Скрытые счета не участвуют в сумме и полосе, а строка «Скрыто из обзора» под
-  списком ведёт к ним.
-- **Курсы** — НБРБ для USD/EUR и открытый фид для крипты; кеш на 6 часов, ручное
-  обновление, честная пометка источника. Наведение на счёт показывает его сумму и
-  эквивалент в валюте отображения.
-- **Счета в сайдбаре** — все счета под «Обзором» с балансами, один клик до страницы счёта.
-  Накопительные счета собраны отдельной группой «Накопления». В заголовке каждой группы —
-  круглый «+»: у «Счетов» он создаёт обычный счёт, у «Накоплений» — сразу с включённым
-  накопительным. У группы со счетами «+» появляется при наведении на заголовок (с подсказкой
-  «Новый счёт» / «Новый накопительный счёт»), у пустой группы виден сразу, чтобы было с чего
-  начать. На странице счёта — тот же выбор операций, «Выбрать все» и удаление с
-  подтверждением и экраном успеха, а рядом с «Все/Расходы/Доходы» — фильтры
-  **«Пропущенные»** и **«Будущие»** для планов этого счёта.
-- **Живые списки** — добавленная операция выезжает в список с короткой подсветкой, а суммы
-  и счётчики перекатываются цифрами, как в референсе.
-- **Задел под iCloud** — CloudKit-совместимые модели, репозитории, `SyncService` и
-  инструкция. Синхронизация пока выключена.
+- **Onboarding.** Create a real account, choose starter categories, and record
+  your first expense. You can skip category selection and keep Other, or skip the
+  first expense. On completion the account animates into the sidebar, with a
+  fade when Reduce Motion is on. If you quit midway, onboarding resumes with the
+  account you already created. The mascot's appearance does not cross-fade into
+  the welcome screen: it flies into the welcome icon and shrinks onto the mascot
+  painted inside it, and the icon focuses up underneath it.
+- **Accounts.** Track cash, cards, bank accounts, or crypto in one of seven
+  currencies. Choose an icon, color, and opening balance. The balance reflects
+  recorded transactions. Savings
+  accounts appear in a separate sidebar group and still support deposits and
+  withdrawals. Accounts hidden from Overview stay in the sidebar, account detail,
+  and Analytics. A row below the Overview list opens the hidden accounts.
+- **Transactions.** Record expenses and income in the account currency. The date
+  defaults to now and can be changed. Enter a place by hand or use geolocation,
+  and add a note. Edit or select multiple transactions, then review the deletion
+  list and see a confirmation when deletion succeeds. Open the full list from
+  Overview or with ⌘2.
+- **Transfers.** The Transfer tab in the new transaction form uses the same
+  account picker as expenses and income. Sent and received amounts show their
+  currency codes. For different currencies, Montra estimates the received amount
+  using the exchange rate. You can enter the actual amount instead. The two
+  linked transactions are excluded from period income and expenses.
+- **Recurring payments.** Enable recurrence in the transaction form and choose a
+  daily, weekly, monthly, or yearly schedule, weekdays, and an end date. Planned
+  payments appear with a Plan badge and do not affect balances. You can link a
+  due or missed payment to an existing transaction, record it as a new one, or
+  delete the occurrence or series. The full transaction list and account page
+  offer **Missed** and **Upcoming** filters. Upcoming payments are shown up to two
+  years ahead or to the end of the series.
+- **Reset and onboarding preview.** Delete All Data starts onboarding on the live
+  store. Any newly created account persists across launches and Overview opens
+  when onboarding completes. The onboarding preview under About uses temporary
+  data and also returns to Overview.
+- **Day groups.** Lists group transactions by Today, Yesterday, Tomorrow, or a
+  date such as October 7. Day headers stay visible as you scroll.
+- **Search.** The search field matches category, account, place, note, amount,
+  and date. Header counts and totals update with the results. The empty state
+  offers Clear Search. Use ⌘F to focus search and Escape to clear it.
+- **Categories.** Start with 14 categories, including mandatory and optional
+  spending, or create your own with an icon and color. Categories support one
+  level of subcategories. Choose the parent at creation and its mandatory status
+  is inherited. The transaction form shows the five most-used categories and a
+  searchable hierarchy under More. Deleting a category reassigns its transactions
+  to Other and promotes its subcategories to top-level categories.
+- **Financial periods.** Use a payday or fixed length. Adjust individual months
+  and neighboring boundaries update to keep the history continuous.
+- **Settings.** Choose system, light, or dark appearance, hide amounts, set the
+  primary currency, export CSV, or delete all data.
+- **Backups.** Save and load a single `.montra` file from Settings. Montra checks
+  the version, checksum, and references, then previews the contents before
+  replacing the ledger. You can save the current state first. [Backup format and rules](Docs/Backup.md)
+- **About.** See Montra's illustration, version, total across accounts, and a
+  feature summary. Restart onboarding in a temporary store from here.
+- **Overview.** See the converted balance across visible accounts, allocation
+  bar, mandatory expenses, remaining spendable balance for the period, and recent
+  transactions. Hidden accounts stay out of the total and bar and are accessible
+  through a row below the account list.
+- **Exchange rates.** USD and EUR use National Bank of Belarus rates, and crypto
+  uses a public feed. Rates are cached for six hours, can be refreshed manually,
+  and show their source. Hover over an account to see its original and converted
+  balance.
+- **Sidebar.** Accounts appear under Overview with balances. Click an account
+  to open its page. Savings accounts appear in a separate group. Account pages
+  support multi-select, Select All, deletion preview and confirmation, and
+  All, Expenses, Income, Missed, and Upcoming filters.
+- **Animated lists.** New transactions slide into place with a brief highlight.
+  Amounts and counts animate digit changes.
+- **iCloud groundwork.** Montra includes CloudKit-compatible models, repositories,
+  `SyncService`, and setup instructions. Sync is currently disabled.
 
-## Резервная копия
+## Backups
 
-| Настройки → Резервная копия | Восстановление |
+| Settings → Backup | Restore |
 |---|---|
-| ![Резервная копия](Docs/screenshots/settings-backup.png) | ![Восстановление](Docs/screenshots/backup-restore.png) |
+| ![Backup settings](Docs/screenshots/settings-backup.png) | ![Restore](Docs/screenshots/backup-restore.png) |
 
-Файл `Montra-2026-11-09-2057.montra` — это JSON в собственной обёртке: счета, операции
-с обеими частями переводов, категории с подкатегориями, плановые платежи, периоды,
-настройки, курсы на день копии и переключатели локального API. Суммы лежат строками,
-поэтому `0,0128 BTC` возвращается ровно тем же. Перед заменой данных Montra проверяет
-версию формата, SHA-256 содержимого и все ссылки между записями; повреждённый файл
-ничего не стирает. Токен локального API в копию не входит — это секрет конкретного Mac.
+A file such as `Montra-2026-11-09-2057.montra` stores a JSON snapshot of accounts,
+transactions and both sides of transfers, categories and subcategories, planned
+payments, periods, settings, exchange rates, and Local API switches. Amounts use
+strings so a value such as `0.0128 BTC` restores exactly. Montra validates the
+format version, SHA-256 checksum, and record references before replacing data.
+The Local API token stays on its Mac. [Backup format, fields, and compatibility](Docs/Backup.md)
 
-Формат, поля и правила совместимости — [Docs/Backup.md](Docs/Backup.md).
+## Build and run
 
-## Сборка и запуск
 ```bash
 xcodebuild -project Montra.xcodeproj -scheme Montra -configuration Debug build
 open ~/Library/Developer/Xcode/DerivedData/Montra-*/Build/Products/Debug/Montra.app
 ```
 
-Или откройте `Montra.xcodeproj` в Xcode и нажмите ⌘R. Требуется macOS 15+ и Xcode 16+
-(проект собран на Xcode 27).
+You can also open `Montra.xcodeproj` in Xcode and press ⌘R. Montra requires macOS
+15+ and Xcode 16+. The project was built with Xcode 27.
 
-## Язык приложения
+## App language
 
-Montra поддерживает английский и русский. Язык берётся из macOS. Чтобы выбрать язык
-только для Montra, добавьте приложение в **Системные настройки → Основные →
-Язык и регион → Приложения**, выберите язык и откройте Montra заново.
+Montra supports English and Russian and follows the macOS language. To set a
+language for Montra only, add it under **System Settings → General → Language
+& Region → Applications**, choose a language, and reopen the app.
 
-Переводы хранятся в каталогах Xcode в `Montra/Resources`: интерфейс в
-`Localizable.xcstrings`, фразы Spotlight в `AppShortcuts.xcstrings` и системные
-разрешения в `InfoPlist.xcstrings`.
+The Xcode string catalogs in `Montra/Resources` are `Localizable.xcstrings` for
+the interface, `AppShortcuts.xcstrings` for Spotlight phrases, and
+`InfoPlist.xcstrings` for system permissions.
 
-## Горячие клавиши
+## Keyboard shortcuts
 
-| Клавиши | Действие |
+| Keys | Action |
 |---|---|
-| ⌘N | новая операция |
-| ⇧⌘N | новый счёт |
-| ⌘1…⌘4 | Обзор, Операции, Категории, Аналитика |
-| ⌘, | Настройки |
+| ⌘N | New transaction |
+| ⇧⌘N | New account |
+| ⌘1…⌘4 | Overview, Transactions, Categories, Analytics |
+| ⌘, | Settings |
 
-Курсы обновляются автоматически; в настройках есть группа «Курсы валют» с источником,
-таблицей и кнопкой обновления.
+Exchange rates refresh automatically. The Exchange Rates group in Settings
+shows the source and rate table and offers a manual refresh.
 
-На MacBook с Touch Bar в активном окне Montra есть «Обзор», «Аналитика», кнопка
-«+» и полоса всех счетов — обычных и накопительных. Полоса занимает свободное место
-и прокручивается, так что счета видны при любом их числе; открытый счёт в ней
-подсвечен, а «+» открывает новую операцию сразу по нему. Пока открыт лист или идёт
-знакомство, панель не показывается.
+On a MacBook with a Touch Bar, the active Montra window offers Overview,
+Analytics, New Transaction, and a scrollable account list with icons.
+The open account is preselected in the new transaction form.
 
 ## Spotlight
 
-На macOS 26+ после начальной настройки Montra нажмите ⌘Пробел, затем ⌘3 и найдите действие:
-«Добавить расход», «Добавить доход», «Перевести между счетами», «Создать счёт»,
-«Создать категорию», «Создать подкатегорию», «Баланс счёта» или «Все счета».
-Заполните поля в Spotlight и нажмите Enter. Для перевода между разными валютами укажите
-обе суммы. Действие «Все счета» показывает остатки и общий итог в выбранной валюте.
+On macOS 26+, after onboarding, press ⌘Space and then ⌘3. Search for Add Expense,
+Add Income, Transfer Between Accounts, Create Account, Create Category, Create
+Subcategory, Account Balance, or All Accounts. Fill in the fields in Spotlight
+and press Enter. For cross-currency transfers, enter both amounts. All Accounts
+shows balances and the total in the selected currency.
 
-## Разработка
+## Development
 
 ```bash
-# Арифметика периодов, балансов, знаков и категорий
+# Check period arithmetic, balances, signs, and categories
 .../Montra.app/Contents/MacOS/Montra -selftest
 
-# Рендер всех экранов в PNG (использует временную базу в памяти)
+# Render all screens to PNG using an in-memory store
 .../Montra.app/Contents/MacOS/Montra -snapshot /tmp/montra-snaps
 
-# Пройти знакомство на временном хранилище, не трогая настоящие данные
+# Preview onboarding with a temporary store
 open -n -a .../Montra.app --args -preview-onboarding
 
-# Обновить иконку приложения из MontraArtwork.imageset
+# Regenerate the app icon from MontraArtwork.imageset
 swift Scripts/make-icon.swift Montra/Resources/Assets.xcassets/AppIcon.appiconset
 ```
 
-Полный список фич с ID, smoke-набором и сценариями для тестов —
-[Docs/Feature-Inventory.md](Docs/Feature-Inventory.md).
+See the [feature inventory and smoke scenarios](Docs/Feature-Inventory.md).
 
-### Новая фича
+### Feature workflow
 
-У каждой фичи обязательный цикл: код → бэкап → Local API/MCP → локализация →
-тесты → DMG. Правило, ворота и команды — в
-[Docs/Feature-Workflow.md](Docs/Feature-Workflow.md); skill для агента —
-`.agents/skills/montra-feature-release/SKILL.md`.
+Each feature goes through code, backup, Local API and MCP, localization, tests,
+and DMG packaging. The agent uses
+`.agents/skills/montra-feature-release/SKILL.md`. [Release workflow and commands](Docs/Feature-Workflow.md)
 
 ```bash
-# проверить, что фича синхронизирована с бэкапом, API, MCP и переводами
+# Check synchronization across backup, API, MCP, and translations
 python3 Scripts/audit-feature-sync.py
 
-# собрать Release, прогнать selftest и получить DMG для установки
+# Build Release, run self-test, and create the installer image
 Scripts/make-dmg.sh <tag> --open
 ```
 
-### Структура
+### Repository layout
 
 ```
 Montra/
-  App/          точка входа, окно, роутинг, модель приложения
-  Design/       токены, компоненты, формы, бренд
+  App/          Entry point, window, routing, app model
+  Design/       Tokens, components, forms, branding
   Models/       Currency, Account, Category, Operation, Period
-  Store/        настройки, периоды, финансовая математика, репозитории, сиды, CSV
-  Backup/       формат .montra, сборка и восстановление копии, файловые панели
-  Sync/         задел под CloudKit
+  Store/        Settings, periods, finance math, repositories, seed data, CSV
+  Backup/       .montra format, capture and restore, file panels
+  Sync/         CloudKit groundwork
   Features/     Sidebar, Overview, Operations, Accounts, Categories, Analytics,
                 Settings, About
-  Snapshot/     снапшот-рендер и self-test
-  Resources/    Onest, ассеты
-Docs/           iCloud-инструкция, формат резервной копии, шаблон entitlements, скриншоты
+  Snapshot/     Snapshot rendering and self-test
+  Resources/    Onest, assets
+Docs/           iCloud setup, backup format, entitlements template, screenshots
 ```
 
-Данные — SwiftData; записи идут через репозитории, чтобы будущий движок синхронизации
-подключался в одном месте. Подробности продукта и дизайна — в [MasterPrompt.md](MasterPrompt.md),
-план работ — в [PLAN.md](PLAN.md).
+SwiftData stores the ledger. Writes go through repositories to give a future
+sync engine a single integration point. [Product and design specification](MasterPrompt.md) · [Implementation plan](PLAN.md)
 
 ## iCloud
 
-Сейчас выключен. Как включить — [Docs/iCloud-Setup.md](Docs/iCloud-Setup.md).
+Sync is currently disabled. [iCloud setup](Docs/iCloud-Setup.md)
 
-## Лицензии
+## License
 
-- Шрифт **Onest** — SIL Open Font License 1.1, см.
-  `Montra/Resources/Fonts/Onest-OFL.txt`. Файл шрифта взят из проекта Purge, цифры в нём
-  удалены; все числа в интерфейсе рисуются системным SF Rounded.
-- Вдохновение интерфейсом — Purge (Jithin Sabu). Код Montra самостоятельный.
+Onest is licensed under the SIL Open Font License 1.1. The bundled font has
+its numerals removed because Montra uses the system's SF Rounded numerals.
+See `Montra/Resources/Fonts/Onest-OFL.txt`.

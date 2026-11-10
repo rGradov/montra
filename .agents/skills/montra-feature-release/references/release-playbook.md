@@ -1,20 +1,22 @@
 # Release playbook
 
-Цель: после каждой фичи отдать пользователю устанавливаемый DMG, собранный из
-проверенного кода.
+Package each feature as an installable DMG from verified code.
 
-## 1. Порядок
+## 1. Order of operations
 
-1. Debug-сборка и `-selftest`.
-2. Snapshot, если менялся UI.
-3. MCP fixture + smoke, если менялись API/MCP.
-4. Аудит синхронизации.
-5. Release-сборка + DMG.
-6. Проверка смонтированного образа.
-7. Короткий ручной сценарий в установленной копии.
-8. Отчёт с путём к DMG.
+1. Build Debug and run `-selftest`.
+2. Review snapshots if the UI changed.
+3. Run the MCP fixture and smoke test if API or MCP changed.
+4. Run the synchronization audit.
+5. Build Release and create the DMG.
+6. Verify the mounted image.
+7. Try the requested scenario in the installed app.
+8. Report the DMG path.
 
-## 2. Debug-сборка
+For documentation-only changes, review the diff and run applicable documentation
+checks. See the documentation workflow in `../SKILL.md`.
+
+## 2. Debug build
 
 ```bash
 xcodebuild -project Montra.xcodeproj -scheme Montra -configuration Debug \
@@ -24,12 +26,10 @@ xcodebuild -project Montra.xcodeproj -scheme Montra -configuration Debug \
 APP=build/DerivedData-debug/Build/Products/Debug/Montra.app
 ```
 
-Если `xcodebuild` падает с
-`external macro implementation type 'SwiftDataMacros.PersistentModelMacro' could
-not be found` и в логе есть `sandbox-exec: sandbox_apply: Operation not permitted`,
-это внешний sandbox DSH блокирует вложенный sandbox Apple-овского macro plugin
-server. `-disable-sandbox` решает. Макрос принадлежит Apple, риск минимальный; в
-обычном терминале флаг не нужен.
+DSH's outer sandbox can block the SwiftData macro plugin's nested sandbox. Look
+for `SwiftDataMacros.PersistentModelMacro` or
+`sandbox-exec: sandbox_apply: Operation not permitted` in the build log.
+Use `-disable-sandbox` there. Omit the flag in a regular terminal.
 
 ## 3. Self-test
 
@@ -37,60 +37,55 @@ server. `-disable-sandbox` решает. Макрос принадлежит App
 "$APP/Contents/MacOS/Montra" -selftest
 ```
 
-Ожидаемо: строки `PASS ...` и последняя `ALL CHECKS PASSED`, код 0.
+Expect `PASS ...` lines followed by `ALL CHECKS PASSED` and exit code 0.
 
-Тест использует in-memory store и отдельный `UserDefaults` suite, реальные данные
-не трогает. Он покрывает периоды, балансы, валюты, переводы, планы, категории,
-Spotlight и полный backup round-trip.
+Self-test uses an in-memory store and a separate `UserDefaults` suite. It covers
+periods, balances, currencies, transfers, plans, categories, Spotlight, and the
+full backup round trip. If a check fails, rerun to rule out interference from
+another instance. If it still fails, locate `FAIL` and fix the cause before
+packaging.
 
-Если одна проверка упала:
-
-1. запусти ещё раз, чтобы исключить пересечение с другим запущенным экземпляром;
-2. если повторяется — найди `FAIL` в выводе и чини причину, а не тест;
-3. не собирай DMG с падающим selftest.
-
-## 4. Snapshot
+## 4. Snapshots
 
 ```bash
 "$APP/Contents/MacOS/Montra" -snapshot build/snaps-<tag>
 ```
 
-Сравни изменённые PNG с `build/snaps-current` или предыдущей папкой. Для
-онбординга:
+Compare changed PNGs with `build/snaps-current` or a previous snapshot folder.
+For onboarding, use the preview mode. Snapshot rendering uses a temporary
+in-memory store.
 
 ```bash
 "$APP/Contents/MacOS/Montra" -preview-onboarding
 ```
 
-Snapshot использует временную базу в памяти.
-
-## 5. MCP smoke
+## 5. MCP smoke test
 
 ```bash
 ./mcp/tests/build-fixture.sh
 mcp/.venv/bin/python mcp/tests/smoke.py
 ```
 
-Скрипт компилирует Swift-модели и `LedgerAPI` в отдельный HTTP-фикстур, поднимает
-его и прогоняет MCP через stdio. Проверяются auth, preview, повторы, удаление,
-планы и соответствие `set(tools) == set(status.actions)`.
+The fixture script compiles the Swift models and `LedgerAPI` into a separate
+HTTP fixture. The smoke test uses MCP over stdio and covers authentication,
+previews, retries, deletion, and plans. It checks
+`set(tools) == set(status.actions)`.
 
-Если fixture не собирается из-за macro sandbox — проверь, что
-`mcp/tests/build-fixture.sh` передаёт `-disable-sandbox`
-(`MONTRA_DISABLE_MACRO_SANDBOX=1` по умолчанию).
+If the macro sandbox blocks the fixture build, verify that
+`mcp/tests/build-fixture.sh` passes `-disable-sandbox`. It defaults to
+`MONTRA_DISABLE_MACRO_SANDBOX=1`.
 
-## 6. Аудит
+## 6. Audit
 
 ```bash
 python3 Scripts/audit-feature-sync.py
 python3 Scripts/audit-feature-sync.py --require-dmg
 ```
 
-Первый запуск — во время работы; `--require-dmg` — перед отчётом. Ноль failures
-обязателен. Warnings про старый DMG ожидаемы до сборки.
-
-Allowlist — только для машинных/производных/временных значений. Каждая строка
-должна иметь причину после `#`.
+Run the first command during development and use `--require-dmg` before
+reporting completion. Require zero failures. An old DMG warning is expected
+until packaging. Allowlist entries apply only to machine-specific, derived, or
+temporary values and require a reason after `#`.
 
 ## 7. DMG
 
@@ -98,31 +93,24 @@ Allowlist — только для машинных/производных/вре
 Scripts/make-dmg.sh <tag> --open
 ```
 
-Что делает скрипт:
+The script reads `MARKETING_VERSION` from `project.pbxproj` (currently `1.0`),
+builds Release in `build/DerivedData-release`, runs `-selftest`, and verifies
+the signature with `codesign --verify --deep --strict`. It stages `Montra.app`
+and the `Applications -> /Applications` link, creates the UDZO image at
+`build/Montra-<version>-<tag>.dmg`, mounts it, and verifies the app, link,
+signature, and version. It prints the path, version, and size.
 
-- читает `MARKETING_VERSION` из `project.pbxproj` (сейчас `1.0`);
-- собирает Release в `build/DerivedData-release`;
-- запускает `-selftest` на собранном приложении;
-- проверяет `codesign --verify --deep --strict`;
-- собирает staging: `Montra.app` + ссылка `Applications -> /Applications`;
-- создаёт `build/Montra-<version>-<tag>.dmg` (`UDZO`);
-- монтирует образ, проверяет наличие приложения/ссылки/подписи/версии;
-- печатает путь, версию и размер.
+Use a short kebab-case tag such as `hidden-accounts`, `api-hidden`, or
+`plans-fix`. The file modification time records the date.
 
-Тег: короткий kebab-case, например `hidden-accounts`, `api-hidden`,
-`plans-fix`. Не используй пробелы и даты — дата уже есть в mtime.
+### Troubleshooting hdiutil
 
-### Если hdiutil падает
+If `hdiutil` or `newfs_apfs` reports `Operation not permitted` for raw disk
+access, rerun packaging with full disk access outside the sandbox. The build
+and self-test may already have passed. A `Directory not empty` error can also
+come from the underlying `newfs_apfs` denial.
 
-`hdiutil: create failed - Operation not permitted` или
-`newfs_apfs: /dev/rdisk...: Operation not permitted` — sandbox не даёт доступ к
-raw disk. Перезапусти упаковку с full disk access / вне sandbox. Сборка и
-selftest уже прошли; приложение пересобирать не нужно.
-
-`hdiutil: create failed - Непустая папка` обычно означает ту же проблему с
-нижележащим `newfs_apfs`, а не реальную непустую папку.
-
-### Ручная проверка
+### Manual verification
 
 ```bash
 hdiutil attach -nobrowse -readonly build/Montra-1.0-<tag>.dmg
@@ -131,42 +119,40 @@ codesign --verify --deep --strict "/Volumes/Montra/Montra.app"
 hdiutil detach "/Volumes/Montra"
 ```
 
-Затем `open` образа, перетащить в Applications, запустить и пройти сценарий
-фичи. Если приложение уже было установлено, macOS может показать замену — это
-нормально для локальной dev-сборки.
+Open the image, drag the app into Applications, and test the feature there.
+macOS may offer to replace an existing installation of the development build.
 
-## 8. Версии
+## 8. Versions
 
-- `MARKETING_VERSION` — версия продукта, сейчас `1.0`.
-- `CURRENT_PROJECT_VERSION` — build number, сейчас `1`.
-- Автоматически не поднимай: тег отличает сборки.
-- Поднимай по просьбе пользователя или если установленная копия не обновляется.
-- Не нотаризуй: это локальная сборка без Developer ID. Пользователь ставит её
-  сам.
+- `MARKETING_VERSION` is the product version, currently `1.0`.
+- `CURRENT_PROJECT_VERSION` is the build number, currently `1`.
+- Use tags to distinguish builds. Bump the version only when asked or when
+  the installed copy will not update.
+- Local development builds use local signing and skip notarization.
 
-## 9. Финальный отчёт
+## 9. Final report
 
-```
-Фича: ...
-Бэкап: ...
+```text
+Feature: ...
+Backup: ...
 Local API: ...
 MCP: ...
-Тесты: selftest — ALL CHECKS PASSED; smoke — passed; snapshots — ...
-Аудит: 0 failures
+Tests: self-test ALL CHECKS PASSED, MCP smoke passed, snapshots ...
+Audit: 0 failures
 DMG: build/Montra-1.0-<tag>.dmg (<size>), version 1.0 (1)
-Проверить руками: ...
+Manual verification: ...
 ```
 
-Если хост поддерживает `present`, приложи DMG как файл. Иначе дай ссылку на путь.
+Attach the DMG if the host supports `present`. Otherwise link to the file path.
 
-## 10. Частые ошибки
+## 10. Common errors
 
-| Симптом | Причина | Что делать |
+| Symptom | Cause | Fix |
 |---|---|---|
-| `PersistentModelMacro could not be found` | sandbox блокирует macro plugin server | `OTHER_SWIFT_FLAGS=-disable-sandbox` |
-| `newfs_apfs: Operation not permitted` | sandbox блокирует raw disk | запустить упаковку с full disk access |
-| `hdiutil: create failed - Непустая папка` | тот же отказ `newfs_apfs` | то же |
-| `-selftest` падает на одной проверке | реальная регрессия или пересечение экземпляров | повторить, затем чинить |
-| MCP smoke: `set(tools) != set(actions)` | добавили action без tool или наоборот | синхронизировать `server.py` |
-| Аудит: `model field do not cross the API` | новое поле не в JSON/input | добавить или allowlist с причиной |
-| Аудит: `DMG is older` | собрали код после DMG | пересобрать DMG |
+| `PersistentModelMacro could not be found` | Sandbox blocks the macro plugin server | Pass `OTHER_SWIFT_FLAGS=-disable-sandbox` |
+| `newfs_apfs: Operation not permitted` | Sandbox blocks raw disk access | Package with full disk access |
+| `hdiutil: create failed - Directory not empty` | Possible underlying `newfs_apfs` denial | Check raw disk access |
+| One `-selftest` check fails | Regression or interference from another instance | Rerun and fix the cause if it persists |
+| MCP smoke: `set(tools) != set(actions)` | One layer lacks a corresponding action or tool | Synchronize `server.py` and `LedgerAPI` |
+| Audit: `model field do not cross the API` | Field missing from JSON or input | Add it or document an eligible allowlist entry |
+| Audit: `DMG is older` | Sources changed after packaging | Rebuild the DMG |

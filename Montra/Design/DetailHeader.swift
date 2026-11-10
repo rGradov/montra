@@ -78,9 +78,8 @@ struct SharedDetailHeader: View {
     }
 }
 
-/// Purge-style title transition: the outgoing title fades up and out, the
-/// incoming one rises into place. One persistent view, so there is never a
-/// double-exposed scaled copy of the text.
+/// The outgoing title fades as it moves up. The incoming title rises into
+/// place. A persistent view keeps the text from appearing twice.
 struct AnimatedPageTitle: View {
     let title: String
 

@@ -1,95 +1,76 @@
-# Новая фича в Montra: рабочий цикл
+# Montra feature workflow
 
-Этот документ описывает правило, по которому теперь идёт любая фича в Montra:
-**код → бэкап → Local API → MCP → локализация → тесты → DMG**. Правило живёт в
-skill `montra-feature-release` и в `AGENTS.md`; здесь — человеческое объяснение и
-команды.
+Every feature goes through implementation, backup, Local API, MCP,
+localization, testing, and DMG packaging. The requirements live in
+`AGENTS.md` and the `montra-feature-release` skill.
 
-## Зачем
+The SwiftUI and SwiftData app, the `.montra` JSON backup, and the local HTTP
+API and MCP proxy each need explicit changes. A switch added to the app can
+be lost on restore if the backup omits it. An HTTP field is unavailable in MCP
+until the tool exposes it. Package the app once the tests pass.
 
-У Montra три поверхности, которые легко расходятся:
+## Workflow
 
-1. **Приложение** — SwiftUI + SwiftData.
-2. **Бэкап** — JSON `.montra`, из которого человек восстанавливает деньги на
-   другом Mac.
-3. **Интеграции** — локальный HTTP API и MCP-прокси для Codex/ChatGPT.
+0. Establish a baseline with the audit and current tests.
+1. Implement the feature, model changes, and localized strings.
+2. Update backup capture, restore, versions, and self-test.
+3. Update Local API JSON, input, actions, and `Docs/Local-API.md`.
+4. Update the MCP tool, parameters, `mcp/README.md`, and smoke assertions.
+5. Update README and Feature Inventory as applicable.
+6. Run self-test and review snapshots or smoke results as applicable.
+7. Run the synchronization audit, including DMG freshness after packaging.
+8. Package and verify the DMG with `Scripts/make-dmg.sh <tag> --open`.
+9. Report what changed and how to verify it manually.
 
-Если добавить тумблер только в UI, он не попадёт в копию и потеряется при
-восстановлении. Если добавить поле только в API, MCP о нём не узнает. Если
-собрать DMG до тестов, пользователь проверит сломанную сборку. Поэтому фича
-считается готовой только целиком.
+Documentation-only tasks use the skill's documentation workflow. Review the
+diff and run relevant documentation checks. App builds, runtime tests, DMG
+packaging, and version changes are outside that workflow.
 
-## Что происходит автоматически
+## Release checks
 
-Когда ты просишь «добавь фичу», агент загружает skill
-`montra-feature-release` и идёт по воротам:
+### 1. Code and localization
 
-```
-0. baseline   — аудит и текущие тесты зелёные
-1. фича       — код, модель, строки
-2. бэкап      — capture/restore, версия формата, selftest
-3. Local API  — JSON, input, action, Docs/Local-API.md
-4. MCP        — tool, параметры, mcp/README.md, smoke
-5. документация — README, Feature-Inventory
-6. тесты      — selftest, snapshots, smoke
-7. аудит      — audit-feature-sync.py --require-dmg
-8. DMG        — make-dmg.sh <tag> --open
-9. отчёт      — что изменилось и что проверить руками
-```
+- Give new model fields a default, such as `var isPinned: Bool = false`, for
+  lightweight SwiftData migration.
+- Add user-facing strings to `Localizable.xcstrings` in `ru` and `en`.
+- Record feature IDs and scenarios in `Docs/Feature-Inventory.md`.
 
-## Ворота
+### 2. Backup
 
-### 1. Код и локализация
+A backup restored on a new Mac should recover the same feature state.
 
-- Новое поле модели — с дефолтом (`var isPinned: Bool = false`), чтобы SwiftData
-  сделала лёгкую миграцию.
-- Все пользовательские строки — в `Localizable.xcstrings`, `ru` + `en`.
-- Новая фича с ID и сценариями — в `Docs/Feature-Inventory.md`.
-
-### 2. Бэкап
-
-Главный вопрос: «Если сделать копию сейчас и восстановить завтра на новом Mac,
-увижу ли я фичу в том же состоянии?»
-
-Типовые правки:
-
-| Что появилось | Куда идти |
+| Change | Backup work |
 |---|---|
-| Поле `Account`/`Category`/`Operation`/`Plan` | `*Backup` в `BackupArchive.swift`, capture/restore в `BackupService.swift`, selftest |
-| Настройка в `SettingsStore` | `SettingsBackup` + `BackupService.apply` |
-| Состояние вне SwiftData (курсы, API) | `BackupService.Environment` + optional-секция payload + применение в `BackupRestoreSheet` |
-| Новая сущность | новый массив payload, `BackupSummary`, restore, счётчик в sheet |
+| Field on `Account`, `Category`, `Operation`, or `Plan` | Add to `*Backup` in `BackupArchive.swift`, capture and restore in `BackupService.swift`, and cover in self-test |
+| Setting in `SettingsStore` | Update `SettingsBackup` and `BackupService.apply` |
+| State outside SwiftData such as rates or API settings | Update `BackupService.Environment`, add an optional payload section, and apply it from `BackupRestoreSheet` |
+| Entity | Add a payload array, `BackupSummary` count, restore support, and a row in the restore sheet |
 
-Старые `.montra` должны открываться: новое поле — `Optional` с дефолтом, либо
-bump `currentFormatVersion` + миграция. Секреты (токен API) и машинные даты
-(`lastBackupAt`) в копию не попадают.
-
-Подробные примеры кода — в
-`.agents/skills/montra-feature-release/references/backup-playbook.md`.
+Keep old `.montra` files readable with optional fields and defaults. For a
+format change requiring migration, update `currentFormatVersion` and implement
+migration. Exclude secrets such as the API token and machine-specific dates
+such as `lastBackupAt`.
+[Backup playbook](../.agents/skills/montra-feature-release/references/backup-playbook.md)
 
 ### 3. Local API
 
-Инвариант: **MCP должен уметь воссоздать любую пользовательскую запись.**
+MCP must be able to reproduce any user write in the app.
 
-- чтение — в `accountJSON`/`categoryJSON`/`operationJSON`/`planJSON`;
-- запись — в `AccountInput`/`CategoryInput`/`ImportRow`/`PlanInput`;
-- повтор с другим значением не должен молча возвращать старую запись;
-- новое действие — `Action` + `writes` + `execute` + `Store`;
-- `Docs/Local-API.md` обновляется в той же правке.
-
-Подробности — в
-`.agents/skills/montra-feature-release/references/api-mcp-playbook.md`.
+- Add read fields to `accountJSON`, `categoryJSON`, `operationJSON`, or `planJSON`.
+- Add write fields to `AccountInput`, `CategoryInput`, `ImportRow`, or `PlanInput`.
+- Check for differing values when a retry would otherwise return an existing record.
+- Register new actions in `Action`, `writes`, `execute`, and `Store`.
+- Update `Docs/Local-API.md` with the code.
+  [API and MCP playbook](../.agents/skills/montra-feature-release/references/api-mcp-playbook.md)
 
 ### 4. MCP
 
-MCP — отдельный Python-файл `mcp/server.py`, он не подхватывает API сам.
+- Register one `@mcp.tool` in `mcp/server.py` per action and match the function name.
+- Include every parameter in the signature and forward it in `call_api(...)`.
+- Update the tool table in `mcp/README.md`.
+- Add creation, readback, and retry assertions to `mcp/tests/smoke.py`.
 
-- один `@mcp.tool` на action, имя функции = action;
-- все новые параметры — в сигнатуре и в `call_api(...)`;
-- `mcp/README.md` — строка в таблице инструментов;
-- `mcp/tests/smoke.py` — утверждение на создание/чтение/повтор.
-
-### 5. Тесты
+### 5. Tests
 
 ```bash
 xcodebuild -project Montra.xcodeproj -scheme Montra -configuration Debug \
@@ -99,18 +80,19 @@ xcodebuild -project Montra.xcodeproj -scheme Montra -configuration Debug \
 build/DerivedData-debug/Build/Products/Debug/Montra.app/Contents/MacOS/Montra -selftest
 ```
 
-Ожидаемо: `ALL CHECKS PASSED`. Сейчас это 131 проверка, включая полный
-backup round-trip.
+Expect `ALL CHECKS PASSED`. The suite has 131 checks, including a full backup
+round trip. Use `-disable-sandbox` in DSH because the outer sandbox blocks the
+nested `sandbox-exec` that launches the SwiftData macro plugin server.
 
-Если менялся UI:
+For UI changes, render and review snapshots.
 
 ```bash
 build/DerivedData-debug/Build/Products/Debug/Montra.app/Contents/MacOS/Montra \
   -snapshot build/snaps-<tag>
 ```
 
-Если менялась анимация, её снимают покадрово — реальное время для снятия
-слишком быстрое, поэтому кадры рендерятся замороженными по шагам:
+For an animation change, capture it frame by frame. Real time is far too fast for
+a bitmap capture to sample, so the frames are rendered frozen at each step:
 
 ```bash
 APP=build/DerivedData-debug/Build/Products/Debug/Montra.app
@@ -120,37 +102,31 @@ ffmpeg -framerate 48 -i build/handoff/frame_%03d.tiff \
   -vf "scale=980:-1:flags=lanczos" -pix_fmt yuv420p build/handoff.mp4
 ```
 
-`-animate-onboarding-intro` — перелёт Mori в иконку приветствия
-(`frame_000` — до перелёта, дальше 0…1 прогресса), `-intro-snapshots` —
-моменты интро и вид приветствия после него.
+`-animate-onboarding-intro` renders the mascot's hand-off into the welcome icon:
+`frame_000` is the screen before the trip, then progress 0 to 1, then the two
+states it hands over to. `-intro-snapshots` renders the intro's moments and the
+welcome screen that follows.
 
-Если менялись API/MCP:
+For API or MCP changes, run the fixture and smoke test.
 
 ```bash
 ./mcp/tests/build-fixture.sh
 mcp/.venv/bin/python mcp/tests/smoke.py
 ```
 
-`-disable-sandbox` нужен в DSH: внешний sandbox блокирует вложенный
-`sandbox-exec`, которым SwiftData-макрос запускает plugin server.
-
-### 6. Аудит
+### 6. Audit
 
 ```bash
 python3 Scripts/audit-feature-sync.py
 python3 Scripts/audit-feature-sync.py --require-dmg
 ```
 
-Скрипт проверяет:
-
-- ключи локализации существуют и переведены на `en` + `ru`;
-- сохранённые поля моделей и настройки есть в бэкапе;
-- каждое `Action` есть в MCP и в обоих README;
-- поля моделей, пересекающие API, сериализуются или принимаются;
-- input-поля API доступны в MCP;
-- DMG не старше исходников (с `--require-dmg`).
-
-Красный аудит — список конкретных дыр, а не повод ослабить проверку.
+The script checks that localization keys exist in `en` and `ru`, persisted model
+fields and settings are represented in backups, and every action is covered by
+MCP and both API docs. It checks that model fields crossing the API are serialized
+or accepted and that input fields are available in MCP. `--require-dmg` also
+requires an image at least as recent as the source. Fix the gap reported by the
+audit.
 
 ### 7. DMG
 
@@ -158,96 +134,49 @@ python3 Scripts/audit-feature-sync.py --require-dmg
 Scripts/make-dmg.sh <tag> --open
 ```
 
-Скрипт собирает Release, прогоняет `-selftest`, проверяет подпись, делает
-`build/Montra-1.0-<tag>.dmg`, монтирует его и проверяет содержимое.
+The script builds Release, runs `-selftest`, checks the signature, creates
+`build/Montra-1.0-<tag>.dmg`, mounts it, and verifies the contents. Use a short
+tag such as `hidden-accounts`, `api-hidden`, or `plans-fix`. If the sandbox
+blocks raw disk access with `Operation not permitted`, rerun packaging with
+full disk access.
 
-Тег — короткое описание: `hidden-accounts`, `api-hidden`, `plans-fix`.
+## Files
 
-Если `hdiutil` падает с `Operation not permitted` — sandbox не даёт доступ к raw
-disk; упаковку нужно запускать с full disk access. Это не ошибка кода.
-
-#### DMG для установки на других Mac
-
-Один раз настройте подпись и доступ к сервису нотарификации Apple.
-
-1. Откройте **Xcode → Settings → Accounts**, выберите команду проекта и в
-   **Manage Certificates** добавьте **Developer ID Application**. Если сертификат
-   уже выпущен на другом Mac, импортируйте его вместе с приватным ключом из
-   `.p12`. Проверьте, что `security find-identity -v -p codesigning` показывает
-   `Developer ID Application` для команды проекта.
-   [Сертификаты Developer ID](https://developer.apple.com/help/account/certificates/create-developer-id-certificates/)
-2. В корне репозитория создайте локальный файл `Montra.local.xcconfig`.
-   Git игнорирует этот файл. Укажите команду Apple и идентификатор приложения,
-   зарегистрированный для этой команды.
-
-   ```xcconfig
-   DEVELOPMENT_TEAM = YOUR_TEAM_ID
-   PRODUCT_BUNDLE_IDENTIFIER = com.example.montra
-   ```
-
-3. Создайте пароль приложения в Apple Account и сохраните его в связке ключей.
-   Введите его по запросу команды. Team ID должен совпадать с `DEVELOPMENT_TEAM`
-   в `Montra.local.xcconfig`.
-   [Настройка notarytool](https://developer.apple.com/documentation/security/customizing-the-notarization-workflow)
-
-   ```bash
-   xcrun notarytool store-credentials montra-notary \
-     --apple-id 'your-apple-id@example.com' --team-id 'YOUR_TEAM_ID'
-   ```
-
-Соберите образ командой ниже.
-
-```bash
-Scripts/make-dmg.sh <tag> --distribute --open
-```
-
-Режим `--distribute` собирает Release с Developer ID, подписывает DMG тем же
-сертификатом и отправляет образ в сервис нотарификации Apple. После статуса
-`Accepted` скрипт прикрепляет билет, проверяет его и Gatekeeper, затем сохраняет
-`build/Montra-1.0-<tag>-notarized.dmg`. Если профиль в связке ключей называется
-иначе, задайте `MONTRA_NOTARY_PROFILE`. Сборка без `--distribute` предназначена
-для локальной проверки. Публикация в Mac App Store для этого процесса не нужна.
-[Распространение через DMG](https://developer.apple.com/documentation/xcode/packaging-mac-software-for-distribution)
-
-## Файлы
-
-| Файл | Роль |
+| File | Role |
 |---|---|
-| `.agents/skills/montra-feature-release/SKILL.md` | основной skill |
-| `.agents/skills/montra-feature-release/references/` | playbook'и по бэкапу, API/MCP, релизу |
-| `AGENTS.md` | короткое правило для агента, загружается всегда |
-| `Scripts/audit-feature-sync.py` | механическая проверка синхронизации |
-| `Scripts/feature-sync-allowlist.txt` | осознанные исключения с причинами |
-| `Scripts/make-dmg.sh` | Release + selftest + DMG |
-| `Docs/Feature-Workflow.md` | этот документ |
+| `.agents/skills/montra-feature-release/SKILL.md` | Agent release workflow |
+| `.agents/skills/montra-feature-release/references/` | Backup, API/MCP, and release playbooks |
+| `AGENTS.md` | Repository instructions for agents |
+| `Scripts/audit-feature-sync.py` | Synchronization checks |
+| `Scripts/feature-sync-allowlist.txt` | Documented exclusions |
+| `Scripts/make-dmg.sh` | Release build, self-test, and packaging |
+| `Docs/Feature-Workflow.md` | This guide |
 
-## Осознанные исключения
+## Deliberate exclusions
 
-Иногда значение не должно пересекать API или бэкап: `createdAt`, `sortIndex`,
-координаты операции (в API только текстовое место), `weekdayMask` (в API массив
-`weekdays`), периоды (у API нет команд), токен и `lastBackupAt`. Такие случаи
-добавляются в `Scripts/feature-sync-allowlist.txt` строкой вида:
+Examples include `createdAt`, `sortIndex`, coordinates represented as text
+`place`, `weekdayMask` represented as `weekdays`, periods with no API commands,
+the API token, and `lastBackupAt`. Record each reason in
+`Scripts/feature-sync-allowlist.txt`.
 
+```text
+api:Account.createdAt    # Assigned by the server
 ```
-api:Account.createdAt    # назначается сервером, клиент не задаёт
-```
 
-Без причины строку не добавлять. Если сомневаешься — добавь поле в API/бэкап.
+Expose or back up the field when there is no reason to exclude it.
 
-## Как проверить, что правило работает
+## Verify the workflow
 
 ```bash
 python3 Scripts/audit-feature-sync.py --require-dmg
 ```
 
-Сейчас аудит зелёный. В качестве живого примера синхронизации:
-`is_hidden_from_overview` и `is_savings` у счёта проходят путь
-модель → бэкап → `LedgerAPI` → `mcp/server.py` → smoke.
+Account fields `is_hidden_from_overview` and `is_savings` demonstrate the full
+path from model to backup, `LedgerAPI`, `mcp/server.py`, and smoke coverage.
 
-## Если нужно изменить само правило
+## Changing the workflow
 
-1. Правь `SKILL.md` или reference-файл.
-2. Если меняется проверка — правь `audit-feature-sync.py` и добавляй тест на
-   новый случай.
-3. Обнови этот документ и `AGENTS.md`, если изменились ворота.
-4. Прогони аудит на текущем репозитории: он должен остаться зелёным.
+1. Edit `SKILL.md` or the relevant reference file.
+2. If an audit rule changes, update `audit-feature-sync.py` and add a test.
+3. Update this guide and `AGENTS.md` if the release checks change.
+4. Run the applicable audit and verify it passes.

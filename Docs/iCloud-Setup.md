@@ -1,78 +1,65 @@
-# Подключение iCloud
+# Setting up iCloud
 
-Синхронизация в Montra **ещё не включена**, но всё для неё подготовлено. Этот файл —
-точная последовательность шагов, когда решите её включить.
+Montra has the prerequisites for iCloud sync. Follow these steps to enable it.
 
-## Что уже сделано
+## Existing setup
 
-1. **Модели CloudKit-совместимы.** У всех атрибутов есть значения по умолчанию, связи
-   опциональные, обратные связи объявлены, нет `@Attribute(.unique)`. Ничего переписывать
-   не нужно.
-2. **Одна точка хранения.** `ModelContainerFactory` в `Montra/App/MontraApp.swift` —
-   единственное место, где создаётся контейнер.
-3. **Записи через репозитории.** `AccountRepository`, `OperationRepository`,
-   `CategoryRepository`, `PeriodService`. Синхронизация цепляется к ним, а не к вьюхам.
-4. **Статус и интерфейс.** `SyncService` со `CloudSyncState`, честный статус «iCloud не
-   подключён» в сайдбаре и лист с объяснением в настройках.
-5. **Шаблон прав.** `Docs/Montra.entitlements`.
-6. **Настройки отдельно.** `SettingsStore` пишет в `UserDefaults`; для синхронизации
-   достаточно заменить хранилище на `NSUbiquitousKeyValueStore` + `synchronize()`.
+1. **CloudKit-compatible models.** Every attribute has a default, relationships
+   are optional with declared inverses, and the models use no `@Attribute(.unique)`.
+2. **Single container factory.** `ModelContainerFactory` in
+   `Montra/App/MontraApp.swift` creates the model container.
+3. **Repository writes.** Sync hooks belong in `AccountRepository`,
+   `OperationRepository`, `CategoryRepository`, and `PeriodService`.
+4. **Status and UI.** `SyncService` exposes `CloudSyncState`. The sidebar shows
+   that iCloud is disconnected and Settings includes an explanatory sheet.
+5. **Entitlements template.** See `Docs/Montra.entitlements`.
+6. **Separate settings store.** `SettingsStore` uses `UserDefaults`. To sync
+   settings, switch it to `NSUbiquitousKeyValueStore` and call `synchronize()`.
 
-## Шаги
+## Steps
 
-1. **Контейнер.** Укажите команду Apple и зарегистрированный идентификатор
-   приложения в `Montra.local.xcconfig`, как описано в
-   [инструкции по подписи](Feature-Workflow.md#dmg-для-установки-на-других-mac).
-   В Apple Developer → Certificates, Identifiers & Profiles → iCloud Containers
-   создайте контейнер с префиксом `iCloud.` и этим идентификатором,
-   например `iCloud.com.example.montra`.
+1. In your Apple Developer account, go to **Certificates, Identifiers & Profiles**
+   → **iCloud Containers** and create `iCloud.com.vladrudenua.montra`. If you use
+   another domain, update `SyncService.containerIdentifier` and the entitlements.
+2. Under **Signing & Capabilities** for the Montra target, add **iCloud**. Enable
+   CloudKit and select `iCloud.com.vladrudenua.montra`. Xcode can create
+   `Montra.entitlements`, or you can copy the template and set the target's
+   `CODE_SIGN_ENTITLEMENTS` to the copied file. Signing the iCloud entitlement
+   requires a development team.
 
-2. **Права.** В таргете Montra → Signing & Capabilities добавьте **iCloud**:
-   - CloudKit;
-   - созданный iCloud-контейнер;
-   - галочка CloudKit включена.
-   Xcode создаст `Montra.entitlements`; можно взять готовый шаблон:
    ```bash
    cp Docs/Montra.entitlements Montra/Montra.entitlements
    ```
-   и указать `CODE_SIGN_ENTITLEMENTS = Montra/Montra.entitlements` в
-   `Montra.local.xcconfig`. Для подписи iCloud entitlement нужна команда разработчика.
 
-3. **Хранилище.** В `Montra/App/MontraApp.swift` в `ModelContainerFactory.make()`
-   замените:
-   ```swift
-   cloudKitDatabase: .none
-   ```
-   на:
+3. In `ModelContainerFactory.make()` in `Montra/App/MontraApp.swift`, replace
+   `cloudKitDatabase: .none` with the following. This is the only code change
+   required to enable sync.
+
    ```swift
    cloudKitDatabase: .private(SyncService.containerIdentifier)
    ```
-   Это единственная обязательная правка кода.
 
-4. **Схема CloudKit.** Запустите приложение с включённым контейнером: SwiftData создаст
-   записи в development-окружении. Проверьте их в CloudKit Console
-   (Developer → CloudKit → Database). Затем переведите окружение в production перед
-   распространением сборки.
+4. Run the app with the container enabled. SwiftData creates records in the
+   development environment. Inspect them in **CloudKit Console → Database**,
+   then deploy the schema to production before distributing the build.
+5. To replace the default `.notConfigured` status with live status, pass a
+   provider. A `CloudKitProvider: SyncProvider` can use an
+   `NSPersistentCloudKitContainer`-style setup to track status and retries for
+   the SwiftData container already configured for CloudKit.
 
-5. **Статус.** `SyncService` по умолчанию отдаёт `.notConfigured`. Чтобы интерфейс
-   показывал реальное состояние, передайте провайдер:
    ```swift
    await SyncService.shared.start(provider: CloudKitProvider())
    ```
-   где `CloudKitProvider: SyncProvider` запускает `NSPersistentCloudKitContainer`-подобную
-   инициализацию SwiftData (контейнер уже создаётся с CloudKit-конфигурацией, провайдер
-   нужен для статуса и повторов).
 
-6. **Проверка.** Создайте операцию на одном Mac, подождите несколько секунд и проверьте
-   появление на другом устройстве под тем же Apple ID. Если запись не приходит:
-   - проверьте, что оба устройства в одном контейнере;
-   - в Console.app отфильтруйте по `CloudKit` и `Montra`;
-   - убедитесь, что схема развёрнута.
+6. Create a transaction on one Mac and check for it on another device using
+   the same Apple ID. If it does not appear, verify that both devices use the
+   same container and that you deployed the schema. Filter Console.app by
+   `CloudKit` and `Montra`.
 
-## Ограничения, о которых стоит помнить
+## Limitations
 
-- CloudKit не поддерживает уникальные ограничения — их нет и в моделях.
-- Переводы между счетами и слияние конфликтов не реализованы; при одновременном
-  редактировании побеждает последняя запись (стандартное поведение SwiftData).
-- Демо-данные создаются на каждом устройстве отдельно; после включения синхронизации
-  лучше сразу очистить данные на одном из них.
+- CloudKit does not support unique constraints, and the models use none.
+- Transfers and conflict merging have no custom sync handling. Concurrent
+  edits follow SwiftData's last-write-wins behavior.
+- Each device seeds demo data independently. Clear the demo data on one device
+  when enabling sync.

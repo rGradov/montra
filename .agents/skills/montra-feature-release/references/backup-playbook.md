@@ -1,25 +1,24 @@
 # Backup playbook
 
-Бэкап — это JSON-документ `.montra`: конверт `MontraBackup` + `BackupPayload`.
-Конверт хранит формат, версию схемы, версию приложения и SHA-256 payload.
-Payload хранит счета, категории, операции, планы, периоды, настройки, курсы и
-настройки локального API. Суммы — десятичные строки, даты — ISO 8601 с
-миллисекундами.
+A `.montra` backup is a JSON document with a `MontraBackup` envelope and
+`BackupPayload`. The envelope contains the format, schema and app versions,
+and the payload's SHA-256 hash. The payload contains accounts, categories,
+transactions, plans, periods, settings, exchange rates, and Local API settings.
+Amounts are decimal strings and dates use ISO 8601 with milliseconds.
 
-Файлы:
+- `Montra/Backup/BackupArchive.swift` defines structures and encoding.
+- `Montra/Backup/BackupService.swift` handles capture, restore, applying settings,
+  and reference validation.
+- `Montra/Backup/BackupFile.swift` handles file panels and the `.montra` extension.
+- `Montra/Features/Settings/BackupRestoreSheet.swift` confirms restore and applies
+  restored rates and API settings.
+- `Montra/Snapshot/SelfTest.swift` contains backup checks.
 
-- `Montra/Backup/BackupArchive.swift` — структуры и кодирование;
-- `Montra/Backup/BackupService.swift` — capture, restore, apply, проверка ссылок;
-- `Montra/Backup/BackupFile.swift` — панели и расширение `.montra`;
-- `Montra/Features/Settings/BackupRestoreSheet.swift` — подтверждение и применение
-  курсов/API-настроек после restore;
-- `Montra/Snapshot/SelfTest.swift` — backup-блок самопроверки.
+## 1. New model fields
 
-## 1. Новое поле модели
+The following example adds `isPinned` to an account.
 
-Пример: у счёта появляется `isPinned`.
-
-### Модель
+### Model
 
 ```swift
 @Model
@@ -38,21 +37,20 @@ final class Account {
 }
 ```
 
-Дефолт обязателен: SwiftData делает лёгкую миграцию, а старый store открывается.
+Give the property a default so SwiftData can migrate existing stores.
 
-### Формат
+### Format
 
 ```swift
 struct AccountBackup: Codable, Equatable {
     // ...
-    /// Optional: файл, записанный до появления флага, восстановится как false.
+    /// Older files without the flag restore it as false.
     var isPinned: Bool?
 }
 ```
 
-Почему optional: `JSONDecoder` синтезирует `decode`, и отсутствующий ключ для
-non-optional поля — ошибка. Optional превращает отсутствие в `nil`, а restore
-подставляет дефолт.
+The synthesized `JSONDecoder` logic treats a missing optional field as `nil`.
+Restore supplies the default. A missing required field fails decoding.
 
 ### Capture
 
@@ -76,50 +74,50 @@ let account = Account(
 )
 ```
 
-Не забудь про `PreparedPayload`, если поле — ссылка (`UUID`) на другую сущность.
-Там же проверяется, что ссылка существует, до удаления текущих данных.
+If the field is a `UUID` reference, validate it in `PreparedPayload` before
+deleting current records.
 
-### Версии
+### Versions
 
 ```swift
 enum BackupCoding {
-    static let currentFormatVersion = 2   // payload изменился
-    static let currentSchemaVersion = 2   // модель получила stored property
+    static let currentFormatVersion = 2   // Payload changed
+    static let currentSchemaVersion = 2   // Model gained a stored property
 }
 ```
 
-- Новая Montra читает старые файлы: диапазон `1...current` и optional-поля.
-- Старая Montra, встретив новый `formatVersion`, скажет «обновите Montra», а не
-  «файл повреждён».
-- Меняешь смысл существующего поля — bump обоих и опиши миграцию.
+- New releases read older formats within `1...current` using optional fields.
+- Older releases report that Montra needs an update when they see a newer
+  `formatVersion`.
+- If an existing field changes meaning, bump both versions and document migration.
 
 ### Self-test
 
-Добавляй проверку в существующий backup-блок `SelfTest.swift`, не создавай второй
-набор фикстур.
+Add the check to the existing backup block in `SelfTest.swift` and reuse its fixtures.
 
 ```swift
 let pinned = Account(
-    name: "Закреплённый", currency: .byn, initialAmount: 10,
+    name: "Pinned", currency: .byn, initialAmount: 10,
     iconName: "creditcard.fill", color: .blue
 )
 pinned.isPinned = true
 backupContext.insert(pinned)
 
-// после capture:
+// After capture
 check(
     archive.payload.accounts.first { $0.id == pinned.id }?.isPinned == true,
-    "флаг закрепления попал в копию"
+    "backup captured the pinned flag"
 )
 
-// после restore:
+// After restore
 let restoredPinned = accounts.first { $0.id == pinned.id }
-check(restoredPinned?.isPinned == true, "флаг закрепления восстановлен")
+check(restoredPinned?.isPinned == true, "backup restored the pinned flag")
 ```
 
-Обязательный минимум: значение в payload, encode/decode, restore в новый контекст.
+Check that the value appears in the payload, survives encoding and decoding, and
+restores into a new context.
 
-## 2. Новая настройка
+## 2. New settings
 
 ```swift
 // SettingsStore.swift
@@ -156,77 +154,67 @@ private static func apply(_ backup: SettingsBackup, hasAccounts: Bool, to settin
 }
 ```
 
-Дефолт должен совпадать с дефолтом `SettingsStore.init`: иначе старый бэкап
-незаметно поменяет поведение.
+The restore fallback must match the default in `SettingsStore.init` so older
+backups preserve the intended behavior. `lastBackupAt` is a machine-specific
+timestamp recorded in the allowlist and excluded from `SettingsBackup`.
 
-`lastBackupAt` — исключение: это дата последней копии на этом Mac, а не деньги.
-Она не входит в `SettingsBackup` и живёт в allowlist.
+## 3. State outside SwiftData
 
-## 3. Состояние вне SwiftData
+Examples include the rate table and Local API settings.
 
-Примеры: таблица курсов, настройки локального API.
+1. Add runtime values to `BackupService.Environment`.
+2. Add an optional section to `BackupPayload`, such as `RatesBackup?` or
+   `IntegrationBackup?`.
+3. Populate it in `BackupService.capture`.
+4. Return the values through `BackupService.RestoreReport`.
+5. Apply them in `BackupRestoreSheet.performRestore`.
+6. Reuse `LocalIntegration.applyBackup` or `RateStore.applyBackup` where applicable.
+7. Update both capture callers, `SettingsView.backupEnvironment` and
+   `BackupRestoreSheet.environment`.
 
-1. `BackupService.Environment` — то, что живёт в рантайме.
-2. `BackupPayload` — optional-секция (`RatesBackup?`, `IntegrationBackup?`).
-3. `BackupService.capture` — заполнение секции.
-4. `BackupService.RestoreReport` — что вернуть в UI.
-5. `BackupRestoreSheet.performRestore` — применить после восстановления.
-6. `LocalIntegration.applyBackup` / `RateStore.applyBackup` — если есть готовая
-   точка применения.
-7. Оба вызова `BackupService.capture`: `SettingsView.backupEnvironment` и
-   `BackupRestoreSheet.environment`. Если добавил поле в `Environment` и забыл
-   второй вызов — приложение не соберётся, это хорошо; но проверь оба.
+Exclude secrets such as the API token. Each Mac generates its own token.
 
-Секреты (токен API) не включаются. Новый Mac получает новый токен.
+## 4. New entities
 
-## 4. Новая сущность
+1. Add an optional array to `BackupPayload`, for example
+   `var tags: [TagBackup]?`. Decode older files with `?? []`.
+2. Add a count such as `tags: Int` to `BackupSummary` and include it in `records`.
+3. Fetch and sort consistently in `capture`, then map with `TagBackup.init`.
+4. Create and insert records in dependency order in `restore.insert`.
+5. Validate foreign keys in `PreparedPayload` before deleting anything.
+6. Delete dependent entities before their parents in `deleteAll`.
+7. Add a count row and localization key in `BackupRestoreSheet`.
+8. Add a fixture, capture and restore checks, and reference assertions to `SelfTest`.
+9. Add a persistence scenario to `Docs/Feature-Inventory.md`.
 
-Порядок:
+Use two passes for relationships, as with category parents. Insert the records,
+then link them by ID so file order does not affect restore.
 
-1. `BackupPayload`: `var tags: [TagBackup]?` — optional для старых файлов, при
-   чтении `?? []`.
-2. `BackupSummary`: `tags: Int`, `records` включает её.
-3. `capture`: fetch, стабильная сортировка, `map(TagBackup.init)`.
-4. `restore.insert`: создание и вставка в правильном порядке.
-5. `PreparedPayload`: проверка всех внешних ключей до удаления.
-6. `deleteAll`: удалить новую сущность до родителей.
-7. `BackupRestoreSheet`: строка счётчика + ключ локализации.
-8. `SelfTest`: фикстура, capture, restore, проверка ссылок.
-9. `Docs/Feature-Inventory.md`: persistence-сценарий.
+## 5. Reference validation
 
-Ссылки восстанавливай в два прохода, как категории и родители: сначала вставь
-все записи, потом свяжи по ID. Порядок в файле не должен иметь значения.
+`PreparedPayload` checks that each category parent exists and does not reference
+itself, and that the accounts and categories referenced by transactions and
+plans exist. Validate new relationships there and throw `BackupError.corrupted`
+before deleting records.
 
-## 5. Проверка ссылок
+## 6. Older files
 
-`PreparedPayload` уже проверяет:
+- A missing optional field decodes to `nil` and uses the restore default.
+- A file with `formatVersion 1` passes `1...currentFormatVersion` when current is `2`.
+- An older app returns `unsupportedVersion` for a newer format.
+- An invalid checksum returns `corrupted` before restore changes data.
+- Let the encoder compute checksums and keep validation enabled.
 
-- parent категории существует и не ссылается на себя;
-- account/category у операции существуют;
-- account/category у плана существуют.
+## 7. Checklist
 
-Если добавляешь ссылку — добавь такую же проверку и бросай `BackupError.corrupted`
-до первого удаления. Иначе битый файл оставит полупустой store.
-
-## 6. Старые файлы
-
-- Старый файл без нового optional-поля → `nil` → дефолт.
-- Старый файл с `formatVersion 1`, новый код с `2` → проходит guard
-  `1...currentFormatVersion`.
-- Новый файл в старой Montra → `unsupportedVersion` (после bump формата).
-- Повреждённый checksum → `corrupted`, данные не трогаются.
-- Никогда не пересчитывай checksum вручную и не отключай проверку.
-
-## 7. Быстрый чек-лист
-
-- [ ] Поле в модели с дефолтом.
-- [ ] Поле в `*Backup` (optional).
-- [ ] Capture-extension.
-- [ ] Restore `insert` с дефолтом.
-- [ ] `PreparedPayload`, если ссылка.
-- [ ] Bump `currentFormatVersion`/`currentSchemaVersion`.
-- [ ] Счётчик в `BackupSummary`/UI, если новая сущность.
-- [ ] Новая проверка в `SelfTest.swift`.
-- [ ] `-selftest` — `ALL CHECKS PASSED`.
-- [ ] `python3 Scripts/audit-feature-sync.py` — backup зелёный.
-- [ ] Ручной round-trip, если менял формат.
+- [ ] Model field with a default.
+- [ ] Optional field in `*Backup`.
+- [ ] Capture extension.
+- [ ] Restore `insert` with a default.
+- [ ] `PreparedPayload` check for references.
+- [ ] Update `currentFormatVersion` and `currentSchemaVersion` as applicable.
+- [ ] `BackupSummary` and UI count for a new entity.
+- [ ] Assertion in `SelfTest.swift`.
+- [ ] `-selftest` reports `ALL CHECKS PASSED`.
+- [ ] Backup checks pass in `python3 Scripts/audit-feature-sync.py`.
+- [ ] Manual round trip if the format changed.

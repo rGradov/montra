@@ -1,22 +1,21 @@
-# Локальный HTTP API Montra
+# Montra Local HTTP API
 
-После завершения знакомства с приложением включите **Локальный API** в разделе
-**Настройки → Интеграция** или через меню **Интеграция → Включить локальный API**.
-Montra принимает HTTP-запросы, пока приложение запущено и интеграция включена.
-При следующем запуске Montra восстановит выбранный режим.
+After completing onboarding, enable **Local API** under **Settings → Integration**
+or choose **Integration → Enable Local API** in the menu bar. Montra accepts HTTP
+requests while the app is running and the integration is enabled. It remembers
+the setting across launches.
 
-- Адрес для всех команд — `POST http://127.0.0.1:8766/v1/commands`.
-- Заголовки — `Content-Type: application/json` и `Authorization: Bearer <токен>`.
-- Токен можно скопировать в разделе **Настройки → Интеграция** или через верхнее
-  меню **Интеграция**. Для локальных скриптов токен доступен в
-  `~/Library/Application Support/Montra/LocalAPI/token`.
-- Успешный ответ содержит JSON результата и статус `200`. Ошибки возвращаются
-  с полем `error`. API возвращает `401` при неверном токене, `409` при конфликте
-  или устаревшем предпросмотре и `422` при нарушении правил данных.
+- Send all commands to `POST http://127.0.0.1:8766/v1/commands`.
+- Set the `Content-Type: application/json` and `Authorization: Bearer <token>` headers.
+- Copy the token from **Settings → Integration** or the **Integration** menu.
+  Local scripts can read it from `~/Library/Application Support/Montra/LocalAPI/token`.
+- A successful response returns JSON and status `200`. Errors include an
+  `error` field. An invalid token returns `401`, a conflict or stale preview
+  returns `409`, and a data validation failure returns `422`.
 
-## Прямой вызов из терминала
+## Calling the API from a terminal
 
-Следующая команда получает список счетов. Токен передаётся в curl через stdin.
+The following command lists accounts and passes the token to curl via stdin.
 
 ```bash
 {
@@ -28,7 +27,7 @@ Montra принимает HTTP-запросы, пока приложение з�
   http://127.0.0.1:8766/v1/commands
 ```
 
-Тело запроса на создание операции на выбранном счёте выглядит так.
+This request creates a transaction in the selected account.
 
 ```json
 {
@@ -40,104 +39,98 @@ Montra принимает HTTP-запросы, пока приложение з�
     "kind": "expense",
     "date": "2026-11-09T12:30:00+03:00",
     "amount": "12.50",
-    "place": "Кофейня"
+    "place": "Coffee shop"
   }
 }
 ```
 
-Возьмите `account_id` из `list_accounts`. Сгенерируйте новый `request_id` для
-каждой операции и сохраните его для безопасного повтора того же запроса.
+Get the `account_id` from `list_accounts`. Generate a new `request_id` for each
+transaction and retain it to retry that same request safely.
 
-## Команды
+## Commands
 
-Поля передаются на верхнем уровне вместе с `action`. Вложенный объект
-`operation` или элементы `rows` содержат поля операций.
+Pass command parameters at the top level alongside `action`. Transaction fields
+go inside the `operation` object or each entry in `rows`.
 
-| Команда | Параметры помимо `action` |
+| Command | Parameters besides `action` |
 | --- | --- |
-| `status` | Версия, поддерживаемые команды в `actions` и разрешения на удаление |
-| `list_accounts`, `list_categories` | Без параметров |
-| `get_balances` | Без параметров. Балансы и итоги сгруппированы по исходным валютам |
-| `list_operations` | Опционально `account_id`, `category_id`, `kind`, `query`, `from_date`, `before_date`, `limit` и `offset` |
-| `create_account` | `name`, `currency`. Опционально `initial_amount`, `icon_name`, `color`, `is_savings`, `is_hidden_from_overview` |
-| `create_category` | `name`, `kind`. Опционально `is_mandatory`, `icon_name`, `color`, `parent_id` |
+| `status` | No parameters. Returns the version, supported commands in `actions`, and deletion permissions |
+| `list_accounts`, `list_categories` | No parameters |
+| `get_balances` | No parameters. Balances and totals are grouped by original currency |
+| `list_operations` | Optional `account_id`, `category_id`, `kind`, `query`, `from_date`, `before_date`, `limit`, and `offset` |
+| `create_account` | `name`, `currency`. Optional `initial_amount`, `icon_name`, `color`, `is_savings`, and `is_hidden_from_overview` |
+| `create_category` | `name`, `kind`. Optional `is_mandatory`, `icon_name`, `color`, and `parent_id` |
 | `create_operation` | `account_id`, `currency`, `request_id`, `operation` |
-| `recategorize_operations` | От 1 до 100 уникальных `operation_ids` и `category_id` целевой категории или подкатегории |
-| `create_transfer` | `source_account_id`, `destination_account_id`, `request_id`, `date`, `sent`. Для разных валют нужен `received` |
-| `get_transfer` | `transfer_id` из ответа создания перевода или списка операций |
-| `list_plans` | Опционально `account_id`, `series_id`, `status`, `from_date`, `before_date`, `limit` и `offset` |
-| `create_plan` | `account_id`, `currency`, `request_id`, `operation`, `frequency`, `end_date`. Для недельного повтора можно указать `weekdays` |
-| `link_plan` | `plan_id`, `operation_id` существующего факта того же типа |
-| `record_plan` | `plan_id`. Опционально `date`, по умолчанию текущее время |
+| `recategorize_operations` | 1 to 100 unique `operation_ids` and the target category or subcategory `category_id` |
+| `create_transfer` | `source_account_id`, `destination_account_id`, `request_id`, `date`, `sent`. Different currencies require `received` |
+| `get_transfer` | `transfer_id` from the transfer creation response or transaction list |
+| `list_plans` | Optional `account_id`, `series_id`, `status`, `from_date`, `before_date`, `limit`, and `offset` |
+| `create_plan` | `account_id`, `currency`, `request_id`, `operation`, `frequency`, `end_date`. Optional `weekdays` for weekly recurrence |
+| `link_plan` | `plan_id`, `operation_id` of an existing transaction of the same kind |
+| `record_plan` | `plan_id`. Optional `date` defaults to the current time |
 | `preview_import` | `account_id`, `currency`, `source`, `rows` |
-| `import_operations` | Те же поля и `preview_token` из предпросмотра |
+| `import_operations` | Same fields plus the `preview_token` returned by the preview |
 | `preview_delete_account` | `account_id` |
-| `delete_account` | `account_id` и `preview_token` из предпросмотра |
-| `preview_delete_operations`, `delete_operations` | От 1 до 100 уникальных `operation_ids`. Для удаления нужен `preview_token` |
-| `preview_delete_plan`, `delete_plan` | `plan_id`, опционально `scope` (`occurrence` по умолчанию или `series`). Для удаления нужен `preview_token` |
+| `delete_account` | `account_id` and the `preview_token` returned by the preview |
+| `preview_delete_operations`, `delete_operations` | 1 to 100 unique `operation_ids`. Deletion requires `preview_token` |
+| `preview_delete_plan`, `delete_plan` | `plan_id`, optional `scope` (`occurrence` by default, or `series`). Deletion requires `preview_token` |
 
-У каждой операции обязательны `kind` (`income` или `expense`), `date` (ISO 8601 со
-смещением) и `amount` (положительная строка с десятичной точкой). Дополнительно
-принимаются `category_id`, `place`, `note` и `allow_possible_duplicate`. У
-строки выписки также нужен стабильный `external_id`. В пакете от 1 до 100 строк.
-Валюта должна совпадать с валютой счёта. [Правила предпросмотра и дублей](../mcp/README.md#работа-с-pdf)
+Each transaction requires `kind` (`income` or `expense`), `date` (ISO 8601 with
+an offset), and `amount` (a positive decimal string with a period). It also
+accepts `category_id`, `place`, `note`, and `allow_possible_duplicate`. Each
+statement row requires a stable `external_id`. A batch contains 1 to 100 rows.
+The currency must match the account currency. [Preview and duplicate rules](../mcp/README.md#importing-pdf-statements)
 
-`list_accounts` возвращает `is_savings` и `is_hidden_from_overview`. Скрытый счёт
-не входит в итог «Обзора», но остаётся в списках, на своей странице и в аналитике.
-Флаг можно передать сразу при создании счёта.
+`list_accounts` returns `is_savings` and `is_hidden_from_overview`. Hidden
+accounts are excluded from the Overview total and remain available in account
+lists, on their own pages, and in Analytics. You can set the flag at creation.
 
-`icon_name` у счёта — имя SF Symbol (`creditcard.fill`) или эмодзи (`💳`).
-Эмодзи хранится в том же поле и рисуется как текст на плитке счёта, в сайдбаре,
-строке «Обзора» и Touch Bar, поэтому после создания его достаточно вернуть
-в `list_accounts` как есть. У категорий — только имя символа.
+`list_operations` searches all accounts when `account_id` is omitted. Filtering
+by a parent category includes its subcategories. Supported values for `kind`
+are `expense`, `income`, and `transfer`. The first two exclude transfers.
+`from_date` is inclusive and `before_date` is exclusive. To create a subcategory,
+specify a top-level parent of the same kind. `list_categories` returns
+`parent_id` and `effective_is_mandatory`, which reflects inheritance from the parent.
 
-`list_operations` ищет по всем счетам, если `account_id` не передан. Фильтр
-родительской категории включает её подкатегории. Поддерживаемые значения
-`kind` — `expense`, `income` и `transfer`. Первые два исключают переводы.
-В списках `from_date` включается в диапазон, а `before_date` задаёт его конец
-без включения. Для подкатегории укажите родителя верхнего уровня того же типа.
-`list_categories` возвращает `parent_id` и `effective_is_mandatory` с учётом
-обязательности родителя.
+Use `list_operations` to select transactions and `list_categories` to select the
+target category or subcategory. When filtering by a parent, check each result's
+`category.id` because the filter also returns subcategory transactions. All
+selected transactions must match the target category's kind. The command rejects
+transfers. It changes only the category and saves the batch in one transaction.
+`updated_count` reports the number of changes, and `operations` returns the
+selected records in request order. Repeating the request on the same data
+returns an `updated_count` of zero.
 
-Для переноса выберите записи через `list_operations`, а целевую категорию или
-подкатегорию через `list_categories`. Если отбираете операции по родительской
-категории, проверьте `category.id` каждой записи: фильтр также возвращает операции
-из подкатегорий. Все выбранные операции должны совпадать с типом целевой категории.
-Переводы отклоняются. Команда меняет только категорию и сохраняет весь пакет одной
-транзакцией. В ответе `updated_count` содержит число изменений, а `operations`
-содержит выбранные записи в порядке запроса. При повторе на тех же данных
-`updated_count` равен нулю.
+A transfer saves two linked transactions atomically. Pass the sent and received
+amounts as strings in their respective account currencies. For same-currency
+transfers, `received` defaults to `sent`. To safely retry a transfer or recurring
+plan creation, reuse the original `request_id` and repeat the same request.
 
-Перевод сохраняет две связанные операции одной транзакцией. Суммы списания
-и зачисления передаются строками в валютах соответствующих счетов. При одинаковой
-валюте `received` по умолчанию равен `sent`. Для безопасного повтора перевода
-или создания серии сохраните исходный `request_id` и повторите тот же запрос.
+Plans start at `operation.date` and include the final `end_date` in the Mac's
+calendar. Supported frequencies are `day`, `week`, `month`, and `year`, with up
+to 1,000 occurrences per series. For weekly recurrence, Sunday is 1 and Saturday
+is 7. The default is the start date's weekday. `list_plans` defaults to `pending`
+and also accepts `all`, `upcoming` (including today), `missed`, and `linked`.
+Creating a plan leaves the balance unchanged. `record_plan` creates and links a
+transaction, while `link_plan` links an existing transaction.
 
-Планы используют дату начала из `operation.date` и день окончания `end_date`
-включительно по календарю Mac. Поддерживаются `day`, `week`, `month`, `year`
-и до 1000 дат в серии. Для недельного повтора воскресенье — 1, суббота — 7.
-Если дни не указаны, используется день недели начала. `list_plans` по умолчанию
-возвращает `pending`. Также доступны `all`, `upcoming` (включая сегодня),
-`missed` и `linked`. Создание плана не меняет баланс. `record_plan` сохраняет
-факт и связывает его с планом, а `link_plan` использует уже внесённую операцию.
+The **Allow Deletion via API** switch in Settings and the **Integration** menu
+controls deletion of accounts, transactions, and plans. It defaults to off.
+After upgrading, the switch is on only if both legacy permissions were on.
+The `account_delete_enabled` and `entry_delete_enabled` fields in `status` both
+reflect this switch.
 
-Переключатель **Разрешить удаление через API** в настройках и верхнем меню
-«Интеграция» управляет удалением счетов, операций и планов. По умолчанию он выключен.
-При обновлении он включён, только если были включены оба прежних разрешения.
-Поля `account_delete_enabled` и `entry_delete_enabled` в ответе `status` отражают
-состояние общего переключателя.
-Удаление счёта включает его операции и планы. Если выбрать одну часть перевода
-для удаления из списка операций, предпросмотр покажет обе части. Если удаляется
-связанный факт, соответствующий план снова становится ожидающим. Удаление самого
-плана или серии сохраняет связанные факты. Клиент подтверждает показанный
-предпросмотр и передаёт его токен с теми же параметрами.
+Deleting an account includes its transactions and plans. Selecting one side of
+a transfer for deletion previews both sides. Deleting a linked transaction makes
+its plan pending again. Deleting a plan or series preserves linked transactions.
+The client confirms the preview and submits its token with the same parameters.
 
-API принимает один запрос HTTP/1.1 на соединение, с `Content-Length` и телом до
-256 КиБ. Используйте адрес `127.0.0.1`. Запросы веб-страниц с заголовком `Origin`
-отклоняются. Браузерному расширению потребуется нативный посредник.
+The API accepts one HTTP/1.1 request per connection with `Content-Length` and a
+body of up to 256 KiB. Use `127.0.0.1`. Requests with an `Origin` header are
+rejected. Browser extensions need a native intermediary.
 
-## Codex и импорт PDF
+## Codex and PDF import
 
-FastMCP вызывает этот HTTP API из локального Codex. Подключение MCP нужно для
-работы с ассистентом в чате. Скрипты и настольные клиенты могут вызывать API напрямую.
-[Инструкция FastMCP](../mcp/README.md)
+FastMCP calls this HTTP API from local Codex. Connect MCP to use the API with
+the assistant in chat. Scripts and desktop clients can call the API directly.
+[FastMCP setup](../mcp/README.md)

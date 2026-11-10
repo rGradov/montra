@@ -302,18 +302,6 @@ struct OnboardingFlowView: View {
                     }
                 }
 
-                VStack(alignment: .leading, spacing: AppStyle.Spacing.xSmall) {
-                    FieldLabel(title: String(localized: "common.currency"))
-                    LazyVGrid(
-                        columns: Array(repeating: GridItem(.flexible(), spacing: AppStyle.Spacing.xSmall), count: 3),
-                        spacing: AppStyle.Spacing.xSmall
-                    ) {
-                        ForEach(Currency.allCases) { item in
-                            currencyChip(item)
-                        }
-                    }
-                }
-
                 FormField(title: String(localized: "common.current_balance")) {
                     HStack(spacing: AppStyle.Spacing.small) {
                         TextField("0", text: $accountAmountText)
@@ -345,6 +333,18 @@ struct OnboardingFlowView: View {
                     .overlay {
                         RoundedRectangle(cornerRadius: AppStyle.Radius.md, style: .continuous)
                             .strokeBorder(AppColors.borderSubtle, lineWidth: 0.5)
+                    }
+                }
+
+                VStack(alignment: .leading, spacing: AppStyle.Spacing.xSmall) {
+                    FieldLabel(title: String(localized: "common.currency"))
+                    LazyVGrid(
+                        columns: Array(repeating: GridItem(.flexible(), spacing: AppStyle.Spacing.xSmall), count: 3),
+                        spacing: AppStyle.Spacing.xSmall
+                    ) {
+                        ForEach(Currency.allCases) { item in
+                            currencyChip(item)
+                        }
                     }
                 }
             }

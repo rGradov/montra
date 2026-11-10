@@ -109,6 +109,21 @@ build/DerivedData-debug/Build/Products/Debug/Montra.app/Contents/MacOS/Montra \
   -snapshot build/snaps-<tag>
 ```
 
+Если менялась анимация, её снимают покадрово — реальное время для снятия
+слишком быстрое, поэтому кадры рендерятся замороженными по шагам:
+
+```bash
+APP=build/DerivedData-debug/Build/Products/Debug/Montra.app
+"$APP/Contents/MacOS/Montra" -animate-onboarding-intro build/handoff
+"$APP/Contents/MacOS/Montra" -intro-snapshots build/intro
+ffmpeg -framerate 48 -i build/handoff/frame_%03d.tiff \
+  -vf "scale=980:-1:flags=lanczos" -pix_fmt yuv420p build/handoff.mp4
+```
+
+`-animate-onboarding-intro` — перелёт Mori в иконку приветствия
+(`frame_000` — до перелёта, дальше 0…1 прогресса), `-intro-snapshots` —
+моменты интро и вид приветствия после него.
+
 Если менялись API/MCP:
 
 ```bash

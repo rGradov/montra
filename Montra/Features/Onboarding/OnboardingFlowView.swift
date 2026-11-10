@@ -105,6 +105,7 @@ struct OnboardingFlowView: View {
     @Environment(\.modelContext) private var context
     @EnvironmentObject private var settings: SettingsStore
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.welcomeArtworkWaitsForMori) private var welcomeArtworkWaitsForMori
     @Query(sort: [SortDescriptor(\Category.sortIndex, order: .forward)]) private var categories: [Category]
 
     let onFinish: () -> Void
@@ -254,6 +255,10 @@ struct OnboardingFlowView: View {
         }
         .frame(maxWidth: .infinity)
         .animation(reduceMotion ? nil : .easeInOut(duration: 0.35), value: step)
+        // The button belongs to the screen, not to the flight: it arrives with
+        // the copy once the mascot has landed.
+        .opacity(welcomeArtworkWaitsForMori ? 0 : 1)
+        .animation(.easeOut(duration: 0.34), value: welcomeArtworkWaitsForMori)
     }
 
     // MARK: - Account
@@ -677,10 +682,27 @@ enum OnboardingStep: Int, CaseIterable, Hashable {
 // MARK: - Welcome
 
 private struct OnboardingWelcomeStepView: View {
+    @Environment(\.welcomeArtworkWaitsForMori) private var waitsForMori
+
     var body: some View {
         VStack(spacing: AppStyle.Spacing.xLarge) {
             MontraArtwork(size: 148)
+                // The mascot flies onto this icon, so it waits out of focus: the
+                // mascot painted inside it has to be unreadable, or there would be
+                // two. Only the focus changes, never the brightness -- dimming the
+                // icon would make the mascot go dull as it landed, because the
+                // painted one takes over while the icon is still faded down.
+                .blur(radius: waitsForMori ? 18 : 0)
+                .animation(.easeOut(duration: 0.34), value: waitsForMori)
                 .shadow(color: .black.opacity(0.10), radius: 12, x: 0, y: 6)
+                .background {
+                    GeometryReader { proxy in
+                        Color.clear.preference(
+                            key: OnboardingWelcomeArtworkKey.self,
+                            value: proxy.frame(in: .named(OnboardingHero.coordinateSpace))
+                        )
+                    }
+                }
                 .onboardingBlurIn(index: 0)
 
             VStack(spacing: -AppStyle.Spacing.xxSmall) {
@@ -694,6 +716,11 @@ private struct OnboardingWelcomeStepView: View {
             .onboardingBlurIn(index: 1)
             .accessibilityElement(children: .combine)
             .accessibilityLabel(String(localized: "onboarding.welcome_to_montra"))
+            // The copy arrives with the icon, once the mascot is in place: while
+            // it is in the air the icon is the only thing on screen. Only the
+            // opacity changes, so the copy keeps its space and the icon does not
+            // move when it appears.
+            .opacity(waitsForMori ? 0 : 1)
 
             Text(String(localized: "onboarding.track_accounts_in_multiple_currencies"))
                 .font(AppStyle.Typography.body)
@@ -702,7 +729,9 @@ private struct OnboardingWelcomeStepView: View {
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: 400)
                 .onboardingBlurIn(index: 2)
+                .opacity(waitsForMori ? 0 : 1)
         }
+        .animation(.easeOut(duration: 0.34), value: waitsForMori)
     }
 }
 

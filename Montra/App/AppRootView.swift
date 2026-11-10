@@ -23,6 +23,7 @@ struct AppRootView: View {
     @State private var onboardingReplay: OnboardingReplay?
     @State private var isReplayExiting = false
     @State private var onboardingHeroSource: OnboardingHeroFrame?
+    @State private var welcomeArtworkFrame: CGRect = .zero
     @State private var sidebarAccountFrames: [UUID: CGRect] = [:]
     @State private var heroAccount: Account?
     @State private var heroPosition: CGPoint = .zero
@@ -52,17 +53,28 @@ struct AppRootView: View {
                     .background(AppColors.surfaceBase)
                     .opacity(isOnboardingExiting ? 0 : 1)
                     .blur(radius: isOnboardingExiting ? 12 : 0)
+                    // The icon holds its focus until the mascot has landed on it
+                    // and faded into it. The swap from the flying mascot to the
+                    // painted one then happens out of focus, where the two cannot
+                    // be told apart, and the icon focuses up around the mascot
+                    // that is already in place.
+                    .environment(\.welcomeArtworkWaitsForMori, isIntroVisible)
                     // The first run opens with Mori on the soundtrack's peak;
                     // the flow underneath waits, so a stray Return cannot skip it.
                     .disabled(isIntroVisible)
-                    .zIndex(10)
-
-                if isIntroVisible {
-                    OnboardingIntroView {
-                        showsOnboardingIntro = false
+                    // The intro belongs on top of the flow, not beside it in the
+                    // stack: its glow is bigger than the window, and as a sibling
+                    // it would stretch the stack and push the welcome column down
+                    // until the intro goes away.
+                    .overlay {
+                        if isIntroVisible {
+                            OnboardingIntroView(
+                                landing: OnboardingHero.flight(toArtwork: welcomeArtworkFrame),
+                                onFinished: { showsOnboardingIntro = false }
+                            )
+                        }
                     }
-                    .zIndex(11)
-                }
+                    .zIndex(10)
             }
 
             if let replay = onboardingReplay {
@@ -84,6 +96,7 @@ struct AppRootView: View {
         .coordinateSpace(name: OnboardingHero.coordinateSpace)
         .onPreferenceChange(OnboardingHeroSourceKey.self) { onboardingHeroSource = $0 }
         .onPreferenceChange(SidebarAccountFramesKey.self) { sidebarAccountFrames = $0 }
+        .onPreferenceChange(OnboardingWelcomeArtworkKey.self) { welcomeArtworkFrame = $0 ?? .zero }
         .animation(.easeInOut(duration: 0.45), value: isOnboardingExiting)
         .background {
             TouchBarHost(

@@ -23,6 +23,7 @@ struct MontraApp: App {
         // store here would still migrate it, so QA launches stay isolated too.
         let rendersOnly = CommandLine.arguments.contains("-snapshot")
             || CommandLine.arguments.contains("-animate-header")
+            || CommandLine.arguments.contains("-animate-onboarding-intro")
         let container = previewOnboarding || rendersOnly
             ? ModelContainerFactory.make(inMemory: true)
             : ModelContainerFactory.make()

@@ -114,7 +114,7 @@ checks, and edge cases.
   or a calendar month. Switch between category and account breakdowns, filter
   essential or discretionary spending, expand a row for its latest operations,
   compare the cumulative pace with the previous period, and scan the spending
-  calendar with a day readout and above-average days in amber. Hover a day for an
+  calendar with a day readout and above-average days in the app accent. Hover a day for an
   interactive popup with that day's operations; scroll it for a long day. Switch
   to Year for income, spending, a pace chart with month labels, and a 12-month
   summary. Category rows are informational; categories below 1% of spending are

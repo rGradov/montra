@@ -55,7 +55,19 @@ They appear only in the savings line. The engine test covers both directions:
   cell into it, scrolls through every operation, has a close delay, and uses the
   raised card surface with a small caret. The old 4-item truncation is gone.
 
-## UI findings
+## Scroll, animation, and palette pass
+
+- Removed the per-row hover. The only remaining hover is on the progress bar;
+  the row highlight is driven by that bar. When the bar scrolls out of view there
+  is no hover state left to recalculate, and scrolling over the category rows no
+  longer invalidates the card. This is the code-level fix for the reported
+  stutter; no Computer Use / Instruments capture was possible in this session.
+- The summary expenses/income/remaining now reveal from 0 with
+  `.numericText()` and `AppMotion.number`, matching Overview. The reveal runs on
+  first appearance and value changes.
+- The heat above-average accent changed from amber/brown to `Chart.sky`, so the
+  calendar no longer reads brown against the dark new-operation sheet. The
+  legend and above-average cells use the same cool accent in light and dark.
 
 1. **Category and account icons — fixed.** Rows use `ListRowIcon`, the same plain
    category-coloured glyph as the transaction list. The rounded gradient tiles

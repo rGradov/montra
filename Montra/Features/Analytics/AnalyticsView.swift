@@ -415,12 +415,14 @@ private struct AnalyticsSummaryCard: View {
     let currency: Currency
     let masked: Bool
 
+    @State private var revealed = false
+
     var body: some View {
         OverviewCard {
             HStack(alignment: .top, spacing: 0) {
                 SummaryCell(
                     label: String(localized: "common.expenses"),
-                    value: money(snapshot.expenses),
+                    value: money(revealed ? snapshot.expenses : 0),
                     sub: AnyView(expenseSub)
                 )
 
@@ -428,7 +430,7 @@ private struct AnalyticsSummaryCard: View {
 
                 SummaryCell(
                     label: String(localized: "common.income"),
-                    value: money(snapshot.income),
+                    value: money(revealed ? snapshot.income : 0),
                     sub: AnyView(incomeSub)
                 )
 
@@ -436,7 +438,7 @@ private struct AnalyticsSummaryCard: View {
 
                 SummaryCell(
                     label: String(localized: "analytics.remaining"),
-                    value: money(snapshot.remaining),
+                    value: money(revealed ? snapshot.remaining : 0),
                     sub: AnyView(remainingSub)
                 )
             }
@@ -464,6 +466,7 @@ private struct AnalyticsSummaryCard: View {
                 }
             }
         }
+        .onAppear { revealed = true }
     }
 
     private func savingsRow(title: String, detail: String, value: String, positive: Bool) -> some View {
@@ -560,6 +563,8 @@ private struct SummaryCell: View {
     let value: String
     let sub: AnyView
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     var body: some View {
         VStack(alignment: .leading, spacing: 5) {
             Text(label)
@@ -570,6 +575,8 @@ private struct SummaryCell: View {
                 .monospacedDigit()
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
+                .contentTransition(reduceMotion ? .identity : .numericText())
+                .animation(reduceMotion ? nil : AppMotion.number, value: value)
             sub
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -850,10 +857,6 @@ private struct AnalyticsBreakdownCard: View {
             hoveredSliceID == slice.id
                 ? AppColors.fillSecondary.opacity(0.5)
                 : .clear
-        }
-        .contentShape(Rectangle())
-        .onHover { hovering in
-            hoveredSliceID = hovering ? slice.id : nil
         }
         .accessibilityElement(children: .combine)
     }
@@ -1289,7 +1292,7 @@ private struct AnalyticsHeatCard: View {
     private var legend: some View {
         HStack(spacing: AppStyle.Spacing.xxxSmall) {
             RoundedRectangle(cornerRadius: 2, style: .continuous)
-                .fill(AppColors.Chart.amber.opacity(0.42))
+                .fill(AppColors.Chart.sky.opacity(0.42))
                 .frame(width: 8, height: 8)
             Text(String(localized: "analytics.above_average"))
                 .font(AppStyle.Typography.metadata)
@@ -1317,7 +1320,7 @@ private struct AnalyticsHeatCard: View {
         if day.isFuture || day.amount <= 0 {
             fill = AppColors.fillSecondary
         } else if aboveAverage {
-            fill = AppColors.Chart.amber.opacity(0.20 + Double(level) * 0.06)
+            fill = AppColors.Chart.sky.opacity(0.20 + Double(level) * 0.06)
         } else {
             fill = AppColors.textPrimary.opacity(AnalyticsEngine.heatOpacities[level])
         }

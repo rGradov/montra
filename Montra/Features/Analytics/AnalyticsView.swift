@@ -642,8 +642,10 @@ private struct AnalyticsBreakdownCard: View {
             slice: grouped,
             children: minor.sorted { $0.amount > $1.amount }
         )
-        return (major.map { BreakdownGroup(slice: $0, children: []) } + [group])
+        let majorGroups = major
+            .map { BreakdownGroup(slice: $0, children: []) }
             .sorted { $0.slice.amount > $1.slice.amount }
+        return majorGroups + [group]
     }
 
     private var total: Decimal {

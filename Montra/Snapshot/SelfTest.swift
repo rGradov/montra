@@ -160,7 +160,7 @@ enum SelfTest {
             color: .green,
             iconName: "banknote.fill"
         )
-        let analyticsOps = [
+        var analyticsOps = [
             Operation(kind: .expense, amount: 600, currency: .byn,
                       date: date(year: 2026, month: 10, day: 20),
                       account: analyticsAccount, category: analyticsHousing),
@@ -177,6 +177,41 @@ enum SelfTest {
                       date: date(year: 2026, month: 10, day: 1),
                       account: analyticsAccount, category: analyticsFood),
         ]
+        let analyticsSavings = Account(
+            name: "Копилка", currency: .byn, initialAmount: 0,
+            iconName: "banknote.fill", color: .green, isSavings: true
+        )
+        let savingsTransferID = UUID()
+        let savingsSourceLeg = Operation(
+            kind: .expense, amount: 100, currency: .byn,
+            date: date(year: 2026, month: 11, day: 3),
+            account: analyticsAccount, category: nil
+        )
+        savingsSourceLeg.transferID = savingsTransferID
+        let savingsDestinationLeg = Operation(
+            kind: .income, amount: 100, currency: .byn,
+            date: date(year: 2026, month: 11, day: 3),
+            account: analyticsSavings, category: nil
+        )
+        savingsDestinationLeg.transferID = savingsTransferID
+        let withdrawalID = UUID()
+        let withdrawalSourceLeg = Operation(
+            kind: .expense, amount: 50, currency: .byn,
+            date: date(year: 2026, month: 11, day: 4),
+            account: analyticsSavings, category: nil
+        )
+        withdrawalSourceLeg.transferID = withdrawalID
+        let withdrawalDestinationLeg = Operation(
+            kind: .income, amount: 50, currency: .byn,
+            date: date(year: 2026, month: 11, day: 4),
+            account: analyticsAccount, category: nil
+        )
+        withdrawalDestinationLeg.transferID = withdrawalID
+        analyticsOps.append(contentsOf: [
+            savingsSourceLeg, savingsDestinationLeg,
+            withdrawalSourceLeg, withdrawalDestinationLeg,
+        ])
+
         let analyticsPeriod = Period(
             start: date(year: 2026, month: 10, day: 15),
             end: date(year: 2026, month: 11, day: 14)
@@ -199,6 +234,10 @@ enum SelfTest {
         )
         check(analytics.range.totalDays == 31 && analytics.range.elapsedDays == 28,
               "аналитика: период 31 день, прошло 28")
+        check(analytics.savingsIn == 100 && analytics.savingsOut == 50,
+              "аналитика: переводы в сбережения и обратно")
+        check(analytics.expenses == 1_000 && analytics.income == 1_000,
+              "аналитика: переводы не считаются расходом или доходом")
         check(analytics.expenses == 1_000 && analytics.income == 1_000 && analytics.mandatory == 600,
               "аналитика: расходы, доходы и обязательные")
         check(analytics.freeExpenses == 400 && analytics.remaining == 0,

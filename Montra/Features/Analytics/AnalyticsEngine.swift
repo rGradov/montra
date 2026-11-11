@@ -94,10 +94,8 @@ struct AnalyticsSlice: Identifiable {
     let id: UUID
     let name: String
     let symbol: String
-    /// The bar shade.
+    /// The bar and icon shade.
     let color: Color
-    /// The icon-tile shade.
-    let tileColor: Color
     let amount: Decimal
     let operationCount: Int
     let operations: [Operation]
@@ -125,6 +123,8 @@ struct AnalyticsSnapshot {
     let remaining: Decimal
     let operationsCount: Int
     let incomeCount: Int
+    let savingsIn: Decimal
+    let savingsOut: Decimal
     let categories: [AnalyticsSlice]
     let accounts: [AnalyticsSlice]
     let days: [AnalyticsDay]
@@ -138,6 +138,7 @@ struct AnalyticsSnapshot {
     let chartMax: Double
 
     var hasExpenses: Bool { expenses > 0 }
+    var hasSavings: Bool { savingsIn > 0 || savingsOut > 0 }
     var todayDay: Int? { range.isCurrent && range.elapsedDays > 0 ? range.elapsedDays : nil }
 
     var filterCounts: (all: Int, mandatory: Int, free: Int) {
@@ -224,11 +225,23 @@ enum AnalyticsEngine {
             .addingTimeInterval(-1) ?? range.end
         let effectiveEnd = range.isCurrent ? min(range.end, endOfToday) : range.end
 
-        let currentOps = allOperations.filter {
-            $0.transferID == nil && $0.date >= range.start && $0.date <= effectiveEnd
+        let rangeOps = allOperations.filter {
+            $0.date >= range.start && $0.date <= effectiveEnd
         }
+        let currentOps = rangeOps.filter { $0.transferID == nil }
         let expenseOps = currentOps.filter { $0.kind == .expense }
         let incomeOps = currentOps.filter { $0.kind == .income }
+        let transferOps = rangeOps.filter { $0.transferID != nil }
+        let savingsIn = transferOps
+            .filter { $0.kind == .income && ($0.account?.isSavings ?? false) }
+            .reduce(Decimal(0)) { total, operation in
+                total + (rates.convert(operation.amount, from: operation.currency, to: displayCurrency) ?? 0)
+            }
+        let savingsOut = transferOps
+            .filter { $0.kind == .expense && ($0.account?.isSavings ?? false) }
+            .reduce(Decimal(0)) { total, operation in
+                total + (rates.convert(operation.amount, from: operation.currency, to: displayCurrency) ?? 0)
+            }
 
         let previousFullOps: [Operation]
         let comparisonOps: [Operation]
@@ -366,8 +379,10 @@ enum AnalyticsEngine {
             mandatory: mandatory,
             freeExpenses: expenses - mandatory,
             remaining: income - expenses,
-            operationsCount: currentOps.count,
+            operationsCount: rangeOps.count,
             incomeCount: incomeOps.count,
+            savingsIn: savingsIn,
+            savingsOut: savingsOut,
             categories: categories,
             accounts: accounts,
             days: days,
@@ -395,7 +410,6 @@ enum AnalyticsEngine {
             var name: String
             var symbol: String
             var color: Color
-            var tileColor: Color
             var mandatory: Bool
         }
 
@@ -413,7 +427,6 @@ enum AnalyticsEngine {
                 name: top?.displayName ?? String(localized: "analytics.uncategorized"),
                 symbol: top?.iconName ?? "tag.fill",
                 color: palette.color,
-                tileColor: palette.tileColor,
                 mandatory: top?.isMandatory ?? false
             )
             totals[id, default: 0] += rates.convert(
@@ -453,7 +466,6 @@ enum AnalyticsEngine {
                 name: info.name,
                 symbol: info.symbol,
                 color: info.color,
-                tileColor: info.tileColor,
                 amount: amount,
                 operationCount: counts[id] ?? 0,
                 operations: (grouped[id] ?? []).sorted {
@@ -482,7 +494,6 @@ enum AnalyticsEngine {
             var name: String
             var symbol: String
             var color: Color
-            var tileColor: Color
         }
 
         var totals = [UUID: Decimal]()
@@ -497,8 +508,7 @@ enum AnalyticsEngine {
             meta[id] = Meta(
                 name: account?.name ?? String(localized: "analytics.no_account"),
                 symbol: account?.iconName ?? "creditcard",
-                color: palette.color,
-                tileColor: palette.tileColor
+                color: palette.color
             )
             totals[id, default: 0] += rates.convert(
                 operation.amount,
@@ -535,7 +545,6 @@ enum AnalyticsEngine {
                 name: info.name,
                 symbol: info.symbol,
                 color: info.color,
-                tileColor: info.tileColor,
                 amount: amount,
                 operationCount: counts[id] ?? 0,
                 operations: (grouped[id] ?? []).sorted {

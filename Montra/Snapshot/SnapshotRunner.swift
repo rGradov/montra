@@ -122,6 +122,18 @@ enum SnapshotRunner {
             )
         }
 
+        // A transfer into the savings account, so Analytics can show it as
+        // savings rather than spending.
+        if let cash = snapshotAccounts.first(where: { $0.currency == .byn && !$0.isSavings }),
+           let savings = snapshotAccounts.first(where: { $0.isSavings }) {
+            _ = TransferRepository(context: context).create(
+                from: cash,
+                to: savings,
+                sent: 100,
+                received: Decimal(100) / Decimal(227_358)
+            )
+        }
+
         render(
             AppRootView(initialRoute: .overview).environmentObject(settings).environmentObject(previewRates).modelContainer(container),
             size: CGSize(width: AppWindowLayout.width, height: AppWindowLayout.defaultHeight),

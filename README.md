@@ -114,8 +114,9 @@ checks, and edge cases.
   or a calendar month. Switch between category and account breakdowns, filter
   essential or discretionary spending, expand a row for its latest operations,
   compare the cumulative pace with the previous period, and scan the spending
-  calendar with a day readout. Hover the chart or use the keyboard to inspect
-  any day.
+  calendar with a day readout and above-average days in amber. Transfers into a
+  savings account are shown separately, not as spending. Hover the chart or use
+  the keyboard to inspect any day.
 - **Exchange rates.** USD and EUR use National Bank of Belarus rates, and crypto
   uses a public feed. Rates are cached for six hours, can be refreshed manually,
   and show their source. Hover over an account to see its original and converted

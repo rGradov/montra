@@ -46,8 +46,29 @@ struct AnalyticsPaceChart: View {
         return values.sorted()
     }
 
+    private var yStep: Double {
+        let peak = max(snapshot.chartMax, 800)
+        let raw = peak / 4
+        let magnitude = pow(10, floor(log10(raw)))
+        let normalized = raw / magnitude
+        let nice: Double
+        switch normalized {
+        case ...1: nice = 1
+        case ...2: nice = 2
+        case ...2.5: nice = 2.5
+        case ...5: nice = 5
+        default: nice = 10
+        }
+        return max(100, nice * magnitude)
+    }
+
+    private var axisMax: Double {
+        let peak = max(snapshot.chartMax, 800)
+        return ceil(peak / yStep) * yStep
+    }
+
     private var yValues: [Double] {
-        stride(from: 0, through: snapshot.chartMax, by: 400).map { $0 }
+        stride(from: 0, through: axisMax, by: yStep).map { $0 }
     }
 
     var body: some View {
@@ -134,7 +155,7 @@ struct AnalyticsPaceChart: View {
             }
         }
         .chartXScale(domain: 1...max(2, totalDays))
-        .chartYScale(domain: 0...snapshot.chartMax)
+        .chartYScale(domain: 0...axisMax)
         .chartLegend(.hidden)
         .chartXAxis {
             AxisMarks(values: xValues) { value in
@@ -185,6 +206,7 @@ struct AnalyticsPaceChart: View {
                             }
                         }
                         .focusable()
+                        .focusEffectDisabled()
                         .focused($isFocused)
                         .onKeyPress(.leftArrow) {
                             step(-1)

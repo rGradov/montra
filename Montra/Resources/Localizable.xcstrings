@@ -647,6 +647,23 @@
         }
       }
     },
+    "analytics.above_average": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "above average"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "выше среднего"
+          }
+        }
+      }
+    },
     "analytics.average": {
       "extractionState": "manual",
       "localizations": {
@@ -1223,6 +1240,74 @@
           "stringUnit": {
             "state": "translated",
             "value": "Остаток"
+          }
+        }
+      }
+    },
+    "analytics.savings_in": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "To savings"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "В сбережения"
+          }
+        }
+      }
+    },
+    "analytics.savings_in_detail": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Transfer to a savings account"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Перевод на накопительный счёт"
+          }
+        }
+      }
+    },
+    "analytics.savings_out": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "From savings"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Из сбережений"
+          }
+        }
+      }
+    },
+    "analytics.savings_out_detail": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Withdrawal from a savings account"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Снятие с накопительного счёта"
           }
         }
       }

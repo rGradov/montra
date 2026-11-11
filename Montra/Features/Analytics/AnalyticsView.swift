@@ -17,11 +17,6 @@ struct AnalyticsView: View {
     @State private var scope: AnalyticsScope = .period
     @State private var selectedPeriodID: UUID?
     @State private var selectedMonthStart: Date?
-    @State private var dimension: AnalyticsDimension = .category
-    @State private var filter: AnalyticsFilter = .all
-    @State private var selectedSliceID: UUID?
-    @State private var hoveredSliceID: UUID?
-    @State private var heatDay: Int?
 
     private var calendar: Calendar { .current }
     private var now: Date { .now }
@@ -147,27 +142,7 @@ struct AnalyticsView: View {
                     AnalyticsBreakdownCard(
                         snapshot: snapshot,
                         currency: displayCurrency,
-                        masked: masked,
-                        dimension: dimension,
-                        filter: filter,
-                        selectedSliceID: selectedSliceID,
-                        hoveredSliceID: hoveredSliceID,
-                        onDimension: { newDimension in
-                            dimension = newDimension
-                            selectedSliceID = nil
-                            hoveredSliceID = nil
-                        },
-                        onFilter: { newFilter in
-                            filter = newFilter
-                            selectedSliceID = nil
-                            hoveredSliceID = nil
-                        },
-                        onSelect: { id in
-                            selectedSliceID = selectedSliceID == id ? nil : id
-                        },
-                        onHover: { id in
-                            hoveredSliceID = id
-                        }
+                        masked: masked
                     )
 
                     AnalyticsPaceCard(
@@ -179,8 +154,7 @@ struct AnalyticsView: View {
                     AnalyticsHeatCard(
                         snapshot: snapshot,
                         currency: displayCurrency,
-                        masked: masked,
-                        activeDay: $heatDay
+                        masked: masked
                     )
                 } else {
                     OverviewCard {
@@ -247,7 +221,6 @@ struct AnalyticsView: View {
             guard monthStarts.indices.contains(next) else { return }
             selectedMonthStart = monthStarts[next]
         }
-        resetInteractions()
     }
 
     private func changeScope(_ newScope: AnalyticsScope) {
@@ -273,13 +246,6 @@ struct AnalyticsView: View {
         withAnimation(reduceMotion ? nil : AppMotion.page) {
             scope = newScope
         }
-        resetInteractions()
-    }
-
-    private func resetInteractions() {
-        selectedSliceID = nil
-        hoveredSliceID = nil
-        heatDay = nil
     }
 }
 
@@ -405,7 +371,56 @@ private struct AnalyticsSummaryCard: View {
                 )
             }
             .padding(.vertical, AppStyle.Spacing.small)
+
+            if snapshot.hasSavings {
+                InsetCardDivider(horizontalInset: AppStyle.Row.cardHorizontalPadding)
+                VStack(spacing: 0) {
+                    if snapshot.savingsIn > 0 {
+                        savingsRow(
+                            title: String(localized: "analytics.savings_in"),
+                            detail: String(localized: "analytics.savings_in_detail"),
+                            value: money(snapshot.savingsIn),
+                            positive: true
+                        )
+                    }
+                    if snapshot.savingsOut > 0 {
+                        savingsRow(
+                            title: String(localized: "analytics.savings_out"),
+                            detail: String(localized: "analytics.savings_out_detail"),
+                            value: money(-snapshot.savingsOut),
+                            positive: false
+                        )
+                    }
+                }
+            }
         }
+    }
+
+    private func savingsRow(title: String, detail: String, value: String, positive: Bool) -> some View {
+        HStack(spacing: AppStyle.Spacing.small) {
+            Image(systemName: "lock.fill")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(AppColors.Chart.teal)
+                .frame(width: AppStyle.Row.listIconFrameSize)
+                .accessibilityHidden(true)
+
+            VStack(alignment: .leading, spacing: AppStyle.Spacing.xxxSmall) {
+                Text(title)
+                    .font(AppStyle.Typography.headline)
+                Text(detail)
+                    .font(AppStyle.Typography.metadata)
+                    .foregroundStyle(AppColors.textSecondary)
+            }
+
+            Spacer(minLength: AppStyle.Spacing.small)
+
+            Text(value)
+                .font(AnalyticsStyle.amount)
+                .monospacedDigit()
+                .foregroundStyle(positive ? AppColors.statusSafeText : AppColors.textSecondary)
+        }
+        .padding(.horizontal, AppStyle.Row.cardHorizontalPadding)
+        .padding(.vertical, AppStyle.Spacing.xSmall)
     }
 
     private var divider: some View {
@@ -498,15 +513,11 @@ private struct AnalyticsBreakdownCard: View {
     let snapshot: AnalyticsSnapshot
     let currency: Currency
     let masked: Bool
-    let dimension: AnalyticsDimension
-    let filter: AnalyticsFilter
-    let selectedSliceID: UUID?
-    let hoveredSliceID: UUID?
-    let onDimension: (AnalyticsDimension) -> Void
-    let onFilter: (AnalyticsFilter) -> Void
-    let onSelect: (UUID?) -> Void
-    let onHover: (UUID?) -> Void
 
+    @State private var dimension: AnalyticsDimension = .category
+    @State private var filter: AnalyticsFilter = .all
+    @State private var selectedSliceID: UUID?
+    @State private var hoveredSliceID: UUID?
     @FocusState private var focusedSlice: UUID?
 
     private var visible: [AnalyticsSlice] {
@@ -536,7 +547,9 @@ private struct AnalyticsBreakdownCard: View {
                 HStack(spacing: AppStyle.Spacing.xxSmall) {
                     ForEach(AnalyticsDimension.allCases) { option in
                         Button {
-                            onDimension(option)
+                            dimension = option
+                            selectedSliceID = nil
+                            hoveredSliceID = nil
                         } label: {
                             Text(option.title)
                                 .font(AppStyle.Typography.metadataEmphasis)
@@ -582,7 +595,7 @@ private struct AnalyticsBreakdownCard: View {
                     )
                 },
                 highlightedID: hoveredSliceID,
-                onHover: onHover
+                onHover: { hoveredSliceID = $0 }
             )
             .padding(.horizontal, AppStyle.Row.cardHorizontalPadding)
             .padding(.top, AppStyle.Spacing.xSmall)
@@ -613,11 +626,25 @@ private struct AnalyticsBreakdownCard: View {
                 }
             }
         }
+        .onChange(of: snapshot.range) { _, _ in
+            selectedSliceID = nil
+            hoveredSliceID = nil
+        }
+        .onChange(of: dimension) { _, _ in
+            selectedSliceID = nil
+            hoveredSliceID = nil
+        }
+        .onChange(of: filter) { _, _ in
+            selectedSliceID = nil
+            hoveredSliceID = nil
+        }
     }
 
     private func filterButton(_ option: AnalyticsFilter, count: Int) -> some View {
         Button {
-            onFilter(option)
+            filter = option
+            selectedSliceID = nil
+            hoveredSliceID = nil
         } label: {
             HStack(spacing: AppStyle.Spacing.xxSmall) {
                 Text(option.title)
@@ -645,14 +672,13 @@ private struct AnalyticsBreakdownCard: View {
 
     private func row(_ slice: AnalyticsSlice) -> some View {
         Button {
-            onSelect(slice.id)
+            selectedSliceID = selectedSliceID == slice.id ? nil : slice.id
         } label: {
             HStack(spacing: AppStyle.Spacing.small) {
-                IconTile(
-                    symbol: AppIconSymbol.resolved(slice.symbol),
-                    color: slice.tileColor
+                ListRowIcon(
+                    symbol: slice.symbol,
+                    color: slice.color
                 )
-                .accessibilityHidden(true)
 
                 VStack(alignment: .leading, spacing: AppStyle.Spacing.xxxSmall) {
                     Text(slice.name)
@@ -698,7 +724,7 @@ private struct AnalyticsBreakdownCard: View {
         }
         .buttonStyle(.plain)
         .onHover { hovering in
-            onHover(hovering ? slice.id : nil)
+            hoveredSliceID = hovering ? slice.id : nil
         }
         .focused($focusedSlice, equals: slice.id)
         .onKeyPress(.downArrow) {
@@ -710,7 +736,7 @@ private struct AnalyticsBreakdownCard: View {
             return .handled
         }
         .onKeyPress(.escape) {
-            onSelect(nil)
+            selectedSliceID = nil
             return .handled
         }
         .pointingHandOnHover()
@@ -724,7 +750,7 @@ private struct AnalyticsBreakdownCard: View {
         let index = current.flatMap { id in visible.firstIndex { $0.id == id } } ?? (delta > 0 ? -1 : 0)
         let next = min(max(index + delta, 0), visible.count - 1)
         focusedSlice = visible[next].id
-        onSelect(visible[next].id)
+        selectedSliceID = visible[next].id
     }
 
     private func share(_ slice: AnalyticsSlice) -> Double {
@@ -904,7 +930,7 @@ private struct AnalyticsHeatCard: View {
     let snapshot: AnalyticsSnapshot
     let currency: Currency
     let masked: Bool
-    @Binding var activeDay: Int?
+    @State private var activeDay: Int?
 
     @FocusState private var gridFocused: Bool
 
@@ -979,6 +1005,7 @@ private struct AnalyticsHeatCard: View {
             .padding(.horizontal, AppStyle.Row.cardHorizontalPadding)
             .padding(.top, AppStyle.Spacing.xxSmallPlus)
             .focusable()
+            .focusEffectDisabled()
             .focused($gridFocused)
             .onKeyPress(.leftArrow) {
                 moveHeat(by: -1)
@@ -1003,6 +1030,9 @@ private struct AnalyticsHeatCard: View {
             }
             .accessibilityElement(children: .contain)
             .accessibilityLabel(String(localized: "analytics.heat_accessibility"))
+            .onChange(of: snapshot.range) { _, _ in
+                activeDay = nil
+            }
 
             readout
                 .padding(.horizontal, AppStyle.Row.cardHorizontalPadding)
@@ -1013,6 +1043,12 @@ private struct AnalyticsHeatCard: View {
 
     private var legend: some View {
         HStack(spacing: AppStyle.Spacing.xxxSmall) {
+            RoundedRectangle(cornerRadius: 2, style: .continuous)
+                .fill(AppColors.Chart.amber.opacity(0.42))
+                .frame(width: 8, height: 8)
+            Text(String(localized: "analytics.above_average"))
+                .font(AppStyle.Typography.metadata)
+                .foregroundStyle(AppColors.textTertiary)
             Text(String(localized: "analytics.less"))
                 .font(AppStyle.Typography.metadata)
                 .foregroundStyle(AppColors.textTertiary)
@@ -1031,13 +1067,16 @@ private struct AnalyticsHeatCard: View {
     private func cell(_ day: AnalyticsDay) -> some View {
         let isActive = activeDay == day.id
         let level = min(max(day.level, 0), AnalyticsEngine.heatOpacities.count - 1)
+        let aboveAverage = day.amount > 0 && day.amount > snapshot.average
         let fill: Color
         if day.isFuture || day.amount <= 0 {
             fill = AppColors.fillSecondary
+        } else if aboveAverage {
+            fill = AppColors.Chart.amber.opacity(0.20 + Double(level) * 0.06)
         } else {
             fill = AppColors.textPrimary.opacity(AnalyticsEngine.heatOpacities[level])
         }
-        let textColor = (day.isToday || day.level >= 3)
+        let textColor = (day.isToday || day.level >= 3 || aboveAverage)
             ? AppColors.textPrimary
             : AppColors.textTertiary
 
@@ -1095,7 +1134,9 @@ private struct AnalyticsHeatCard: View {
         if let activeDay, let day = snapshot.days.first(where: { $0.id == activeDay }) {
             let date = AppDate.short(day.date)
             if day.amount > 0 {
-                Text(figures: "\(date) · \(money(day.amount)) · \(Finance.operationsCountText(day.operationCount))",
+                let above = day.amount > snapshot.average
+                let suffix = above ? " · " + String(localized: "analytics.above_average") : ""
+                Text(figures: "\(date) · \(money(day.amount)) · \(Finance.operationsCountText(day.operationCount))\(suffix)",
                      style: AppStyle.Typography.metadata)
                     .foregroundStyle(AppColors.textSecondary)
                     .monospacedDigit()
@@ -1122,7 +1163,9 @@ private struct AnalyticsHeatCard: View {
     private func accessibilityText(_ day: AnalyticsDay) -> String {
         let date = AppDate.short(day.date)
         if day.amount > 0 {
-            return "\(date), \(money(day.amount)), \(Finance.operationsCountText(day.operationCount))"
+            let above = day.amount > snapshot.average
+            let suffix = above ? ", \(String(localized: "analytics.above_average"))" : ""
+            return "\(date), \(money(day.amount)), \(Finance.operationsCountText(day.operationCount))\(suffix)"
         }
         return "\(date), \(String(localized: "analytics.no_day_expenses"))"
     }

@@ -681,6 +681,23 @@
         }
       }
     },
+    "analytics.by_months": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "By month"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "По месяцам года"
+          }
+        }
+      }
+    },
     "analytics.chart_accessibility %@": {
       "extractionState": "manual",
       "localizations": {
@@ -813,6 +830,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "За этот период пока нет расходов"
+          }
+        }
+      }
+    },
+    "analytics.empty_year": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No spending this year"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "За год нет расходов"
           }
         }
       }
@@ -1172,6 +1206,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "%@ от доходов"
+          }
+        }
+      }
+    },
+    "analytics.other": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Other"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Прочее"
+          }
+        }
+      }
+    },
+    "analytics.other_hint": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Show the categories below 1%"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Показать категории меньше 1%"
           }
         }
       }
@@ -6850,6 +6918,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Что уже готово"
+          }
+        }
+      }
+    },
+    "common.year": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Year"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Год"
           }
         }
       }

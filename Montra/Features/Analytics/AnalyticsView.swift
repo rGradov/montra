@@ -17,6 +17,7 @@ struct AnalyticsView: View {
     @State private var scope: AnalyticsScope = .period
     @State private var selectedPeriodID: UUID?
     @State private var selectedMonthStart: Date?
+    @State private var selectedYearStart: Date?
 
     private var calendar: Calendar { .current }
     private var now: Date { .now }
@@ -61,6 +62,29 @@ struct AnalyticsView: View {
         return monthStarts.last
     }
 
+    private var yearStarts: [Date] {
+        let first = availablePeriods.first?.start ?? now
+        let startYear = calendar.dateInterval(of: .year, for: first)?.start ?? first
+        let currentYear = calendar.dateInterval(of: .year, for: now)?.start ?? now
+        var years: [Date] = []
+        var cursor = startYear
+        while cursor <= currentYear {
+            years.append(cursor)
+            guard let next = calendar.date(byAdding: .year, value: 1, to: cursor) else { break }
+            cursor = next
+        }
+        if years.isEmpty { years = [currentYear] }
+        return years
+    }
+
+    private var selectedYear: Date? {
+        if let selectedYearStart,
+           yearStarts.contains(where: { calendar.isDate($0, equalTo: selectedYearStart, toGranularity: .year) }) {
+            return selectedYearStart
+        }
+        return yearStarts.last
+    }
+
     private var range: AnalyticsRange? {
         switch scope {
         case .period:
@@ -71,6 +95,9 @@ struct AnalyticsView: View {
         case .month:
             guard let selectedMonth else { return nil }
             return AnalyticsEngine.monthRange(containing: selectedMonth)
+        case .year:
+            guard let selectedYear else { return nil }
+            return AnalyticsEngine.yearRange(containing: selectedYear)
         }
     }
 
@@ -114,6 +141,10 @@ struct AnalyticsView: View {
             guard let selectedMonth,
                   let index = monthStarts.firstIndex(where: { calendar.isDate($0, equalTo: selectedMonth, toGranularity: .month) }) else { return false }
             return index > 0
+        case .year:
+            guard let selectedYear,
+                  let index = yearStarts.firstIndex(where: { calendar.isDate($0, equalTo: selectedYear, toGranularity: .year) }) else { return false }
+            return index > 0
         }
     }
 
@@ -127,6 +158,10 @@ struct AnalyticsView: View {
             guard let selectedMonth,
                   let index = monthStarts.firstIndex(where: { calendar.isDate($0, equalTo: selectedMonth, toGranularity: .month) }) else { return false }
             return index < monthStarts.count - 1
+        case .year:
+            guard let selectedYear,
+                  let index = yearStarts.firstIndex(where: { calendar.isDate($0, equalTo: selectedYear, toGranularity: .year) }) else { return false }
+            return index < yearStarts.count - 1
         }
     }
 
@@ -156,19 +191,29 @@ struct AnalyticsView: View {
                         masked: masked
                     )
 
-                    AnalyticsHeatCard(
-                        snapshot: snapshot,
-                        currency: displayCurrency,
-                        masked: masked,
-                        initialPopupDay: debugPopupDay
-                    )
+                    if scope == .year {
+                        AnalyticsYearMonthsCard(
+                            snapshot: snapshot,
+                            currency: displayCurrency,
+                            masked: masked
+                        )
+                    } else {
+                        AnalyticsHeatCard(
+                            snapshot: snapshot,
+                            currency: displayCurrency,
+                            masked: masked,
+                            initialPopupDay: debugPopupDay
+                        )
+                    }
                 } else {
                     OverviewCard {
                         EmptyState(
                             symbol: "chart.bar",
-                            title: scope == .month
-                                ? String(localized: "analytics.empty_month")
-                                : String(localized: "analytics.empty_period"),
+                            title: scope == .year
+                                ? String(localized: "analytics.empty_year")
+                                : (scope == .month
+                                    ? String(localized: "analytics.empty_month")
+                                    : String(localized: "analytics.empty_period")),
                             message: String(localized: "analytics.empty_message"),
                             actionTitle: String(localized: "transaction.new"),
                             action: onNewOperation
@@ -186,6 +231,9 @@ struct AnalyticsView: View {
             }
             if selectedMonthStart == nil {
                 selectedMonthStart = calendar.dateInterval(of: .month, for: now)?.start
+            }
+            if ProcessInfo.processInfo.environment["MONTRA_ANALYTICS_SCOPE"] == "year" {
+                scope = .year
             }
             syncHeader()
         }
@@ -226,6 +274,12 @@ struct AnalyticsView: View {
             let next = index + delta
             guard monthStarts.indices.contains(next) else { return }
             selectedMonthStart = monthStarts[next]
+        case .year:
+            guard let selectedYear,
+                  let index = yearStarts.firstIndex(where: { calendar.isDate($0, equalTo: selectedYear, toGranularity: .year) }) else { return }
+            let next = index + delta
+            guard yearStarts.indices.contains(next) else { return }
+            selectedYearStart = yearStarts[next]
         }
     }
 
@@ -234,7 +288,12 @@ struct AnalyticsView: View {
         switch newScope {
         case .month:
             let reference: Date
-            if let selectedPeriod, selectedPeriod.contains(now) {
+            if scope == .year, let selectedYear {
+                reference = calendar.isDate(selectedYear, equalTo: now, toGranularity: .year)
+                    ? now
+                    : (calendar.date(byAdding: .year, value: 1, to: selectedYear)?
+                        .addingTimeInterval(-1) ?? selectedYear)
+            } else if let selectedPeriod, selectedPeriod.contains(now) {
                 reference = now
             } else {
                 reference = selectedPeriod?.end ?? now
@@ -248,6 +307,11 @@ struct AnalyticsView: View {
             selectedPeriodID = availablePeriods.first { $0.contains(reference) }?.id
                 ?? currentPeriod?.id
                 ?? availablePeriods.last?.id
+        case .year:
+            selectedYearStart = calendar.dateInterval(
+                of: .year,
+                for: selectedMonth ?? selectedPeriod?.end ?? now
+            )?.start
         }
         withAnimation(reduceMotion ? nil : AppMotion.page) {
             scope = newScope
@@ -523,6 +587,13 @@ private struct AnalyticsBreakdownCard: View {
     @State private var dimension: AnalyticsDimension = .category
     @State private var filter: AnalyticsFilter = .all
     @State private var hoveredSliceID: UUID?
+    @State private var otherExpanded = false
+
+    private struct BreakdownGroup: Identifiable {
+        let slice: AnalyticsSlice
+        let children: [AnalyticsSlice]
+        var id: UUID { slice.id }
+    }
 
     private var visible: [AnalyticsSlice] {
         let list = dimension == .category ? snapshot.categories : snapshot.accounts
@@ -534,8 +605,42 @@ private struct AnalyticsBreakdownCard: View {
         }
     }
 
+    private var groups: [BreakdownGroup] {
+        let list = visible
+        guard dimension == .category, list.count > 1 else {
+            return list.map { BreakdownGroup(slice: $0, children: []) }
+        }
+        let threshold = snapshot.expenses / 100
+        let minor = list.filter { $0.amount < threshold }
+        guard !minor.isEmpty else {
+            return list.map { BreakdownGroup(slice: $0, children: []) }
+        }
+        let major = list.filter { $0.amount >= threshold }
+        let amount = minor.reduce(Decimal(0)) { $0 + $1.amount }
+        let count = minor.reduce(0) { $0 + $1.operationCount }
+        let previous = minor.reduce(Decimal(0)) { $0 + ($1.previousAmount ?? 0) }
+        let grouped = AnalyticsSlice(
+            id: UUID(),
+            name: String(localized: "analytics.other"),
+            symbol: "ellipsis",
+            color: AppColors.textTertiary,
+            amount: amount,
+            operationCount: count,
+            operations: [],
+            isMandatory: minor.allSatisfy(\.isMandatory),
+            previousAmount: previous,
+            delta: nil
+        )
+        let group = BreakdownGroup(
+            slice: grouped,
+            children: minor.sorted { $0.amount > $1.amount }
+        )
+        return (major.map { BreakdownGroup(slice: $0, children: []) } + [group])
+            .sorted { $0.slice.amount > $1.slice.amount }
+    }
+
     private var total: Decimal {
-        visible.reduce(Decimal(0)) { $0 + $1.amount }
+        groups.reduce(Decimal(0)) { $0 + $1.slice.amount }
     }
 
     private var filterCounts: (all: Int, mandatory: Int, free: Int) {
@@ -589,12 +694,12 @@ private struct AnalyticsBreakdownCard: View {
             }
 
             BalanceBar(
-                segments: visible.map {
+                segments: groups.map {
                     BalanceBar.Segment(
-                        id: $0.id,
-                        label: $0.name,
-                        value: NSDecimalNumber(decimal: $0.amount).doubleValue,
-                        color: $0.color
+                        id: $0.slice.id,
+                        label: $0.slice.name,
+                        value: NSDecimalNumber(decimal: $0.slice.amount).doubleValue,
+                        color: $0.slice.color
                     )
                 },
                 highlightedID: hoveredSliceID,
@@ -612,23 +717,26 @@ private struct AnalyticsBreakdownCard: View {
                     .padding(.vertical, AppStyle.Spacing.medium)
             } else {
                 VStack(spacing: 0) {
-                    ForEach(Array(visible.enumerated()), id: \.element.id) { index, slice in
+                    ForEach(Array(groups.enumerated()), id: \.element.id) { index, group in
                         if index > 0 {
                             InsetCardDivider(horizontalInset: AppStyle.Row.cardHorizontalPadding)
                         }
-                        row(slice)
+                        row(group)
                     }
                 }
             }
         }
         .onChange(of: snapshot.range) { _, _ in
             hoveredSliceID = nil
+            otherExpanded = false
         }
         .onChange(of: dimension) { _, _ in
             hoveredSliceID = nil
+            otherExpanded = false
         }
         .onChange(of: filter) { _, _ in
             hoveredSliceID = nil
+            otherExpanded = false
         }
     }
 
@@ -661,7 +769,35 @@ private struct AnalyticsBreakdownCard: View {
         .accessibilityAddTraits(option == filter ? .isSelected : [])
     }
 
-    private func row(_ slice: AnalyticsSlice) -> some View {
+    @ViewBuilder
+    private func row(_ group: BreakdownGroup) -> some View {
+        if group.children.isEmpty {
+            plainRow(group.slice)
+        } else {
+            Button {
+                withAnimation(AppMotion.page) {
+                    otherExpanded.toggle()
+                }
+            } label: {
+                plainRow(group.slice, showsChevron: true)
+            }
+            .buttonStyle(.plain)
+            .pointingHandOnHover()
+            .accessibilityLabel(group.slice.name)
+            .accessibilityHint(String(localized: "analytics.other_hint"))
+
+            if otherExpanded {
+                VStack(spacing: 0) {
+                    ForEach(group.children) { child in
+                        childRow(child)
+                    }
+                }
+                .padding(.bottom, AppStyle.Spacing.xxSmall)
+            }
+        }
+    }
+
+    private func plainRow(_ slice: AnalyticsSlice, showsChevron: Bool = false) -> some View {
         HStack(spacing: AppStyle.Spacing.small) {
             ListRowIcon(
                 symbol: slice.symbol,
@@ -700,6 +836,13 @@ private struct AnalyticsBreakdownCard: View {
                     }
                 }
             }
+
+            if showsChevron {
+                Image(systemName: otherExpanded ? "chevron.down" : "chevron.right")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(AppColors.textTertiary)
+                    .frame(width: 12)
+            }
         }
         .padding(.horizontal, AppStyle.Row.cardHorizontalPadding)
         .padding(.vertical, AppStyle.Spacing.xSmall)
@@ -712,6 +855,33 @@ private struct AnalyticsBreakdownCard: View {
         .onHover { hovering in
             hoveredSliceID = hovering ? slice.id : nil
         }
+        .accessibilityElement(children: .combine)
+    }
+
+    private func childRow(_ slice: AnalyticsSlice) -> some View {
+        HStack(spacing: AppStyle.Spacing.xSmall) {
+            ListRowIcon(
+                symbol: slice.symbol,
+                color: slice.color,
+                frameSize: 22
+            )
+            Text(slice.name)
+                .font(AppStyle.Typography.callout)
+                .foregroundStyle(AppColors.textSecondary)
+                .lineLimit(1)
+            Spacer(minLength: AppStyle.Spacing.small)
+            Text(money(slice.amount))
+                .font(AppStyle.Typography.metadataEmphasis.numbers)
+                .foregroundStyle(AppColors.textSecondary)
+                .lineLimit(1)
+            Text(figures: AnalyticsFormat.percent(share(slice), signed: false),
+                 style: AppStyle.Typography.metadata)
+                .foregroundStyle(AppColors.textTertiary)
+                .frame(width: 44, alignment: .trailing)
+        }
+        .padding(.leading, 44)
+        .padding(.trailing, AppStyle.Row.cardHorizontalPadding)
+        .padding(.vertical, 3)
         .accessibilityElement(children: .combine)
     }
 
@@ -862,6 +1032,8 @@ private struct AnalyticsHeatCard: View {
     @State private var activeDay: AnalyticsDay?
     @State private var popupDay: AnalyticsDay?
     @State private var hoverTask: Task<Void, Never>?
+    @State private var closeTask: Task<Void, Never>?
+    @State private var popupHovered = false
 
     @FocusState private var gridFocused: Bool
 
@@ -981,7 +1153,9 @@ private struct AnalyticsHeatCard: View {
             .onChange(of: snapshot.range) { _, _ in
                 activeDay = nil
                 popupDay = nil
+                popupHovered = false
                 hoverTask?.cancel()
+                closeTask?.cancel()
             }
 
             readout
@@ -995,27 +1169,39 @@ private struct AnalyticsHeatCard: View {
                    let anchor = anchors[popupDay.id],
                    !popupDay.operations.isEmpty {
                     let rect = geometry[anchor]
-                    let width: CGFloat = 260
-                    let estimatedHeight: CGFloat = 190
+                    let width: CGFloat = 300
+                    let height: CGFloat = 220
                     let x = min(max(rect.midX - width / 2, 6), max(6, geometry.size.width - width - 6))
-                    let above = rect.minY > estimatedHeight + 8
-                    popup(popupDay)
+                    let above = rect.minY > height + 8
+                    let caretX = min(max(rect.midX - x, 20), width - 20)
+                    popup(popupDay, caretX: caretX, caretOnTop: !above)
                         .frame(width: width)
-                        .frame(height: estimatedHeight, alignment: above ? .bottom : .top)
+                        .frame(height: height, alignment: above ? .bottom : .top)
                         .offset(
                             x: x,
-                            y: above ? rect.minY - estimatedHeight - 6 : rect.maxY + 6
+                            y: above ? rect.minY - height - 6 : rect.maxY + 6
                         )
-                        .allowsHitTesting(false)
+                        .onHover { hovering in
+                            popupHovered = hovering
+                            if hovering {
+                                closeTask?.cancel()
+                            } else {
+                                scheduleClose()
+                            }
+                        }
                         .transition(.opacity)
                 }
             }
         }
-        .onDisappear { hoverTask?.cancel() }
+        .onDisappear {
+            hoverTask?.cancel()
+            closeTask?.cancel()
+        }
     }
 
     private func handleHover(_ hovering: Bool, on day: AnalyticsDay) {
         if hovering {
+            closeTask?.cancel()
             activeDay = day
             hoverTask?.cancel()
             guard !day.operations.isEmpty else {
@@ -1030,13 +1216,22 @@ private struct AnalyticsHeatCard: View {
             }
         } else {
             hoverTask?.cancel()
-            if popupDay?.id == day.id { popupDay = nil }
+            scheduleClose()
         }
     }
 
-    private func popup(_ day: AnalyticsDay) -> some View {
-        let shown = Array(day.operations.prefix(4))
-        return VStack(alignment: .leading, spacing: 0) {
+    private func scheduleClose() {
+        closeTask?.cancel()
+        let id = popupDay?.id
+        closeTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 220_000_000)
+            guard !Task.isCancelled, !popupHovered, popupDay?.id == id else { return }
+            popupDay = nil
+        }
+    }
+
+    private func popup(_ day: AnalyticsDay, caretX: CGFloat, caretOnTop: Bool) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 Text(figures: AppDate.short(day.date), style: AppStyle.Typography.headline)
                 Spacer(minLength: 4)
@@ -1044,49 +1239,49 @@ private struct AnalyticsHeatCard: View {
                     .font(AnalyticsStyle.amount)
                     .monospacedDigit()
             }
-            .padding(.horizontal, 10)
-            .padding(.top, 9)
-            .padding(.bottom, 7)
+            .padding(.horizontal, 12)
+            .padding(.top, 10)
+            .padding(.bottom, 8)
 
-            InsetCardDivider(horizontalInset: 10)
+            InsetCardDivider(horizontalInset: 12)
 
-            VStack(spacing: 0) {
-                ForEach(shown, id: \.id) { operation in
-                    HStack(spacing: 8) {
-                        ListRowIcon(
-                            symbol: operation.displayIcon,
-                            color: operation.displayColor,
-                            frameSize: 22
-                        )
-                        Text(figures: operation.displayTitle, style: AppStyle.Typography.callout)
-                            .lineLimit(1)
-                        Spacer(minLength: 6)
-                        Text(figures: operation.amountText(masked: masked),
-                             style: AppStyle.Typography.metadataEmphasis)
-                            .lineLimit(1)
+            ScrollView(.vertical, showsIndicators: true) {
+                LazyVStack(spacing: 0) {
+                    ForEach(day.operations, id: \.id) { operation in
+                        HStack(spacing: 8) {
+                            ListRowIcon(
+                                symbol: operation.displayIcon,
+                                color: operation.displayColor,
+                                frameSize: 22
+                            )
+                            Text(figures: operation.displayTitle, style: AppStyle.Typography.callout)
+                                .lineLimit(1)
+                            Spacer(minLength: 6)
+                            Text(figures: operation.amountText(masked: masked),
+                                 style: AppStyle.Typography.metadataEmphasis)
+                                .lineLimit(1)
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 5)
                     }
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 5)
                 }
-
-                if day.operations.count > shown.count {
-                    Text(String(localized: "analytics.more_operations \(day.operations.count - shown.count)"))
-                        .font(AppStyle.Typography.metadata)
-                        .foregroundStyle(AppColors.textSecondary)
-                        .padding(.horizontal, 10)
-                        .padding(.top, 2)
-                        .padding(.bottom, 7)
-                }
+                .padding(.vertical, 4)
             }
-            .padding(.vertical, 4)
+            .frame(maxHeight: 180)
         }
-        .frame(width: 260, alignment: .leading)
+        .frame(width: 300, alignment: .leading)
         .background {
-            RoundedRectangle(cornerRadius: AppStyle.Radius.md, style: .continuous)
+            RoundedRectangle(cornerRadius: AppStyle.Radius.lg, style: .continuous)
                 .fill(AppColors.surfaceRaised)
         }
+        .overlay(alignment: caretOnTop ? .top : .bottom) {
+            AnalyticsCaret(pointsUp: caretOnTop)
+                .fill(AppColors.surfaceRaised)
+                .frame(width: 14, height: 7)
+                .offset(x: caretX - 150)
+        }
         .overlay {
-            RoundedRectangle(cornerRadius: AppStyle.Radius.md, style: .continuous)
+            RoundedRectangle(cornerRadius: AppStyle.Radius.lg, style: .continuous)
                 .strokeBorder(AppColors.borderStrong, lineWidth: 1)
         }
     }
@@ -1234,6 +1429,132 @@ private enum AnalyticsStyle {
     static let amount = AppStyle.TextStyle(family: .rounded, size: 15, weight: .semibold, tracking: 0)
     static let heatDay = AppStyle.TextStyle(family: .rounded, size: 10, weight: .semibold, tracking: 0)
     static let heatAmount = AppStyle.TextStyle(family: .rounded, size: 11, weight: .semibold, tracking: 0)
+}
+
+private struct AnalyticsYearMonthsCard: View {
+    let snapshot: AnalyticsSnapshot
+    let currency: Currency
+    let masked: Bool
+
+    private struct YearMonth: Identifiable {
+        let id: Int
+        let date: Date
+        let name: String
+        var amount: Decimal
+        var count: Int
+        let isCurrent: Bool
+        let isFuture: Bool
+    }
+
+    private static let nameFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.setLocalizedDateFormatFromTemplate("LLL")
+        return formatter
+    }()
+
+    private var months: [YearMonth] {
+        let calendar = Calendar.current
+        let start = snapshot.range.start
+        let now = Date.now
+        var result = (0..<12).map { offset -> YearMonth in
+            let date = calendar.date(byAdding: .month, value: offset, to: start) ?? start
+            let current = calendar.isDate(date, equalTo: now, toGranularity: .month)
+            return YearMonth(
+                id: offset,
+                date: date,
+                name: Self.nameFormatter.string(from: date).capitalized,
+                amount: 0,
+                count: 0,
+                isCurrent: current,
+                isFuture: date > now && !current
+            )
+        }
+        for day in snapshot.days {
+            let index = calendar.component(.month, from: day.date) - 1
+            guard result.indices.contains(index) else { continue }
+            result[index].amount += day.amount
+            result[index].count += day.operationCount
+        }
+        return result
+    }
+
+    var body: some View {
+        OverviewCard {
+            Text(String(localized: "analytics.by_months"))
+                .font(AppStyle.Typography.headline)
+                .padding(.horizontal, AppStyle.Row.cardHorizontalPadding)
+                .padding(.top, AppStyle.Row.cardHorizontalPadding)
+                .padding(.bottom, AppStyle.Spacing.xSmall)
+
+            LazyVGrid(
+                columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 4),
+                spacing: 6
+            ) {
+                ForEach(months) { month in
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(month.name)
+                            .font(AppStyle.Typography.metadataEmphasis)
+                            .foregroundStyle(month.isFuture ? AppColors.textTertiary : AppColors.textSecondary)
+
+                        Spacer(minLength: 0)
+
+                        Text(month.amount > 0 ? money(month.amount) : "—")
+                            .font(.system(size: 12, weight: .semibold, design: .rounded))
+                            .foregroundStyle(month.isFuture ? AppColors.textTertiary : AppColors.textPrimary)
+                            .monospacedDigit()
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
+
+                        Text(month.count > 0
+                             ? Finance.operationsCountText(month.count)
+                             : " ")
+                            .font(AppStyle.Typography.micro)
+                            .foregroundStyle(AppColors.textTertiary)
+                            .lineLimit(1)
+                    }
+                    .padding(8)
+                    .frame(maxWidth: .infinity, minHeight: 58, alignment: .leading)
+                    .background {
+                        RoundedRectangle(cornerRadius: AppStyle.Radius.md, style: .continuous)
+                            .fill(month.isCurrent ? AppColors.surfaceRaised : AppColors.fillSecondary)
+                    }
+                    .overlay {
+                        RoundedRectangle(cornerRadius: AppStyle.Radius.md, style: .continuous)
+                            .strokeBorder(
+                                month.isCurrent ? AppColors.borderStrong : AppColors.borderSubtle,
+                                lineWidth: month.isCurrent ? 1 : 0.5
+                            )
+                    }
+                    .opacity(month.isFuture ? 0.5 : 1)
+                }
+            }
+            .padding(.horizontal, AppStyle.Row.cardHorizontalPadding)
+            .padding(.bottom, AppStyle.Row.cardHorizontalPadding)
+        }
+    }
+
+    private func money(_ value: Decimal) -> String {
+        MoneyFormat.string(value, currency: currency, masked: masked)
+    }
+}
+
+private struct AnalyticsCaret: Shape {
+    let pointsUp: Bool
+
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        if pointsUp {
+            path.move(to: CGPoint(x: rect.midX, y: rect.minY))
+            path.addLine(to: CGPoint(x: rect.minX, y: rect.maxY))
+            path.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY))
+        } else {
+            path.move(to: CGPoint(x: rect.midX, y: rect.maxY))
+            path.addLine(to: CGPoint(x: rect.minX, y: rect.minY))
+            path.addLine(to: CGPoint(x: rect.maxX, y: rect.minY))
+        }
+        path.closeSubpath()
+        return path
+    }
 }
 
 private struct AnalyticsHeatAnchorKey: PreferenceKey {

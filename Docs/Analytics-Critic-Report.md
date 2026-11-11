@@ -11,7 +11,7 @@ pass; no separate critic agent could be launched from this delegated session.
 
 ## Build and evidence
 
-- `-selftest`: **ALL CHECKS PASSED**, 158 checks.
+- `-selftest`: **ALL CHECKS PASSED**, 160 checks.
 - `audit-feature-sync.py --require-dmg`: **7 passed, 0 warnings, 0 failures**.
 - DMG: `build/Montra-1.0-analytics-screen-v3.dmg`.
 - Renders: `build/analytics-snaps/06b-analytics-tall.png`,
@@ -41,6 +41,19 @@ Savings transfers are excluded from expenses and income. The transfer's two legs
 do not appear in categories, the bar, the heat map, or the cumulative chart.
 They appear only in the savings line. The engine test covers both directions:
 100 into savings, 50 out, with expenses and income unchanged.
+
+## New in this pass
+
+- **Year scope.** Period, Month, and Year sit in the same header control. Year
+  renders the year summary, the category breakdown, a 365-day cumulative chart
+  with month labels, and a 12-month “По месяцам года” card. The day heat map is
+  intentionally period/month only.
+- **“Прочее”.** Expense categories below 1% of total expenses collapse into one
+  “Прочее” row. It alone is expandable; its children show their own amount and
+  share. The other category and account rows remain informational.
+- **Interactive day popup.** The popup now survives the pointer moving from the
+  cell into it, scrolls through every operation, has a close delay, and uses the
+  raised card surface with a small caret. The old 4-item truncation is gone.
 
 ## UI findings
 
@@ -76,6 +89,17 @@ They appear only in the savings line. The engine test covers both directions:
    total, count, share and delta; the full ledger is opened in Operations, and a
    single day can be inspected in the calendar popup. This removes the
    “random four operations” problem the owner reported.
+10. **“Прочее” grouping — added.** The threshold is 1% of total expenses. The
+    group is the only expandable row and reveals the minor categories, not
+    operations. The demo store has no category below 1%, so it is absent from the
+    docs image; the test store does not exercise the view grouping.
+11. **Year — added.** The year header shows `2026`, `Год`, the same summary and
+    breakdown, a cumulative pace chart with `янв./март/май/июль/сент./сегодня`,
+    and 12 month tiles. The current month is outlined; future months are muted.
+12. **Popup — fixed interaction.** The popup is hit-testable; moving into it
+    cancels the close, leaving both closes after 220 ms. The content scrolls up
+    to 180 pt, so a long day is fully readable. The caret points at the cell and
+    the raised surface distinguishes it from the card.
 
 ## Interaction and performance findings
 
@@ -88,6 +112,8 @@ They appear only in the savings line. The engine test covers both directions:
   gradient and compositing work.
 - The chart computes its data and axes once per period change; it is not
   re-evaluated on scroll.
+- The year scope uses the same chart and a lightweight 12-tile summary instead of
+  a 365-cell heat grid, so switching to Year does not create a huge calendar.
 - No Instruments capture was run in this session; the fix is code-level. If a
   stutter remains on a very large store, profile the `ScrollView` with Time
   Profiler and check the chart before changing the layout again.
@@ -110,6 +136,19 @@ They appear only in the savings line. The engine test covers both directions:
 - The screen uses the primary currency; there is no per-screen currency selector.
 - The Calendar focus ring is disabled, so the card relies on the cell rings and
   the readout for keyboard feedback.
+- The year view has no day-level heat map; switch to Month or Period for it.
+- The “Прочее” group is not visible in the docs demo because every seeded
+  category is above 1%. It needs a real or test category below the threshold.
+- A one-operation day leaves empty space in the 220 pt popup frame; the popup
+  stays compact at the top or bottom, but the frame is intentionally fixed so
+  the caret stays attached.
+- The popup is hover-only; keyboard users get the readout, not the operations
+  list.
+- The first attached screenshot is the category picker, not the Analytics
+  calendar popup. Its material/blur background is outside the Analytics files
+  and was not changed in this pass.
+- The user mentioned a video, but no video file was included; only the two
+  screenshots were available, so no frame-by-frame review was possible.
 
 ## What is genuinely good
 
@@ -134,3 +173,6 @@ They appear only in the savings line. The engine test covers both directions:
 4. Inspect the month scope and the empty state visually.
 5. Hover several heat cells, including the first/last column, and check the popup
    stays inside the card and above/below the cell without clipping.
+6. Switch to Year and check the month labels, the current month outline, and the
+   year totals; switch back to Period.
+7. Add a category below 1% of spending, reload Analytics, and expand “Прочее”.

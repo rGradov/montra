@@ -36,7 +36,16 @@ struct AnalyticsPaceChart: View {
         }
     }
 
+    private var isYear: Bool { totalDays > 100 }
+
     private var xValues: [Int] {
+        if isYear {
+            var values = [1, 60, 121, 182, 244]
+            if let today = snapshot.todayDay {
+                values.append(today)
+            }
+            return values.sorted()
+        }
         var values = Set([1])
         values.formUnion(stride(from: 5, through: totalDays, by: 5))
         if let today = snapshot.todayDay {
@@ -44,6 +53,20 @@ struct AnalyticsPaceChart: View {
             values.insert(today)
         }
         return values.sorted()
+    }
+
+    private static let monthFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.setLocalizedDateFormatFromTemplate("LLL")
+        return formatter
+    }()
+
+    private func xLabel(_ day: Int) -> String {
+        if isYear,
+           let date = Calendar.current.date(byAdding: .day, value: day - 1, to: snapshot.range.start) {
+            return Self.monthFormatter.string(from: date)
+        }
+        return "\(day)"
     }
 
     private var yStep: Double {
@@ -169,9 +192,10 @@ struct AnalyticsPaceChart: View {
                                 .foregroundStyle(AppColors.textTertiary)
                                 .fixedSize()
                         } else {
-                            Text("\(day)")
+                            Text(xLabel(day))
                                 .font(.system(size: 10, weight: .regular, design: .rounded))
                                 .foregroundStyle(AppColors.textTertiary)
+                                .fixedSize()
                         }
                     }
                 }

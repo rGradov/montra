@@ -6,6 +6,7 @@ import SwiftUI
 enum AnalyticsScope: String, CaseIterable, Identifiable {
     case period
     case month
+    case year
 
     var id: String { rawValue }
 
@@ -13,6 +14,7 @@ enum AnalyticsScope: String, CaseIterable, Identifiable {
         switch self {
         case .period: String(localized: "common.period")
         case .month: String(localized: "common.month")
+        case .year: String(localized: "common.year")
         }
     }
 }
@@ -68,15 +70,23 @@ struct AnalyticsRange: Equatable {
             AppDate.range(start, end)
         case .month:
             AppDate.monthYear.string(from: start).capitalized
+        case .year:
+            String(Calendar.current.component(.year, from: start))
         }
     }
 
     /// The subtitle's date span. A running month stops at today, so the header
     /// never claims to include days that have not happened.
     var spanTitle: String {
-        guard scope == .month else { return AppDate.range(start, end) }
-        let last = Calendar.current.date(byAdding: .day, value: max(0, elapsedDays - 1), to: start) ?? start
-        return AppDate.range(start, last)
+        switch scope {
+        case .period:
+            return AppDate.range(start, end)
+        case .month:
+            let last = Calendar.current.date(byAdding: .day, value: max(0, elapsedDays - 1), to: start) ?? start
+            return AppDate.range(start, last)
+        case .year:
+            return String(Calendar.current.component(.year, from: start))
+        }
     }
 
     var previousTitle: String? {
@@ -86,6 +96,8 @@ struct AnalyticsRange: Equatable {
             return AppDate.range(previousStart, previousEnd)
         case .month:
             return AppDate.monthYear.string(from: previousStart).capitalized
+        case .year:
+            return String(Calendar.current.component(.year, from: previousStart))
         }
     }
 }
@@ -201,6 +213,40 @@ enum AnalyticsEngine {
 
         return AnalyticsRange(
             scope: .month,
+            start: start,
+            end: end,
+            totalDays: total,
+            elapsedDays: elapsed,
+            isCurrent: current,
+            previousStart: previousStart,
+            previousEnd: previousEnd,
+            previousTotalDays: previousDays
+        )
+    }
+
+    static func yearRange(
+        containing date: Date,
+        now: Date = .now,
+        calendar: Calendar = .current
+    ) -> AnalyticsRange {
+        let start = calendar.dateInterval(of: .year, for: date)?.start
+            ?? calendar.startOfDay(for: date)
+        let next = calendar.date(byAdding: .year, value: 1, to: start) ?? start
+        let end = next.addingTimeInterval(-1)
+        let total = calendar.range(of: .day, in: .year, for: start)?.count ?? AppDate.daysBetween(start, end)
+        let current = calendar.isDate(now, equalTo: start, toGranularity: .year)
+        let dayOfYear = calendar.ordinality(of: .day, in: .year, for: now) ?? 1
+        let elapsed = current ? min(max(dayOfYear, 1), total) : total
+
+        let previousStart = calendar.date(byAdding: .year, value: -1, to: start)
+        let previousNext = previousStart.flatMap { calendar.date(byAdding: .year, value: 1, to: $0) }
+        let previousEnd = previousNext?.addingTimeInterval(-1)
+        let previousDays = previousStart.flatMap {
+            calendar.range(of: .day, in: .year, for: $0)?.count
+        } ?? 0
+
+        return AnalyticsRange(
+            scope: .year,
             start: start,
             end: end,
             totalDays: total,

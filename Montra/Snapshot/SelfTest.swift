@@ -272,6 +272,22 @@ enum SelfTest {
                 && analyticsMonth.elapsedDays == 11
                 && analyticsMonth.previousTotalDays == 31,
               "аналитика: календарный месяц и его прошлый месяц")
+        let analyticsYear = AnalyticsEngine.yearRange(
+            containing: analyticsNow,
+            now: analyticsNow
+        )
+        let analyticsYearSnapshot = AnalyticsEngine.snapshot(
+            range: analyticsYear,
+            operations: analyticsOps,
+            displayCurrency: .byn,
+            rates: .fallback,
+            now: analyticsNow
+        )
+        check(analyticsYear.totalDays == 365 && analyticsYear.elapsedDays == 315,
+              "аналитика: годовой период и прошедшие дни")
+        check(analyticsYearSnapshot.expenses == 1_700
+                && analyticsYearSnapshot.income == 1_000,
+              "аналитика: годовые расходы и доходы")
 
         // 6. Deleting a custom category moves its operations to "Other".
         let fallback = Category(name: "Прочее", kind: .expense, color: .graphite, iconName: "ellipsis.circle.fill", isSystem: true)

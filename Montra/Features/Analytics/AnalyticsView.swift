@@ -11,6 +11,8 @@ struct AnalyticsView: View {
 
     @Query(sort: [SortDescriptor(\Operation.date, order: .reverse)]) private var operations: [Operation]
     @Query(sort: [SortDescriptor(\Period.start, order: .forward)]) private var periods: [Period]
+    @Query(sort: [SortDescriptor(\Category.name, order: .forward)]) private var allCategories: [Category]
+    @AppStorage("analytics.hiddenCategoryIDs") private var hiddenCategoryIDsRaw = ""
 
     var onNewOperation: () -> Void = {}
 
@@ -107,12 +109,27 @@ struct AnalyticsView: View {
             range: range,
             operations: operations,
             displayCurrency: settings.primaryCurrency,
-            rates: rates.rates
+            rates: rates.rates,
+            hiddenCategoryIDs: hiddenCategoryIDs
         )
     }
 
     private var displayCurrency: Currency { settings.primaryCurrency }
     private var masked: Bool { settings.hideBalances }
+
+    private var hiddenCategoryIDs: Set<UUID> {
+        Set(hiddenCategoryIDsRaw.split(separator: ",").compactMap { UUID(uuidString: String($0)) })
+    }
+
+    private func toggleCategory(_ id: UUID) {
+        var set = hiddenCategoryIDs
+        if set.contains(id) { set.remove(id) } else { set.insert(id) }
+        hiddenCategoryIDsRaw = set.map(\.uuidString).joined(separator: ",")
+    }
+
+    private func showAllCategories() {
+        hiddenCategoryIDsRaw = ""
+    }
 
     private var debugPopupDay: Int? {
         guard let raw = ProcessInfo.processInfo.environment["MONTRA_ANALYTICS_POPUP"] else { return nil }
@@ -182,7 +199,11 @@ struct AnalyticsView: View {
                     AnalyticsBreakdownCard(
                         snapshot: snapshot,
                         currency: displayCurrency,
-                        masked: masked
+                        masked: masked,
+                        allCategories: allCategories,
+                        hiddenCategoryIDs: hiddenCategoryIDs,
+                        onToggleCategory: toggleCategory,
+                        onShowAllCategories: showAllCategories
                     )
 
                     AnalyticsPaceCard(
@@ -207,17 +228,27 @@ struct AnalyticsView: View {
                     }
                 } else {
                     OverviewCard {
-                        EmptyState(
-                            symbol: "chart.bar",
-                            title: scope == .year
-                                ? String(localized: "analytics.empty_year")
-                                : (scope == .month
-                                    ? String(localized: "analytics.empty_month")
-                                    : String(localized: "analytics.empty_period")),
-                            message: String(localized: "analytics.empty_message"),
-                            actionTitle: String(localized: "transaction.new"),
-                            action: onNewOperation
-                        )
+                        if hiddenCategoryIDs.isEmpty {
+                            EmptyState(
+                                symbol: "chart.bar",
+                                title: scope == .year
+                                    ? String(localized: "analytics.empty_year")
+                                    : (scope == .month
+                                        ? String(localized: "analytics.empty_month")
+                                        : String(localized: "analytics.empty_period")),
+                                message: String(localized: "analytics.empty_message"),
+                                actionTitle: String(localized: "transaction.new"),
+                                action: onNewOperation
+                            )
+                        } else {
+                            EmptyState(
+                                symbol: "eye.slash",
+                                title: String(localized: "analytics.hidden_categories_empty"),
+                                message: String(localized: "analytics.hidden_categories_empty_message"),
+                                actionTitle: String(localized: "analytics.show_all_categories"),
+                                action: showAllCategories
+                            )
+                        }
                     }
                 }
             }
@@ -590,6 +621,10 @@ private struct AnalyticsBreakdownCard: View {
     let snapshot: AnalyticsSnapshot
     let currency: Currency
     let masked: Bool
+    let allCategories: [Category]
+    let hiddenCategoryIDs: Set<UUID>
+    let onToggleCategory: (UUID) -> Void
+    let onShowAllCategories: () -> Void
 
     @State private var dimension: AnalyticsDimension = .category
     @State private var filter: AnalyticsFilter = .all
@@ -662,6 +697,7 @@ private struct AnalyticsBreakdownCard: View {
                 Text(String(localized: "analytics.where_money_went"))
                     .font(AppStyle.Typography.headline)
                 Spacer(minLength: AppStyle.Spacing.small)
+                hiddenMenu
                 HStack(spacing: AppStyle.Spacing.xxSmall) {
                     ForEach(AnalyticsDimension.allCases) { option in
                         Button {
@@ -749,6 +785,53 @@ private struct AnalyticsBreakdownCard: View {
         }
     }
 
+    private var hiddenMenu: some View {
+        Menu {
+            ForEach(allCategories) { category in
+                Button {
+                    onToggleCategory(category.id)
+                } label: {
+                    if hiddenCategoryIDs.contains(category.id) {
+                        Label(category.name, systemImage: "checkmark")
+                    } else {
+                        Text(category.name)
+                    }
+                }
+            }
+            if !hiddenCategoryIDs.isEmpty {
+                Divider()
+                Button(String(localized: "analytics.show_all_categories")) {
+                    onShowAllCategories()
+                }
+            }
+        } label: {
+            HStack(spacing: 3) {
+                Image(systemName: "eye.slash")
+                if !hiddenCategoryIDs.isEmpty {
+                    Text("\(hiddenCategoryIDs.count)")
+                        .font(AppStyle.Typography.metadataEmphasis.numbers)
+                }
+            }
+            .font(.system(size: 11, weight: .semibold))
+            .foregroundStyle(hiddenCategoryIDs.isEmpty ? AppColors.textSecondary : AppColors.textPrimary)
+            .padding(.horizontal, 8)
+            .frame(height: 24)
+            .background {
+                Capsule(style: .continuous)
+                    .fill(hiddenCategoryIDs.isEmpty ? AppColors.fillSecondary : AppColors.surfaceRaised)
+            }
+            .overlay {
+                Capsule(style: .continuous)
+                    .strokeBorder(AppColors.borderSubtle, lineWidth: 0.5)
+            }
+            .contentShape(Capsule(style: .continuous))
+        }
+        .menuStyle(.borderlessButton)
+        .menuIndicator(.hidden)
+        .fixedSize()
+        .accessibilityLabel(String(localized: "analytics.hide_categories"))
+    }
+
     private func filterButton(_ option: AnalyticsFilter, count: Int) -> some View {
         Button {
             filter = option
@@ -798,7 +881,7 @@ private struct AnalyticsBreakdownCard: View {
             if otherExpanded {
                 VStack(spacing: 0) {
                     ForEach(group.children) { child in
-                        childRow(child)
+                        plainRow(child, indent: 44, iconFrame: 22)
                     }
                 }
                 .padding(.bottom, AppStyle.Spacing.xxSmall)
@@ -806,17 +889,31 @@ private struct AnalyticsBreakdownCard: View {
         }
     }
 
-    private func plainRow(_ slice: AnalyticsSlice, showsChevron: Bool = false) -> some View {
+    private func plainRow(
+        _ slice: AnalyticsSlice,
+        indent: CGFloat = 0,
+        iconFrame: CGFloat = AppStyle.Row.listIconFrameSize,
+        showsChevron: Bool = false
+    ) -> some View {
         HStack(spacing: AppStyle.Spacing.small) {
             ListRowIcon(
                 symbol: slice.symbol,
-                color: slice.color
+                color: slice.color,
+                frameSize: iconFrame
             )
 
             VStack(alignment: .leading, spacing: AppStyle.Spacing.xxxSmall) {
-                Text(slice.name)
-                    .font(AppStyle.Typography.headline)
-                    .lineLimit(1)
+                HStack(spacing: 4) {
+                    Text(slice.name)
+                        .font(AppStyle.Typography.headline)
+                        .lineLimit(1)
+                    if showsChevron {
+                        Image(systemName: otherExpanded ? "chevron.down" : "chevron.right")
+                            .font(.system(size: 10, weight: .semibold))
+                            .foregroundStyle(AppColors.textTertiary)
+                            .frame(width: 10)
+                    }
+                }
                 Text(figures: Finance.operationsCountText(slice.operationCount),
                      style: AppStyle.Typography.metadata)
                     .foregroundStyle(AppColors.textSecondary)
@@ -846,47 +943,15 @@ private struct AnalyticsBreakdownCard: View {
                 }
             }
 
-            if showsChevron {
-                Image(systemName: otherExpanded ? "chevron.down" : "chevron.right")
-                    .font(.system(size: 10, weight: .semibold))
-                    .foregroundStyle(AppColors.textTertiary)
-                    .frame(width: 12)
-            }
         }
-        .padding(.horizontal, AppStyle.Row.cardHorizontalPadding)
+        .padding(.leading, AppStyle.Row.cardHorizontalPadding + indent)
+        .padding(.trailing, AppStyle.Row.cardHorizontalPadding)
         .padding(.vertical, AppStyle.Spacing.xSmall)
         .background {
             hoveredSliceID == slice.id
                 ? AppColors.fillSecondary.opacity(0.5)
                 : .clear
         }
-        .accessibilityElement(children: .combine)
-    }
-
-    private func childRow(_ slice: AnalyticsSlice) -> some View {
-        HStack(spacing: AppStyle.Spacing.xSmall) {
-            ListRowIcon(
-                symbol: slice.symbol,
-                color: slice.color,
-                frameSize: 22
-            )
-            Text(slice.name)
-                .font(AppStyle.Typography.callout)
-                .foregroundStyle(AppColors.textSecondary)
-                .lineLimit(1)
-            Spacer(minLength: AppStyle.Spacing.small)
-            Text(money(slice.amount))
-                .font(AppStyle.Typography.metadataEmphasis.numbers)
-                .foregroundStyle(AppColors.textSecondary)
-                .lineLimit(1)
-            Text(figures: AnalyticsFormat.percent(share(slice), signed: false),
-                 style: AppStyle.Typography.metadata)
-                .foregroundStyle(AppColors.textTertiary)
-                .frame(width: 44, alignment: .trailing)
-        }
-        .padding(.leading, 44)
-        .padding(.trailing, AppStyle.Row.cardHorizontalPadding)
-        .padding(.vertical, 3)
         .accessibilityElement(children: .combine)
     }
 

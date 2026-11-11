@@ -3,7 +3,7 @@
 As of **November 9, 2026**. The code in `Montra/` is the source of truth.
 Each area has IDs, checks, expected outcomes, and negative or edge cases.
 
-> Automated coverage includes **160 checks** in `-selftest` and full screen
+> Automated coverage includes **161 checks** in `-selftest` and full screen
 > rendering with `-snapshot`. See sections 4 and 5 for coverage and gaps.
 
 ## 0. How to use this inventory
@@ -269,7 +269,7 @@ Use a 980×700 window with a 240 pt sidebar and `hiddenTitleBar`.
 |---|---|---|---|
 | ABT-01 | About | Montra artwork, version, total across accounts in the primary currency, feature summary, and footer | ui/visual |
 | ABT-02 | Replay | Preview banner, no writes, X closes, and completion opens Overview | ui |
-| ABT-03 | Analytics | Period, month, and year scopes, previous/current stepper, summary expenses/income/left, savings transfers shown separately, category or account split, essential/discretionary filters, informational rows with plain transaction-style icons, expandable "Other" group for categories below 1% of expenses, always pinned last, cumulative chart with previous/even pace and month labels on the year axis, chart hover and keyboard, heat map with today marker, above-average accent palette and readout, interactive day-operations popup with scroll and close delay, non-clickable informational category/account rows, empty state, light/dark, and year boundaries. Engine: totals, savings in/out, comparison windows, cumulative endpoint, heat levels, chart ceiling, year day count | unit/ui/visual |
+| ABT-03 | Analytics | Period, month, and year scopes, previous/current stepper, summary expenses/income/left, savings transfers shown separately, category or account split, essential/discretionary filters, informational rows with plain transaction-style icons, expandable "Other" group for categories below 1% of expenses, always pinned last with its children aligned to the same amount/share column, cumulative chart with previous/even pace and month labels on the year axis, chart hover and keyboard, heat map with today marker, above-average accent palette, hidden-category menu with show-all reset, hidden-state empty screen and readout, interactive day-operations popup with scroll and close delay, non-clickable informational category/account rows, empty state, light/dark, and year boundaries. Engine: totals, savings in/out, comparison windows, cumulative endpoint, heat levels, chart ceiling, year day count | unit/ui/visual |
 
 ### 2.14 Formatting, accessibility, and animation
 
@@ -310,7 +310,7 @@ Use a 980×700 window with a 240 pt sidebar and `hiddenTitleBar`.
 10. **Accessibility.** All actions are keyboard-accessible. Reduce Motion
     leaves content available.
 
-## 4. Current automated coverage (`-selftest`, 160)
+## 4. Current automated coverage (`-selftest`, 161)
 
 - Period generation, continuity, February clamping, fixed length, manual edits,
   and neighboring boundaries.
@@ -367,6 +367,7 @@ Use a 980×700 window with a 240 pt sidebar and `hiddenTitleBar`.
 - Savings transfers are shown as a separate summary line and do not reduce the remaining figure; they are not spending.
 - The year scope shows a 12-month summary card instead of the day calendar; use Period or Month for the day-level heat map.
 - The "Other" group covers expense categories below 1% of total expenses and expands to its children; the other category rows remain read-only. The demo store has no such category, so it is not visible in the docs image.
+- The Analytics category menu hides categories from the current and previous totals, the chart, the heat map, and the Other group. The hidden set is stored in AppStorage for this Mac; it is not part of the .montra backup or Local API.
 - The calendar day popup is hover-only. It stays open while the pointer is over the cell or the popup and closes after a short delay when both are left.
 - Recurrence is unavailable on Transfer.
 - Editing a whole plan series requires deleting and recreating it.

@@ -11,7 +11,7 @@ pass; no separate critic agent could be launched from this delegated session.
 
 ## Build and evidence
 
-- `-selftest`: **ALL CHECKS PASSED**, 160 checks.
+- `-selftest`: **ALL CHECKS PASSED**, 161 checks.
 - `audit-feature-sync.py --require-dmg`: **7 passed, 0 warnings, 0 failures**.
 - DMG: `build/Montra-1.0-analytics-screen-v3.dmg`.
 - Renders: `build/analytics-snaps/06b-analytics-tall.png`,
@@ -151,6 +151,8 @@ They appear only in the savings line. The engine test covers both directions:
 - The year view has no day-level heat map; switch to Month or Period for it.
 - The “Прочее” group is not visible in the docs demo because every seeded
   category is above 1%. It needs a real or test category below the threshold.
+- The hidden-category set is stored in AppStorage, not in the backup or API; a
+  fresh Mac or restored backup starts with everything visible.
 - A one-operation day leaves empty space in the 220 pt popup frame; the popup
   stays compact at the top or bottom, but the frame is intentionally fixed so
   the caret stays attached.

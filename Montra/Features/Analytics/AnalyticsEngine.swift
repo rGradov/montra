@@ -265,6 +265,7 @@ enum AnalyticsEngine {
         operations allOperations: [Operation],
         displayCurrency: Currency,
         rates: ExchangeRates,
+        hiddenCategoryIDs: Set<UUID> = [],
         now: Date = .now,
         calendar: Calendar = .current
     ) -> AnalyticsSnapshot {
@@ -272,7 +273,11 @@ enum AnalyticsEngine {
             .addingTimeInterval(-1) ?? range.end
         let effectiveEnd = range.isCurrent ? min(range.end, endOfToday) : range.end
 
-        let rangeOps = allOperations.filter {
+        let visibleOperations = allOperations.filter { operation in
+            guard let category = operation.category else { return true }
+            return !hiddenCategoryIDs.contains(category.id)
+        }
+        let rangeOps = visibleOperations.filter {
             $0.date >= range.start && $0.date <= effectiveEnd
         }
         let currentOps = rangeOps.filter { $0.transferID == nil }
@@ -293,7 +298,7 @@ enum AnalyticsEngine {
         let previousFullOps: [Operation]
         let comparisonOps: [Operation]
         if let previousStart = range.previousStart, let previousEnd = range.previousEnd {
-            previousFullOps = allOperations.filter {
+            previousFullOps = visibleOperations.filter {
                 $0.transferID == nil && $0.date >= previousStart && $0.date <= previousEnd
             }
             if range.scope == .month {

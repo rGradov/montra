@@ -267,6 +267,16 @@ enum SelfTest {
         check(analytics.average > 35.7 && analytics.average < 35.8,
               "аналитика: средний расход в день")
         check(analytics.chartMax == 1_200, "аналитика: верхняя граница графика")
+        let hiddenAnalytics = AnalyticsEngine.snapshot(
+            range: analyticsRange,
+            operations: analyticsOps,
+            displayCurrency: .byn,
+            rates: .fallback,
+            hiddenCategoryIDs: [analyticsHousing.id],
+            now: analyticsNow
+        )
+        check(hiddenAnalytics.expenses == 400,
+              "аналитика: скрытая категория исключена из всех итогов")
         let analyticsMonth = AnalyticsEngine.monthRange(containing: analyticsNow)
         check(analyticsMonth.totalDays == 30
                 && analyticsMonth.elapsedDays == 11

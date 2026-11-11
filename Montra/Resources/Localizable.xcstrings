@@ -936,6 +936,57 @@
         }
       }
     },
+    "analytics.hidden_categories_empty": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "All categories are hidden"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Все категории скрыты"
+          }
+        }
+      }
+    },
+    "analytics.hidden_categories_empty_message": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Restore categories to see analytics again."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Верните категории, чтобы снова увидеть аналитику."
+          }
+        }
+      }
+    },
+    "analytics.hide_categories": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hide categories"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Скрыть категории"
+          }
+        }
+      }
+    },
     "analytics.hover_day": {
       "extractionState": "manual",
       "localizations": {
@@ -1393,6 +1444,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Снятие с накопительного счёта"
+          }
+        }
+      }
+    },
+    "analytics.show_all_categories": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Show all"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Показать все"
           }
         }
       }

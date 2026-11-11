@@ -980,6 +980,16 @@ enum AppMotion {
     static let insert = Animation.spring(response: 0.34, dampingFraction: 0.86)
     /// The highlight fading off a freshly added row.
     static let highlight = Animation.easeOut(duration: 0.9)
+    /// A hero hand-off: a decelerating move that arrives exactly on its target,
+    /// so the element waiting there can take over without a jump. The curve is a
+    /// plain ease-out rather than a snap: it covers about a quarter of the trip
+    /// in the first tenth of the time, so the eye can follow the element the
+    /// whole way instead of seeing it jump and then wait.
+    static func heroFlight(duration: TimeInterval) -> Animation {
+        .timingCurve(0.22, 0.61, 0.36, 1, duration: duration)
+    }
+
+    static let heroFlightDuration: TimeInterval = 0.56
 }
 
 /// The soft veil a just-added row wears for a moment.

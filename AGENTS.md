@@ -1,69 +1,73 @@
-# Montra — инструкции для агента
+# Montra agent instructions
 
-## Новая фича = полный цикл
+## Feature release requirements
 
-Любая фича, изменение поведения, новое поле модели, настройка, экран, действие
-Local API/MCP или формат бэкапа в этом репозитории выполняются по skill
-**`montra-feature-release`** (`.agents/skills/montra-feature-release/SKILL.md`).
+Use the **`montra-feature-release`** skill
+(`.agents/skills/montra-feature-release/SKILL.md`) for features, behavior changes,
+model fields, settings, screens, Local API or MCP actions, and backup format changes.
 
-Прочитай skill перед первой правкой. Не считай фичу готовой, пока не закрыты все
-ворота:
+Read the skill before editing. A feature is complete when it passes all applicable
+checks.
 
-1. **Код и локализация** — фича работает; все новые строки есть в
-   `Localizable.xcstrings` на `ru` и `en`.
-2. **Бэкап** — новое сохранённое значение попадает в `.montra` и восстанавливается;
-   старые копии продолжают открываться. Новое поле модели, настройка или сущность
-   без бэкапа — это незаконченная фича.
-3. **Local API** — пользовательские данные и действия представимы через
-   `Montra/Integration/LedgerAPI.swift`; обновлён `Docs/Local-API.md`.
-4. **MCP** — инструмент и все параметры есть в `mcp/server.py`; обновлён
-   `mcp/README.md`; smoke дополнен. MCP не подхватывает API автоматически.
-5. **Тесты** — `-selftest` печатает `ALL CHECKS PASSED`; при UI-изменениях
-   проверены snapshots; при API/MCP — `mcp/tests/smoke.py` passed.
-6. **Аудит** — `python3 Scripts/audit-feature-sync.py --require-dmg` без failures.
-7. **DMG** — `Scripts/make-dmg.sh <tag> --open` собрал образ после тестов.
-8. **Отчёт** — что изменилось в бэкапе, API, MCP, тестах; путь к DMG; 2–4 шага
-   ручной проверки.
+1. **Code and localization.** Verify the feature and add every new user-facing
+   string to `Localizable.xcstrings` in `ru` and `en`.
+2. **Backup.** Include new persisted fields, settings, and entities in `.montra`
+   capture and restore. Verify that older backups still open.
+3. **Local API.** Represent user data and actions in
+   `Montra/Integration/LedgerAPI.swift` and update `Docs/Local-API.md`.
+4. **MCP.** Expose the tool and its parameters in `mcp/server.py`. Update
+   `mcp/README.md` and smoke coverage. MCP tools are registered separately.
+5. **Tests.** Require `ALL CHECKS PASSED` from `-selftest`. Review snapshots
+   for UI changes and run `mcp/tests/smoke.py` for API or MCP changes.
+6. **Audit.** Require zero failures from
+   `python3 Scripts/audit-feature-sync.py --require-dmg`.
+7. **DMG.** After the tests pass, package the app with
+   `Scripts/make-dmg.sh <tag> --open`.
+8. **Report.** Summarize backup, API, MCP, and test changes. Include the DMG path
+   and two to four manual verification steps.
 
-Исключения из бэкапа/API допустимы только для машинных, производных или
-временных значений, и только с причиной в
-`Scripts/feature-sync-allowlist.txt`.
+Backup and API exclusions apply only to machine-specific, derived, or temporary
+values. Record each reason in `Scripts/feature-sync-allowlist.txt`.
 
-## Команды
+For documentation-only changes, follow the skill's documentation workflow.
+Review the diff and run applicable documentation checks.
+
+## Commands
 
 ```bash
-# аудит синхронизации
+# Synchronization audit
 python3 Scripts/audit-feature-sync.py
 
-# сборка и self-test
+# Build and self-test
 xcodebuild -project Montra.xcodeproj -scheme Montra -configuration Debug \
   -derivedDataPath build/DerivedData-debug \
   OTHER_SWIFT_FLAGS=-disable-sandbox build
 build/DerivedData-debug/Build/Products/Debug/Montra.app/Contents/MacOS/Montra -selftest
 
-# API + MCP
+# API and MCP
 ./mcp/tests/build-fixture.sh
 mcp/.venv/bin/python mcp/tests/smoke.py
 
-# установочный образ
+# Installer image
 Scripts/make-dmg.sh <tag> --open
 ```
 
-`-disable-sandbox` нужен только из-за внешнего sandbox DSH: он блокирует
-вложенный `sandbox-exec` SwiftData-макроса. В обычном терминале флаг не нужен.
+Use `-disable-sandbox` in DSH because its outer sandbox blocks the SwiftData
+macro's nested `sandbox-exec`. Omit the flag in a regular terminal.
 
-## Границы
+## Boundaries
 
-- Не тестируй разрушительные сценарии на реальном store без копии.
-- Не коммить секреты и токен Local API.
-- Не меняй `Docs/Feature-Inventory.md` задним числом без причины: это источник
-  истины для тестов.
-- Не поднимай `MARKETING_VERSION` автоматически; сборки различаются тегом DMG.
-- Если `hdiutil` не может создать образ из-за sandbox — перезапусти упаковку с
-  full disk access, а не заменяй DMG на zip.
+- Use a copy of the store for destructive tests.
+- Keep secrets and the Local API token out of commits.
+- Preserve the historical checks in `Docs/Feature-Inventory.md` unless a change
+  requires updating them. The inventory is the source of truth for tests.
+- Keep `MARKETING_VERSION` fixed unless a version change is requested. Use the
+  DMG tag to distinguish builds.
+- If the sandbox blocks `hdiutil`, rerun packaging with full disk access and
+  produce a DMG.
 
-## Документация
+## Documentation
 
-- `Docs/Feature-Workflow.md` — как устроен цикл и как запускать проверки вручную.
-- `.agents/skills/montra-feature-release/references/` — подробные playbook'и по
-  бэкапу, API/MCP и релизу.
+- `Docs/Feature-Workflow.md` explains the release workflow and manual checks.
+- `.agents/skills/montra-feature-release/references/` contains the backup,
+  API/MCP, and release playbooks.

@@ -8,7 +8,8 @@ import SwiftUI
 // The soundtrack is a short "story logo": it starts almost silent, swells, and
 // peaks at 2.24 s. The intro is cut around that peak: the warm light gathers
 // first, the mascot's own appearance animation starts a beat before the peak so
-// Mori pops exactly on it, and the welcome page follows once the music settles.
+// Mori pops exactly on it, and the mascot then travels into the welcome icon
+// once the music settles.
 private enum OnboardingIntroTiming {
     /// The glow starts gathering while the track is still quiet.
     static let glowStarts: TimeInterval = 0.35
@@ -18,20 +19,34 @@ private enum OnboardingIntroTiming {
     static let revealStarts: TimeInterval = 2.04
     static let captionAppears: TimeInterval = 3.20
     static let dismissStarts: TimeInterval = 4.35
-    /// Music has fallen back to near silence by now, so the crossfade is clean.
+    /// The mascot's trip into the welcome icon. The icon takes over as it lands.
+    static let flight: TimeInterval = AppMotion.heroFlightDuration
+    /// A quick trip when the person asked to skip.
+    static let flightQuick: TimeInterval = 0.34
+    /// The intro's own backdrop and copy getting out of the way.
+    static let stepAside: TimeInterval = 0.45
+    /// The copy goes sooner than the backdrop, so it is not still on screen
+    /// while the mascot is already moving.
+    static let copyAside: TimeInterval = 0.2
+    /// The mascot dissolving into the icon that is focusing up underneath it.
+    static let mascotFade: TimeInterval = 0.18
+    static let mascotFadeQuick: TimeInterval = 0.12
+    /// Music has fallen back to near silence by now, so the hand-off is clean.
     static let musicFadeOut: TimeInterval = 0.7
 }
 
 // MARK: - Intro
 
 /// The first thing a new person sees: a warm glow gathers, the crescent prelude
-/// wakes up, Mori pops in on the soundtrack's peak, and the welcome step fades
-/// up underneath. Space, Escape or the corner button skips straight to it.
+/// wakes up, Mori pops in on the soundtrack's peak, and the mascot then flies
+/// into the welcome icon as one continuous element instead of cross-fading.
+/// Space, Escape or the corner button skips straight to it.
 struct OnboardingIntroView: View {
     private let playsSound: Bool
     let onFinished: () -> Void
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.moriFlightPreview) private var previewProgress
     @State private var soundtrack = OnboardingSoundtrack()
     @State private var glow: Double = 0
     @State private var showsPrelude = false
@@ -41,46 +56,76 @@ struct OnboardingIntroView: View {
     @State private var isMuted = false
     @State private var didStart = false
 
-    private let mascotSize: CGFloat = 320
+    /// Where the welcome icon sits. The root view hands this down once the
+    /// welcome step has reported its icon's frame.
+    private let landing: MoriFlight?
+    @State private var target: MoriFlight?
+    /// The mascot's frame, so the flight can start from the exact spot the
+    /// mascot is already drawn on.
+    @State private var mascotFrame: CGRect = .zero
+    @State private var isFlying = false
+    @State private var flightProgress: CGFloat = 0
+    @State private var flightOpacity: Double = 1
 
-    init(playsSound: Bool = true, onFinished: @escaping () -> Void) {
+    private let mascotSize = OnboardingHero.mascotSize
+
+    init(
+        playsSound: Bool = true,
+        landing: MoriFlight? = nil,
+        onFinished: @escaping () -> Void
+    ) {
         self.playsSound = playsSound
+        self.landing = landing
         self.onFinished = onFinished
     }
 
     var body: some View {
         ZStack {
-            AppColors.surfaceBase
-                .ignoresSafeArea()
-
-            glowField
-                .allowsHitTesting(false)
-
-            IntroSparkles()
-                .frame(width: 620, height: 540)
-                .opacity(glow)
-                .allowsHitTesting(false)
+            backdrop
+                .opacity(stepAsideOpacity)
 
             VStack(spacing: AppStyle.Spacing.medium + 4) {
-                MoriRevealView(size: mascotSize, isPrelude: showsPrelude, isRevealing: revealsMori)
-                    .opacity(revealsMori ? 1 : (showsPrelude ? 0.62 : 0))
-                    .scaleEffect(revealsMori ? 1 : (showsPrelude ? 0.92 : 0.965))
-                    .blur(radius: revealsMori ? 0 : (showsPrelude ? 1.5 : 8))
-                    .shadow(color: OnboardingIntroPalette.warm.opacity(glow * 0.32), radius: 30)
-                    .accessibilityLabel(String(localized: "common.mori"))
-                    .accessibilityHidden(!revealsMori)
+                // The flight layer sits in the mascot's own slot, so the copy
+                // below it cannot move while the mascot travels. Only the intro's
+                // own layers step aside; the mascot that flies stays at full
+                // strength until it lands.
+                ZStack {
+                    mascot
+                        .opacity(showsFlight ? 0 : stepAsideOpacity)
+
+                    if showsFlight, let target {
+                        MoriFlightView(
+                            start: mascotFrame,
+                            flight: target,
+                            progress: shownProgress,
+                            glow: glow
+                        )
+                        .opacity(previewProgress == nil ? flightOpacity : 1)
+                    }
+                }
 
                 caption
+                    .opacity(copyAsideOpacity)
+                    .animation(.easeOut(duration: OnboardingIntroTiming.copyAside), value: isDismissing)
             }
             .offset(y: -6)
 
             controls
+                .opacity(copyAsideOpacity)
+                .animation(.easeOut(duration: OnboardingIntroTiming.copyAside), value: isDismissing)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(AppColors.surfaceBase)
-        .opacity(isDismissing ? 0 : 1)
-        .blur(radius: isDismissing ? 7 : 0)
-        .scaleEffect(isDismissing ? 1.015 : 1)
+        // Reduce Motion, and a run that never measured the icon, keep the plain
+        // crossfade this screen used to have.
+        .modifier(IntroCrossfade(isActive: isDismissing && !showsFlight))
+        .onPreferenceChange(OnboardingIntroMascotKey.self) { frame in
+            guard let frame, frame.width > 1 else { return }
+            mascotFrame = frame
+        }
+        .onChange(of: landing, initial: true) { _, newValue in
+            guard let newValue else { return }
+            target = newValue
+        }
         .background {
             // Keyboard access without a visible control taking focus.
             Group {
@@ -91,13 +136,82 @@ struct OnboardingIntroView: View {
             .opacity(0)
             .accessibilityHidden(true)
         }
-        .task { await runTimeline() }
+        .task {
+            guard previewProgress != nil else {
+                await runTimeline()
+                return
+            }
+            // A frozen render shows the screen as the hand-off finds it: the
+            // intro at rest, with the flight layer driven by the given progress.
+            showsPrelude = true
+            revealsMori = true
+            showsCaption = true
+            glow = 0.7
+        }
         .onDisappear { soundtrack.stop() }
         .accessibilityElement(children: .contain)
         .accessibilityLabel(String(localized: "common.meet_mori"))
     }
 
+    // MARK: Hand-off state
+
+    /// The backdrop steps aside so the mascot can carry the transition; a frozen
+    /// render derives the same fade from its progress.
+    private var stepAsideOpacity: Double {
+        stepAsideOpacity(over: OnboardingIntroTiming.stepAside)
+    }
+
+    private var copyAsideOpacity: Double {
+        stepAsideOpacity(over: OnboardingIntroTiming.copyAside)
+    }
+
+    private func stepAsideOpacity(over duration: TimeInterval) -> Double {
+        guard let previewProgress else { return isDismissing ? 0 : 1 }
+        let elapsed = previewProgress * OnboardingIntroTiming.flight
+        return 1 - min(1, elapsed / duration)
+    }
+
+    private var showsFlight: Bool {
+        previewProgress != nil || isFlying
+    }
+
+    private var shownProgress: CGFloat {
+        previewProgress ?? flightProgress
+    }
+
     // MARK: Visuals
+
+    private var backdrop: some View {
+        ZStack {
+            AppColors.surfaceBase
+                .ignoresSafeArea()
+
+            // The glow is wider than the window. A GeometryReader takes the size
+            // it is offered and lets the glow overflow it, so the backdrop cannot
+            // stretch the intro's layout: if it did, the intro would sit off the
+            // window's origin and every coordinate the mascot flies to would be
+            // shifted with it.
+            GeometryReader { proxy in
+                glowField
+                    .position(x: proxy.size.width / 2, y: proxy.size.height / 2)
+                IntroSparkles()
+                    .frame(width: 620, height: 540)
+                    .opacity(glow)
+                    .position(x: proxy.size.width / 2, y: proxy.size.height / 2)
+            }
+            .allowsHitTesting(false)
+        }
+    }
+
+    private var mascot: some View {
+        MoriRevealView(size: mascotSize, isPrelude: showsPrelude, isRevealing: revealsMori, isPinned: showsFlight)
+            .opacity(revealsMori ? 1 : (showsPrelude ? 0.62 : 0))
+            .scaleEffect(revealsMori ? 1 : (showsPrelude ? 0.92 : 0.965))
+            .blur(radius: revealsMori ? 0 : (showsPrelude ? 1.5 : 8))
+            .shadow(color: OnboardingIntroPalette.warm.opacity(glow * 0.32), radius: 30)
+            .accessibilityLabel(String(localized: "common.mori"))
+            .accessibilityHidden(!revealsMori)
+    }
 
     private var glowField: some View {
         RadialGradient(
@@ -202,31 +316,73 @@ struct OnboardingIntroView: View {
     }
 
     private func dismiss() {
+        handOff(quick: false)
+    }
+
+    /// Gives up the screen. When both ends of the trip are known the mascot flies
+    /// into the welcome icon and the icon takes over as it lands, so nothing
+    /// cross-fades; otherwise the screen fades away as it always did.
+    private func handOff(quick: Bool) {
         guard !isDismissing else { return }
-        withAnimation(.easeInOut(duration: OnboardingIntroTiming.musicFadeOut)) { isDismissing = true }
-        if playsSound { soundtrack.fadeOutAndStop(after: OnboardingIntroTiming.musicFadeOut) }
+        if playsSound {
+            let fade = quick ? 0.32 : OnboardingIntroTiming.musicFadeOut
+            soundtrack.fadeOutAndStop(after: fade)
+        }
+
+        guard target != nil, !reduceMotion, mascotFrame.width > 1 else {
+            withAnimation(.easeInOut(duration: OnboardingIntroTiming.musicFadeOut)) { isDismissing = true }
+            Task { @MainActor in
+                try? await Task.sleep(for: .seconds(OnboardingIntroTiming.musicFadeOut + 0.1))
+                onFinished()
+            }
+            return
+        }
+
+        let duration = quick ? OnboardingIntroTiming.flightQuick : OnboardingIntroTiming.flight
+        let fade = quick ? OnboardingIntroTiming.mascotFadeQuick : OnboardingIntroTiming.mascotFade
+
+        // The backdrop and the copy step aside while the mascot, and only the
+        // mascot, carries the transition.
+        withAnimation(.easeInOut(duration: quick ? 0.3 : OnboardingIntroTiming.stepAside)) { isDismissing = true }
+        isFlying = true
 
         Task { @MainActor in
-            try? await Task.sleep(for: .seconds(OnboardingIntroTiming.musicFadeOut + 0.1))
+            // Mount the mascot on the frame it is already on, then let it go.
+            try? await Task.sleep(for: .seconds(0.02))
+            withAnimation(AppMotion.heroFlight(duration: duration)) { flightProgress = 1 }
+
+            try? await Task.sleep(for: .seconds(duration))
+            // The mascot has landed on the icon. It dissolves while the icon is
+            // still out of focus, so the painted mascot takes its place unseen.
+            withAnimation(.easeOut(duration: fade)) { flightOpacity = 0 }
+
+            try? await Task.sleep(for: .seconds(fade + 0.02))
             onFinished()
         }
     }
 
     private func skip() {
         guard !isDismissing else { return }
-        withAnimation(.easeOut(duration: 0.34)) { isDismissing = true }
-        if playsSound { soundtrack.fadeOutAndStop(after: 0.32) }
-
-        Task { @MainActor in
-            try? await Task.sleep(for: .seconds(0.34))
-            onFinished()
-        }
+        handOff(quick: true)
     }
 
     private func toggleMute() {
         guard playsSound, !isDismissing else { return }
         isMuted.toggle()
         soundtrack.setMuted(isMuted)
+    }
+}
+
+/// The hand-off this screen used before the mascot flew: the whole intro fades
+/// and softens away. Kept for Reduce Motion and for runs with no measured icon.
+private struct IntroCrossfade: ViewModifier {
+    let isActive: Bool
+
+    func body(content: Content) -> some View {
+        content
+            .opacity(isActive ? 0 : 1)
+            .blur(radius: isActive ? 7 : 0)
+            .scaleEffect(isActive ? 1.015 : 1)
     }
 }
 
@@ -238,10 +394,13 @@ private struct MoriRevealView: View {
     let size: CGFloat
     let isPrelude: Bool
     let isRevealing: Bool
+    /// Held still while the mascot is in flight, so it leaves from and lands on
+    /// exactly the frame the flight measured.
+    var isPinned = false
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.moriFlightPreview) private var previewProgress
     @State private var frameImage: NSImage?
-    @State private var stillImage: NSImage?
     @State private var showsStill = false
     @State private var floats = false
     @State private var isPlaying = false
@@ -256,24 +415,25 @@ private struct MoriRevealView: View {
                     .opacity(showsStill ? 0 : 1)
             }
 
-            if let stillImage {
-                Image(nsImage: stillImage)
-                    .resizable()
-                    .interpolation(.high)
-                    .aspectRatio(contentMode: .fit)
-                    // Frame 16 of the GIF and the still are cropped slightly
-                    // differently; nudge the still so the dissolve is seamless.
-                    .scaleEffect(1.065)
-                    .offset(x: size * 0.019, y: -size * 0.003)
-                    .opacity(showsStill ? 1 : 0)
-            }
+            MoriStillLayer(size: size)
+                .opacity(showsStill ? 1 : 0)
         }
         .frame(width: size, height: size)
-        .offset(y: floats ? -4 : 0)
+        // The flight has to start from where the mascot is drawn, float included.
+        .background {
+            GeometryReader { proxy in
+                Color.clear.preference(
+                    key: OnboardingIntroMascotKey.self,
+                    value: proxy.frame(in: .named(OnboardingHero.coordinateSpace))
+                        .offsetBy(dx: 0, dy: floatOffset)
+                )
+            }
+        }
+        .offset(y: floatOffset)
         // Decode the GIF up front, while the screen is still empty: decoding at
         // the peak would land a hitch exactly on the music.
         .task {
-            stillImage = MoriArtwork.stillImage()
+            _ = MoriArtwork.stillImage()
             frameImage = MoriArtwork.frames().first?.image
         }
         .task(id: isRevealing) {
@@ -286,7 +446,13 @@ private struct MoriRevealView: View {
         guard !isPlaying else { return }
         isPlaying = true
 
-        stillImage = MoriArtwork.stillImage()
+        // A render with no real time to spare wants the mascot at rest, not
+        // caught mid-dissolve from the GIF to the still.
+        if rendersMascotAtRest {
+            showsStill = true
+            return
+        }
+
         let frames = MoriArtwork.frames()
 
         guard !frames.isEmpty else {
@@ -306,57 +472,23 @@ private struct MoriRevealView: View {
         startFloating()
     }
 
+    /// The QA renders block the main thread to take their shots, which starves
+    /// the GIF, so they show the mascot at rest instead of half-way through its
+    /// appearance. The app itself never takes this path.
+    private var rendersMascotAtRest: Bool {
+        previewProgress != nil || CommandLine.arguments.contains("-intro-snapshots")
+    }
+
+    private var floatOffset: CGFloat {
+        floats && !isPinned ? -4 : 0
+    }
+
     private func startFloating() {
-        guard !reduceMotion else { return }
+        guard !reduceMotion, !isPinned else { return }
         withAnimation(.easeInOut(duration: 3.4).repeatForever(autoreverses: true)) {
             floats = true
         }
     }
-}
-
-private enum MoriArtwork {
-    private static var cachedFrames: [MoriFrame]?
-    private static var cachedStill: NSImage?
-
-    static func frames() -> [MoriFrame] {
-        if let cachedFrames { return cachedFrames }
-        guard let url = Bundle.main.url(forResource: "MoriAppearance", withExtension: "gif"),
-              let source = CGImageSourceCreateWithURL(url as CFURL, nil) else { return [] }
-
-        let frames: [MoriFrame] = (0..<CGImageSourceGetCount(source)).compactMap { index in
-            guard let cgImage = CGImageSourceCreateImageAtIndex(source, index, nil) else { return nil }
-            let image = NSImage(
-                cgImage: cgImage,
-                size: NSSize(width: cgImage.width, height: cgImage.height)
-            )
-
-            var duration: TimeInterval = 0.04
-            if let properties = CGImageSourceCopyPropertiesAtIndex(source, index, nil) as? [CFString: Any],
-               let gif = properties[kCGImagePropertyGIFDictionary] as? [CFString: Any] {
-                if let value = gif[kCGImagePropertyGIFUnclampedDelayTime] as? Double, value > 0.01 {
-                    duration = value
-                } else if let value = gif[kCGImagePropertyGIFDelayTime] as? Double, value > 0.01 {
-                    duration = value
-                }
-            }
-            return MoriFrame(image: image, duration: duration)
-        }
-        cachedFrames = frames
-        return frames
-    }
-
-    static func stillImage() -> NSImage? {
-        if let cachedStill { return cachedStill }
-        guard let url = Bundle.main.url(forResource: "MoriMascot", withExtension: "png") else { return nil }
-        let image = NSImage(contentsOf: url)
-        cachedStill = image
-        return image
-    }
-}
-
-private struct MoriFrame {
-    let image: NSImage
-    let duration: TimeInterval
 }
 
 // MARK: - Sparkles
@@ -441,15 +573,11 @@ private struct FourPointStar: Shape {
     }
 }
 
-private enum OnboardingIntroPalette {
-    static let warm = Color(red: 1.0, green: 0.80, blue: 0.42)
-    static let lavender = Color(red: 0.76, green: 0.70, blue: 0.95)
-}
-
 // MARK: - Sound
 
 /// Owns the intro track. Starts from silence, fades up under the animation and
-/// fades out while the welcome step appears. Muting only affects this player.
+/// fades out while the mascot travels to the welcome icon. Muting only affects
+/// this player.
 final class OnboardingSoundtrack {
     private var player: AVAudioPlayer?
     private var stopTask: Task<Void, Never>?
@@ -459,8 +587,9 @@ final class OnboardingSoundtrack {
 
     func start() {
         guard player == nil else { return }
-        // Snapshot runs render the intro without sound.
-        guard !CommandLine.arguments.contains("-intro-snapshots") else { return }
+        // Snapshot and animation runs render the intro without sound.
+        guard !CommandLine.arguments.contains("-intro-snapshots"),
+              !CommandLine.arguments.contains("-animate-onboarding-intro") else { return }
         guard let url = Bundle.main.url(forResource: "OnboardingTheme", withExtension: "wav") else { return }
         guard let player = try? AVAudioPlayer(contentsOf: url) else { return }
 

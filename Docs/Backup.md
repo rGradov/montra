@@ -1,30 +1,30 @@
-# Резервная копия Montra
+# Montra backups
 
-Резервная копия — это один файл с расширением `.montra`, например
-`Montra-2026-11-09-2057.montra`. Внутри лежит весь учёт: счета, категории с
-подкатегориями, операции и обе части переводов, плановые платежи, финансовые периоды,
-настройки приложения, курсы на день копии и переключатели локального API.
-Восстановление возвращает состояние целиком — не только операции.
+A backup is a single `.montra` file such as `Montra-2026-11-09-2057.montra`.
+It contains accounts, categories and subcategories, transactions and both sides
+of transfers, planned payments, financial periods, app settings, exchange rates
+at the time of backup, and Local API switches. Restoring a backup restores the
+full ledger state.
 
-## Где это в приложении
+## Using backups
 
-**Настройки → Резервная копия.**
+Open **Settings → Backup**.
 
-| Действие | Что происходит |
+| Action | Result |
 |---|---|
-| «Сохранить резервную копию» | Панель сохранения с именем по дате; рядом с названием видна дата последней копии. |
-| «Загрузить из резервной копии» | Выбор файла. Montra проверяет его и показывает лист: что внутри, когда и какой версией создано. |
-| «Сначала сохранить текущее состояние» | Копия текущих данных перед восстановлением, с именем `…-before-restore.montra`. |
-| «Восстановить» | Заменяет текущие данные содержимым файла. |
+| Save a backup | Opens a save panel with a dated filename. The last backup date appears next to the action. |
+| Restore from a backup | Opens a file picker. Montra validates the file and shows what it contains, when it was created, and which app version created it. |
+| Save Current State First | Backs up the current ledger to a file ending in `-before-restore.montra`. |
+| Restore | Replaces the current data with the contents of the file. |
 
-Перед восстановлением файл читается и проверяется целиком: версия формата, контрольная
-сумма, все суммы и все ссылки между записями. Только после этого удаляются текущие
-записи. Битый или чужой файл не стирает данные — он отклоняется с понятным сообщением.
+Montra validates the format version, checksum, every amount, and every record
+reference before deleting current records. It rejects damaged and unrelated files
+and explains the error.
 
-## Формат файла
+## File format
 
-Файл — это JSON в обёртке. Он намеренно читаемый: суммы лежат строкой, даты — ISO 8601,
-идентификаторы — UUID.
+The backup is human-readable JSON. Amounts are strings, dates use ISO 8601,
+and identifiers are UUIDs.
 
 ```json
 {
@@ -46,7 +46,7 @@
         "initialAmount": "3150",
         "isHiddenFromOverview": false,
         "isSavings": false,
-        "name": "Карта",
+        "name": "Card",
         "sortIndex": 0
       }
     ],
@@ -61,90 +61,92 @@
 }
 ```
 
-### Обёртка
+### Envelope
 
-| Поле | Смысл |
+| Field | Meaning |
 |---|---|
-| `format` | Всегда `montra.backup`. Файл с другим значением не считается копией. |
-| `formatVersion` | Версия формата. Сейчас `2`. Файл из более новой версии Montra отклоняется. |
-| `schemaVersion` | Поколение моделей SwiftData. Меняется, когда меняется схема хранилища. |
-| `createdAt` | Когда сделана копия, ISO 8601 с миллисекундами. |
-| `appVersion`, `appBuild` | Версия Montra, которой сделана копия; показывается в листе. |
-| `checksum` | SHA-256 канонического JSON из `payload`, строчными шестнадцатеричными. |
-| `payload` | Сами данные. |
+| `format` | Always `montra.backup`. Montra rejects files with another value. |
+| `formatVersion` | File format version, currently `2`. Montra rejects files with an unsupported newer version. |
+| `schemaVersion` | SwiftData model generation. Changes with the store schema. |
+| `createdAt` | Backup date in ISO 8601 with milliseconds. |
+| `appVersion`, `appBuild` | Version and build that created the backup, shown in the restore sheet. |
+| `checksum` | SHA-256 of the canonical JSON for `payload`, in lowercase hexadecimal. |
+| `payload` | The backed-up data. |
 
-Контрольная сумма считается по `payload`, закодированному с сортировкой ключей и без
-отступов; при чтении Montra заново кодирует расшифрованный `payload` и сравнивает хеши.
-Поэтому любая правка суммы, даты или ссылки в файле делает его недействительным.
+Montra hashes `payload` encoded with sorted keys and no indentation. When reading
+a file, it re-encodes the decoded payload and compares hashes. Editing an amount,
+date, or reference invalidates the file.
 
-### Данные
+### Payload
 
-| Ключ | Что внутри |
+| Key | Contents |
 |---|---|
-| `accounts` | Счета: валюта, начальная сумма, иконка, цвет, накопительный, скрытый из обзора, порядок. |
-| `categories` | Категории и подкатегории: тип, цвет, иконка, обязательность, системность, `parentID`. |
-| `operations` | Факты: сумма, валюта, дата, место, координаты, комментарий, `accountID`, `categoryID`, `transferID`. |
-| `plannedOperations` | Планы: серия, частота, маска дней недели, границы серии, ссылка на факт `linkedOperationID`. |
-| `periods` | Финансовые периоды: начало, конец, ручная правка. |
-| `settings` | Оформление, скрытие сумм, основная валюта, правило периода, флаги знакомства. |
-| `rates` | Курсовая таблица: источник, даты, «сколько BYN за единицу» по каждой валюте. |
-| `integration` | Включён ли локальный API и разрешено ли удаление через него. |
+| `accounts` | Currency, opening balance, icon, color, savings flag, Overview visibility, and sort order. |
+| `categories` | Categories and subcategories with kind, color, icon, mandatory and system flags, and `parentID`. |
+| `operations` | Transactions with amount, currency, date, place, coordinates, note, `accountID`, `categoryID`, and `transferID`. |
+| `plannedOperations` | Recurring series, frequency, weekday mask, series boundaries, and `linkedOperationID`. |
+| `periods` | Financial period start and end dates and manual adjustments. |
+| `settings` | Appearance, hidden amounts, primary currency, period rule, and onboarding flags. |
+| `rates` | Rate source, dates, and BYN per unit for each currency. |
+| `integration` | Local API and API deletion switches. |
 
-Суммы хранятся строками (`"214.30"`, `"0.0128"`), а не числами с плавающей точкой,
-чтобы восстановление не меняло ни одного знака после запятой. Даты — ISO 8601 по UTC.
+Amounts such as `"214.30"` and `"0.0128"` use strings to preserve decimal
+precision. Dates use ISO 8601 in UTC.
 
-### Совместимость
+### Compatibility
 
-- Новые поля появляются как необязательные; неизвестные поля при чтении игнорируются.
-- Более новый `formatVersion` или `schemaVersion` отклоняется: лучше попросить обновить
-  Montra, чем восстановить половину данных.
-- Порядок записей в файле не важен: ссылки разрешаются по `id`, родители категорий
-  связываются вторым проходом.
+- New fields are optional. Decoding ignores unknown fields.
+- Montra rejects newer `formatVersion` or `schemaVersion` values and asks
+  the user to update the app.
+- Records can appear in any order. Restore resolves references by `id`
+  and links parent categories in a second pass.
 
-## Что происходит при восстановлении
+## Restore sequence
 
-1. **Проверка.** Декодирование, версии, контрольная сумма, разбор всех сумм, проверка
-   ссылок `accountID`/`categoryID`/`parentID` у операций, планов и категорий.
-2. **Замена.** Удаляются все текущие операции, планы, счета, категории и периоды,
-   затем создаются записи из файла с их исходными `id`, датами создания и связями.
-   Всё сохраняется одной транзакцией; при ошибке записи контекст откатывается.
-3. **Настройки.** Оформление, скрытие сумм, основная валюта, правило периода и флаги
-   знакомства применяются сразу. Если в копии есть счета, знакомство считается пройденным —
-   так же запуск решает для старого хранилища с данными. Флаг «знакомство начато» из копии
-   сохраняется; у старой копии без него он считается выставленным, потому что восстановление
-   возможно только изнутри приложения, а не с первого запуска.
-4. **Периоды.** После восстановления недостающие периоды вокруг текущей даты
-   досоздаются по правилу из копии; ручные периоды не трогаются.
-5. **Курсы и API.** Таблица курсов ставится на место (если она полная), а затем тихо
-   обновляется, если уже устарела. Переключатели локального API восстанавливаются.
+1. **Validate.** Decode the file, check versions and checksum, parse every
+   amount, and validate `accountID`, `categoryID`, and `parentID` references
+   in transactions, plans, and categories.
+2. **Replace records.** Delete current transactions, plans, accounts, categories,
+   and periods. Recreate records using the original IDs, creation dates, and
+   relationships. Save once and roll back the context if saving fails.
+3. **Apply settings.** Restore appearance, hidden amounts, primary currency,
+   the period rule, and onboarding flags immediately. If the backup contains
+   accounts, Montra treats onboarding as complete, as it does on launch for
+   an older store with data. Montra preserves the onboarding-started flag.
+   For older backups without the flag, it defaults to true because restore
+   is available from inside the app.
+4. **Fill in periods.** Create missing periods around the current date using the
+   restored rule. Preserve manually adjusted periods.
+5. **Restore rates and API switches.** Restore a complete rate table, refresh it
+   in the background if stale, and apply the Local API switches.
 
-## Чего в копии нет
+## Excluded data
 
-- **Токена локального API.** Это секрет конкретного Mac; при восстановлении на другом
-  Mac токен будет новым. Сами переключатели API в копию входят.
-- **Снимков Spotlight и прочих системных индексов** — они строятся заново.
-- **Пароля.** Файл не шифруется: любой, кто его откроет, увидит суммы и заметки.
-  Храните копию там, где хранили бы выписку из банка.
+- The **Local API token** stays on its original Mac. Another Mac uses its own
+  token. The API switches are included in the backup.
+- Montra rebuilds **Spotlight snapshots and system indexes**.
+- Backup files are **unencrypted**. Store them where you would keep a bank
+  statement, since anyone who can open the file can read amounts and notes.
 
-## Ограничения
+## Limitations
 
-- Восстановление только заменяет данные, слияния нет.
-- Двойной клик по `.montra` не открывает Montra: копия загружается через настройки,
-  чтобы случайный файл не начал восстановление.
-- Локальный API и MCP не управляют копиями: файл и его путь выбирает человек в
-  приложении. API и так отдаёт все данные, но сам не пишет копии на диск.
-- Формат — снимок, а не журнал изменений: каждая копия полная.
-- Очень большая копия восстанавливается несколько секунд; прогресс не показывается.
-- CSV-экспорт по-прежнему отдельный и содержит только факты — для таблиц, не для восстановления.
+- Restore replaces the ledger in full. Merging is unavailable.
+- Open backup files through Settings. Double-clicking a `.montra` file does
+  not start a restore.
+- The user selects backup files and paths in the app. The Local API exposes
+  ledger data, and backup file management is handled in the app.
+- Each backup is a full snapshot. Very large backups may take a few seconds
+  to restore, with no progress indicator.
+- CSV export is separate and contains recorded transactions for spreadsheets.
 
-## Проверка
+## Verification
 
 ```bash
 .../Montra.app/Contents/MacOS/Montra -selftest
 ```
 
-Среди 131 проверки есть блок резервных копий: сборка архива, точность дробных сумм,
-запись и чтение файла, обнаружение подмены и постороннего файла, восстановление счетов,
-категорий с родителями, переводов, планов с маской дней и ссылкой на факт, периодов с
-ручной правкой, настроек, курсов и переключателей API, а также отказ от битой копии до
-удаления текущих данных.
+The 131 checks include archive creation, decimal precision, file round trips,
+detection of tampered and unrelated files, and restoration of accounts, parent
+categories, transfers, plans with weekday masks and links, manually adjusted
+periods, settings, rates, and API switches. They also verify that invalid backups
+are rejected before deleting current data.

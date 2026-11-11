@@ -409,8 +409,8 @@ struct OverviewView: View {
                 InsetCardDivider(horizontalInset: AppStyle.Row.cardHorizontalPadding)
 
                 PlainSummaryRow(
-                    symbol: nil,
-                    color: AppColors.Chart.freeSpace,
+                    symbol: "banknote",
+                    color: AppColors.textTertiary,
                     title: String(localized: "common.available"),
                     detail: String(localized: "overview.income_minus_essential_expenses_in \(displayCurrency.code)"),
                     value: money(summary.free),
@@ -506,7 +506,7 @@ private struct AccountOverviewRow: View {
     var body: some View {
         Button(action: onOpen) {
             HStack(spacing: AppStyle.Spacing.small) {
-                IconTile(symbol: account.iconName, color: account.color.tileColor)
+                ListRowIcon(symbol: account.iconName, color: account.color.color)
 
                 VStack(alignment: .leading, spacing: AppStyle.Spacing.xxxSmall) {
                     Text(account.name)
@@ -580,7 +580,7 @@ private struct PeriodSummaryRow: View {
     var body: some View {
         Button(action: onOpen) {
             HStack(spacing: AppStyle.Spacing.small) {
-                IconTile(symbol: "calendar", color: AppColors.Chart.blueTile)
+                ListRowIcon(symbol: "calendar", color: AppColors.Chart.blueTile)
 
                 VStack(alignment: .leading, spacing: AppStyle.Spacing.xxxSmall) {
                     Text(String(localized: "common.current_period"))
@@ -621,7 +621,7 @@ private struct PeriodSummaryRow: View {
 }
 
 private struct PlainSummaryRow: View {
-    let symbol: String?
+    let symbol: String
     let color: Color
     let title: String
     let detail: String
@@ -630,7 +630,7 @@ private struct PlainSummaryRow: View {
 
     var body: some View {
         HStack(spacing: AppStyle.Spacing.small) {
-            IconTile(symbol: symbol, color: color)
+            ListRowIcon(symbol: symbol, color: color)
 
             VStack(alignment: .leading, spacing: AppStyle.Spacing.xxxSmall) {
                 Text(title)
@@ -666,7 +666,7 @@ private struct RecentOperationRow: View {
     var body: some View {
         Button(action: onOpen) {
             HStack(spacing: AppStyle.Spacing.small) {
-                IconTile(
+                ListRowIcon(
                     symbol: operation.displayIcon,
                     color: operation.displayColor
                 )

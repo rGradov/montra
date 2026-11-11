@@ -381,8 +381,6 @@ struct SettingsView: View {
             plainRow(title: String(localized: "common.version"), value: "1.0")
             divider
             plainRow(title: String(localized: "common.storage"), value: String(localized: "settings.swiftdata_on_this_mac"))
-            divider
-            plainRow(title: String(localized: "common.design"), value: String(localized: "settings.inspired_by_purge"))
         }
     }
 

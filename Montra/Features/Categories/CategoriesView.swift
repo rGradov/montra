@@ -140,7 +140,7 @@ private struct CategoryRow: View {
                         .padding(.trailing, AppStyle.Spacing.xxxSmall)
                 }
 
-                IconTile(symbol: category.iconName, color: category.color.tileColor)
+                ListRowIcon(symbol: category.iconName, color: category.color.color)
 
                 VStack(alignment: .leading, spacing: AppStyle.Spacing.xxxSmall) {
                     Text(category.displayName)

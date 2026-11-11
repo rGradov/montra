@@ -768,7 +768,7 @@ struct OperationListRow: View {
 
             Button(action: onEdit) {
                 HStack(spacing: AppStyle.Spacing.small) {
-                    IconTile(
+                    ListRowIcon(
                         symbol: operation.displayIcon,
                         color: operation.displayColor
                     )

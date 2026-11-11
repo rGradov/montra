@@ -1,18 +1,15 @@
-# Local API + MCP playbook
+# Local API and MCP playbook
 
-Local API — Swift-слой внутри приложения (`Montra/Integration/LedgerAPI.swift`).
-MCP — отдельный Python-процесс (`mcp/server.py`), который вызывает HTTP API.
-Это два независимых слоя: изменение в одном не появляется во втором само.
+The Local API runs in Swift inside the app (`Montra/Integration/LedgerAPI.swift`).
+MCP runs as a separate Python process (`mcp/server.py`) and calls the HTTP API.
+Update both layers explicitly. MCP must be able to reproduce any write available
+in the app, including setting a flag and reading it back.
 
-Инвариант: **MCP должен уметь воссоздать любую пользовательскую запись Montra.**
-Если пользователь может поставить тумблер в приложении, MCP должен уметь поставить
-его и прочитать обратно.
+## 1. Local API fields
 
-## 1. Local API: поля
+### Read
 
-### Чтение
-
-Добавь ключ в нужный сериализатор в `LedgerAPI.swift`:
+Add the key to the appropriate serializer in `LedgerAPI.swift`.
 
 ```swift
 private func accountJSON(_ account: Account) -> JSONObject {
@@ -24,11 +21,11 @@ private func accountJSON(_ account: Account) -> JSONObject {
 }
 ```
 
-Ключи — `snake_case`. `JSONDecoder` на входе использует
-`keyDecodingStrategy = .convertFromSnakeCase`, поэтому Swift-поле
-`isPinned` читается из `is_pinned`.
+Use `snake_case` for API keys. The decoder uses
+`keyDecodingStrategy = .convertFromSnakeCase`, so it reads `isPinned` from
+`is_pinned`.
 
-### Запись
+### Write
 
 ```swift
 private struct AccountInput: Decodable {
@@ -39,16 +36,17 @@ private struct AccountInput: Decodable {
 }
 ```
 
-Optional — для обратной совместимости со старыми клиентами. В `Store.createAccount`:
+Use an optional field for compatibility with older clients. Apply the default in
+`Store.createAccount`.
 
 ```swift
 let isPinned = input.isPinned ?? false
 ```
 
-### Идемпотентность
+### Idempotency
 
-Если `create_account` умеет возвращать существующий счёт, новое поле должно
-участвовать в сравнении:
+If `create_account` can return an existing account, compare the new field when
+the client provides it.
 
 ```swift
 let pinnedMatches = input.isPinned.map { $0 == existing.isPinned } ?? true
@@ -57,10 +55,10 @@ guard matches.count == 1, existing.initialAmount == amount, pinnedMatches else {
 }
 ```
 
-Иначе повтор с другим значением молча вернёт старую запись — это рассинхрон,
-который аудит не увидит.
+Without that comparison, a retry with a different value silently returns the
+existing record. The audit cannot detect that behavior.
 
-## 2. Local API: новое действие
+## 2. New Local API actions
 
 ```swift
 private enum Action: String, Decodable, CaseIterable {
@@ -75,14 +73,14 @@ private enum Action: String, Decodable, CaseIterable {
 }
 ```
 
-В `execute`:
+Add the action to `execute`.
 
 ```swift
 case .archiveAccount:
     output = try store.archiveAccount(decoder.decode(AccountSelection.self, from: data))
 ```
 
-В `Store`:
+Implement it in `Store`.
 
 ```swift
 func archiveAccount(_ selection: AccountSelection) throws -> JSONObject {
@@ -93,19 +91,18 @@ func archiveAccount(_ selection: AccountSelection) throws -> JSONObject {
 }
 ```
 
-Правила:
+- `status.actions` comes from `Action.allCases`.
+- Use `LedgerError(message, status:)` with `422` for validation, `409` for a
+  conflict or stale preview, `403` for an action disabled in Settings, and
+  `404` for a missing record.
+- Save once at the end of `execute`. Keep `context.save()` out of Store methods.
+- For destructive actions, add a `preview_*` action and require
+  `preview_token` to execute the confirmed action.
+- Keep secrets, tokens, and machine-specific paths out of the API.
 
-- `status.actions` собирается из `Action.allCases`, отдельно обновлять не нужно.
-- Ошибки — `LedgerError(message, status:)`: `422` правила данных, `409` конфликт
-  или устаревший preview, `403` запрещено настройкой, `404` не найдено.
-- Запись сохраняется один раз в конце `execute`; не вызывай `context.save()` из
-  Store-метода.
-- Разрушительное действие — сначала `preview_*`, потом `*` с `preview_token`.
-- Не добавляй в API секреты, токены и машинные пути.
+## 3. MCP tools
 
-## 3. MCP: инструмент
-
-Один tool на action, имя функции = action:
+Register one tool per action and match the function name to the action name.
 
 ```python
 @mcp.tool(annotations=CREATE)
@@ -114,98 +111,80 @@ def archive_account(account_id: UUID) -> dict:
     return call_api("archive_account", account_id=str(account_id))
 ```
 
-Правила:
+- Use `snake_case` parameters and the types defined in `server.py`.
+- Use `Amount` for positive decimal strings, `Timestamp` for dates with an
+  offset, and `Currency` for currencies.
+- Select `READ`, `CREATE`, or `DELETE` based on behavior. Delete tools require
+  `preview_token`.
+- Explain retry behavior and side effects in the docstring.
+- Pass every field accepted by the Swift input. The audit compares names.
+- Keep business rules in the app.
 
-- Параметры — `snake_case`, с типами из шапки `server.py`.
-- Для денег — `Amount` (положительная десятичная строка), для дат — `Timestamp`
-  с offset, для валют — `Currency`.
-- `READ` / `CREATE` / `DELETE` — по смыслу; delete требует `preview_token`.
-- Docstring должен объяснять повтор и побочные эффекты.
-- Передавай **все** поля, которые принимает Swift-input. Аудит сравнивает имена.
-- Не добавляй бизнес-логику, которой нет в приложении.
+## 4. Documentation
 
-## 4. Документация
+Update `Docs/Local-API.md` with a command table row, required and optional
+parameters, and behavior including which fields appear in `list_*`, what changes,
+and which requests are rejected. Include JSON for behavior that needs an example.
 
-`Docs/Local-API.md`:
+Update the tool table in `mcp/README.md`. Explain relevant behavior, such as a
+hidden account's exclusion from the Overview total, and show new workflows.
 
-- строка в таблице команд;
-- параметры и optional-поля;
-- абзац о семантике (что читается в `list_*`, что меняется, что запрещено);
-- пример JSON, если поведение неочевидно.
+## 5. Smoke test
 
-`mcp/README.md`:
-
-- строка в таблице инструментов;
-- особенности (например, «скрытый счёт не входит в итог обзора»);
-- если появился новый workflow — короткий сценарий.
-
-## 5. Smoke-тест
-
-`mcp/tests/smoke.py` поднимает HTTP-фикстуру и MCP на одной in-memory базе.
-Добавляй утверждения рядом с существующими:
+`mcp/tests/smoke.py` starts the HTTP fixture and MCP against one in-memory store.
+Add assertions alongside the existing checks.
 
 ```python
-created = await call("create_account", name="Тест", currency="EUR",
+created = await call("create_account", name="Test", currency="EUR",
                      initial_amount="10", is_pinned=True)
 assert created["account"]["is_pinned"] is True
-assert not (await call("create_account", name="Тест", currency="EUR",
+assert not (await call("create_account", name="Test", currency="EUR",
                        initial_amount="10", is_pinned=True))["created"]
 await reject("create_account", "already has this name",
-             name="Тест", currency="EUR", initial_amount="10", is_pinned=False)
+             name="Test", currency="EUR", initial_amount="10", is_pinned=False)
 ```
 
-Проверяй:
+Check creation, readback, idempotent retry, conflict on a different value, and
+invalid or stale tokens for actions that require a preview.
 
-- создание с новым полем;
-- чтение поля обратно;
-- повтор (idempotency);
-- конфликт при другом значении;
-- если есть preview — неверный/устаревший токен.
+`build-fixture.sh` compiles the Swift models and `LedgerAPI` directly. In DSH,
+it uses `-disable-sandbox` so the SwiftData macro can launch its plugin server.
 
-`build-fixture.sh` компилирует Swift-модели и `LedgerAPI` напрямую. В DSH он
-передаёт `-disable-sandbox`, иначе SwiftData-макрос не может запустить свой
-plugin server внутри внешнего sandbox.
+## 6. Example: hiding an account from Overview
 
-## 6. Реальный пример: скрытие счёта
+1. The model and backup support `Account.isHiddenFromOverview`.
+2. `AccountInput.isHiddenFromOverview` is optional.
+3. `Store.createAccount` defaults it with `?? false` and compares it on retry.
+4. `accountJSON` includes `"is_hidden_from_overview": account.isHiddenFromOverview`.
+5. `Docs/Local-API.md` documents `create_account` and `list_accounts`.
+6. `mcp/server.py` exposes `create_account(..., is_hidden_from_overview=False)`.
+7. `mcp/README.md` documents `create_account`.
+8. The smoke test covers creation, readback, retry, and rejection with a different flag.
 
-Полный путь, который уже работает:
+Follow the same path for similar switches.
 
-1. `Account.isHiddenFromOverview` в модели (бэкап уже поддерживает).
-2. `AccountInput.isHiddenFromOverview` — optional.
-3. `Store.createAccount` — `?? false` + сравнение при повторе.
-4. `accountJSON` — `"is_hidden_from_overview": account.isHiddenFromOverview`.
-5. `Docs/Local-API.md` — `create_account`, абзац про `list_accounts`.
-6. `mcp/server.py` — `create_account(..., is_hidden_from_overview=False)`.
-7. `mcp/README.md` — строка про `create_account`.
-8. `mcp/tests/smoke.py` — создание скрытого счёта, проверка флага, повтор,
-   отказ при другом флаге.
+## 7. API exclusions
 
-Если делаешь аналогичный тумблер, повторяй этот путь, а не только UI.
+Document deliberate exclusions and their reasons in the allowlist.
 
-## 7. Что не выносить в API
+- The server assigns `createdAt` and applies `sortIndex`.
+- Coordinates are represented by text `place`.
+- `weekdayMask` is represented by the `weekdays` array.
+- Periods have no API commands.
+- Secrets, tokens, caches, and temporary flags stay local.
 
-Только осознанно и только через allowlist:
+Expose a user value when none of these reasons apply.
 
-- `createdAt` — назначает сервер;
-- `sortIndex` — сортировка применяется сервером;
-- координаты операции — в API есть текстовое `place`;
-- `weekdayMask` — в API есть массив `weekdays`;
-- периоды — у API нет команд периодов;
-- секреты, токены, кеш, временные флаги.
+## 8. Checklist
 
-Если сомневаешься — вынеси в API. Дешевле добавить поле, чем объяснять, почему
-MCP не видит данные пользователя.
-
-## 8. Чек-лист
-
-- [ ] Поле в JSON-сериализаторе.
-- [ ] Поле в input-структуре (optional, если можно не присылать).
-- [ ] Применение в `Store.create*`.
-- [ ] Сравнение при идемпотентном повторе.
-- [ ] `Action` + `writes` + `execute`, если новое действие.
-- [ ] `Docs/Local-API.md`.
-- [ ] `@mcp.tool` + все параметры.
-- [ ] `mcp/README.md`.
-- [ ] Утверждение в `smoke.py`.
+- [ ] Field in the JSON serializer.
+- [ ] Field in the input struct, optional when clients may omit it.
+- [ ] Default applied in `Store.create*`.
+- [ ] Comparison on idempotent retries.
+- [ ] `Action`, `writes`, and `execute` for a new action.
+- [ ] Updated `Docs/Local-API.md`.
+- [ ] `@mcp.tool` and all parameters.
+- [ ] Updated `mcp/README.md`.
+- [ ] Assertions in `smoke.py`.
 - [ ] `./mcp/tests/build-fixture.sh && mcp/.venv/bin/python mcp/tests/smoke.py`.
-- [ ] `python3 Scripts/audit-feature-sync.py` — api/mcp зелёные.
+- [ ] API and MCP checks pass in `python3 Scripts/audit-feature-sync.py`.

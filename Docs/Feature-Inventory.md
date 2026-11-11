@@ -1,386 +1,432 @@
-# Montra — инвентарь фич и тест-план
+# Montra feature inventory and test plan
 
-Актуально на **9 ноября 2026**. Источник истины — текущий код в `Montra/`.
-Документ нужен, чтобы покрывать приложение тестами: у каждой области есть ID,
-что проверять, ключевые шаги, ожидаемый результат и негативные/крайние случаи.
+As of **November 9, 2026**. The code in `Montra/` is the source of truth.
+Each area has IDs, checks, expected outcomes, and negative or edge cases.
 
-> Текущее автоматическое покрытие: **143 проверки** в `-selftest` + рендер всех
-> экранов в `-snapshot`. Чего пока нет — в разделе «Что уже покрыто».
+> Automated coverage includes **131 checks** in `-selftest` and full screen
+> rendering with `-snapshot`. See sections 4 and 5 for coverage and gaps.
 
-## 0. Как пользоваться
+## 0. How to use this inventory
 
-**Префиксы ID**
-
-| Префикс | Область |
+| ID prefix | Area |
 |---|---|
-| `SHL` | окно, сайдбар, общая шапка, команды |
-| `ONB` | знакомство, предпросмотр, удаление всех данных |
-| `ACC` | счета и страница счёта |
-| `OPS` | список операций, дни, поиск, фильтры, массовые действия |
-| `FRM` | форма операции |
-| `TRF` | переводы |
-| `CAT` | категории и подкатегории |
-| `PER` | финансовые периоды |
-| `PLN` | повторяющиеся платежи |
-| `SET` | настройки, курсы, API, iCloud, CSV, резервные копии |
-| `DEL` | удаление и подтверждения |
-| `DAT` | SwiftData, миграции, сохранность |
-| `API` | локальный HTTP API |
-| `SPT` | Spotlight / App Intents |
-| `ABT` | «О программе» и аналитика |
-| `FMT` | форматирование, склонения, даты |
-| `A11Y` | доступность, клавиатура, reduce motion |
-| `VIS` | визуальные/анимационные инварианты |
+| `SHL` | Window, sidebar, shared header, commands |
+| `ONB` | Onboarding, preview, Delete All Data |
+| `ACC` | Accounts and account detail |
+| `OPS` | Transaction list, day groups, search, filters, bulk actions |
+| `FRM` | Transaction form |
+| `TRF` | Transfers |
+| `CAT` | Categories and subcategories |
+| `PER` | Financial periods |
+| `PLN` | Recurring payments |
+| `SET` | Settings, rates, API, iCloud, CSV, backups |
+| `DEL` | Deletion and confirmations |
+| `DAT` | SwiftData, migrations, persistence |
+| `API` | Local HTTP API |
+| `SPT` | Spotlight and App Intents |
+| `ABT` | About and Analytics |
+| `FMT` | Formatting, pluralization, dates |
+| `A11Y` | Accessibility, keyboard, Reduce Motion |
+| `VIS` | Visual and animation requirements |
 
-Приоритеты: **P0** — ломает деньги/данные/основной сценарий, **P1** — важный UX,
-**P2** — полировка. Тип: `unit` (чистая логика), `ui`, `integration`, `persistence`,
-`visual`.
+**P0** covers money, data, or core workflows. **P1** covers important UX.
+**P2** covers polish. Test types include `unit` (pure logic), `ui`,
+`integration`, `persistence`, and `visual`.
 
-## 1. Фикстуры и окружение
+## 1. Fixtures and environment
 
-| ID | Фикстура | Что внутри |
+| ID | Fixture | Contents |
 |---|---|---|
-| F-EMPTY | чистый запуск | 0 счетов, 0 операций, 0 категорий до шага знакомства, периоды ещё не созданы, знакомство не пройдено |
-| F-ONE | один счёт | «Наличные», BYN, начальный остаток 420, 3 операции, текущий период |
-| F-MULTI | мультивалютный | BYN/EUR/USD/USDC/USDT/BTC/ETH счета, фиксированные курсы, разные валюты |
-| F-MANY | большой список | >60 операций (граница гармошки) и отдельно >1000 (производительность) |
-| F-CAT | иерархия | обязательная родительская категория + подкатегория + операции в обеих |
-| F-PER | край периода | день зарплаты 31, февраль, leap year, ручная правка границ, fixed 10 дней |
-| F-TRF | перевод | два счёта разных валют, одна пара с общим `transferID` |
-| F-PLN | планы | monthly: вчера (missed), сегодня, завтра; weekly с выбранными днями; 31-е; linked-факт; кандидат для связи |
-| F-HIDE | скрытые суммы | `hideBalances = true` |
-| F-RATE | курсы | НБРБ-preview, fallback currency-api, отсутствующий курс |
-| F-API | API | знакомство завершено, Local API включён, токен, allowDelete on/off |
-| F-ONB | знакомство | пустое реальное хранилище, `hasCompletedOnboarding = false`; после первого открытия — `hasStartedOnboarding = true` |
-| F-REPLAY | предпросмотр | реальные данные + запуск знакомства из «О программе» |
-
-**Команды**
+| F-EMPTY | Clean launch | No accounts, transactions, or categories before the category step. Periods are absent and onboarding is incomplete |
+| F-ONE | One account | Cash, BYN, opening balance 420, three transactions, current period |
+| F-MULTI | Multiple currencies | BYN/EUR/USD/USDC/USDT/BTC/ETH accounts, fixed rates, multiple currencies |
+| F-MANY | Large list | More than 60 transactions for the collapsing list boundary and more than 1,000 for performance |
+| F-CAT | Hierarchy | Mandatory parent, subcategory, and transactions in both |
+| F-PER | Period edge cases | Payday on the 31st, February, leap year, manual boundaries, fixed 10 days |
+| F-TRF | Transfer | Two accounts with different currencies, one pair sharing a `transferID` |
+| F-PLN | Plans | Monthly occurrences yesterday (missed), today, and tomorrow, weekly with chosen days, the 31st, a linked transaction, and a link candidate |
+| F-HIDE | Hidden amounts | `hideBalances = true` |
+| F-RATE | Rates | National Bank of Belarus preview, fallback currency API, and a missing rate |
+| F-API | API | Completed onboarding, enabled Local API, token, and `allowDelete` on and off |
+| F-ONB | Onboarding | Empty live store and `hasCompletedOnboarding = false`. After opening onboarding, `hasStartedOnboarding = true` |
+| F-REPLAY | Preview | Live data plus onboarding preview launched from About |
 
 ```bash
-# сборка
+# Build
 xcodebuild -project Montra.xcodeproj -scheme Montra -configuration Debug build
 APP=~/Library/Developer/Xcode/DerivedData/Montra-*/Build/Products/Debug/Montra.app
 
-# 143 логические проверки (in-memory)
+# Run 131 logic checks in memory
 "$APP/Contents/MacOS/Montra" -selftest
 
-# все экраны в PNG (in-memory)
+# Render all screens to PNG in memory
 "$APP/Contents/MacOS/Montra" -snapshot /tmp/montra-snaps
 
-# знакомство на временном хранилище
+# Preview onboarding with a temporary store
 "$APP/Contents/MacOS/Montra" -preview-onboarding
 ```
 
-Перед разрушительными сценариями (удаление данных/счёта) делать копию
-`~/Library/Application Support/Montra.store` (+ `-wal`, `-shm`). Окно приложения —
-980×700, sidebar 240, `hiddenTitleBar`.
+Before destructive scenarios such as deleting all data or an account, copy
+`~/Library/Application Support/Montra.store` and its `-wal` and `-shm` files.
+Use a 980×700 window with a 240 pt sidebar and `hiddenTitleBar`.
 
-## 2. Карта фич и что проверять
+## 2. Feature checks
 
-### 2.1 Оболочка, навигация, шапка
+### 2.1 App shell, navigation, and header
 
-| ID | Фича | Ключевые проверки | Тип |
+| ID | Feature | Key checks | Type |
 |---|---|---|---|
-| SHL-01 | Окно и раскладка | фиксированная ширина 980, min height, hidden title bar, traffic lights над сайдбаром, sidebar 240, контент не уезжает | ui/visual |
-| SHL-02 | Сайдбар | «Обзор», счета с балансами, «Категории» со счётчиком, «Аналитика», «Настройки», «О программе», iCloud-статус; в заголовках «Счета» и «Накопления» — круглый «+» (обычный счёт / счёт с уже включённым накопительным), виден при наведении на заголовок и всегда у пустой группы, с подсказкой «Новый счёт» / «Новый накопительный счёт»; группы видны и при нуле счетов; отдельной кнопки «Новый счёт» внизу нет; сортировка по `sortIndex`; правильная подсветка выбранного (страница счёта и операции держат «Обзор» активным) | ui |
-| SHL-03 | Клавиатурный фокус сайдбара | Tab двигает фокус; у строк нет системного кольца, вместо него мягкая заливка; Space/Return активируют; при открытии окна фокус на строке текущей страницы, а не на «Настройках»; фокус в основном окне стандартный | a11y/ui |
-| SHL-04 | Общая шапка | заголовок/подпись/назад/действия принадлежат маршруту; шапка не участвует в кроссфейде страницы; смена «Prior bank → Обзор» без двойного текста; действия обновляются; верхние страницы резервируют строку «назад» | visual/ui |
-| SHL-05 | Анимация шапки | старый title уходит вверх/растворяется, новый въезжает; subtitle — тише; нет растянутого/двойного текста; back не двигает title; reduce motion убирает пружины | visual/a11y |
-| SHL-06 | Команды и горячие клавиши | ⌘N новая операция, ⇧⌘N новый счёт, ⌘1…⌘4 маршруты, ⌘, настройки; пункты меню; ⌘F в поиске операций | ui |
-| SHL-07 | Touch Bar | нативная панель: «Обзор», «Аналитика», полоса всех счетов (обычные, затем накопительные) и «+»; полоса сама ужимается под оставшееся место и прокручивается, поэтому счета не уезжают за край; открытый счёт подсвечен, «+» подставляет его в форму; при листе и во время знакомства панели нет | unit/manual-ui |
-| SHL-08 | Маршрут «счёт не найден» | удалённый/несуществующий accountId → EmptyState «Счёт не найден» + «К обзору» | ui |
-| SHL-09 | Состояние после знакомства | и настоящее знакомство, и предпросмотр завершаются на «Обзоре», независимо от того, где их запустили | ui |
+| SHL-01 | Window and layout | Fixed 980 width, minimum height, hidden title bar, traffic lights over the sidebar, 240 pt sidebar, and content stays in place | ui/visual |
+| SHL-02 | Sidebar | Overview, account balances, Categories with count, Analytics, New Account, Settings, About, and iCloud status. Sort by `sortIndex`. Check the selected route, including Overview remaining active in account and transaction views | ui |
+| SHL-03 | Sidebar keyboard focus | Tab moves focus. Rows use a subtle fill in place of the system ring. Space or Return activates. Main content uses standard focus | a11y/ui |
+| SHL-04 | Shared header | Route owns title, subtitle, back link, and actions. Header stays outside page crossfade. Prior bank to Overview has no doubled title. Actions update and top-level pages reserve the back-link row | visual/ui |
+| SHL-05 | Header animation | Old title rises and fades, new title enters, and subtitle motion is subtler. Check for stretched or doubled text. Back link leaves title in place. Reduce Motion disables springs | visual/a11y |
+| SHL-06 | Commands and shortcuts | ⌘N new transaction, ⇧⌘N new account, ⌘1…⌘4 routes, ⌘, Settings, menu entries, and ⌘F in transaction search | ui |
+| SHL-07 | Touch Bar | Account list and New Transaction. The open account is preselected. Unavailable outside the active window or while a sheet is open | manual/ui |
+| SHL-08 | Account not found route | Deleted or unknown account ID shows Account Not Found and a link to Overview | ui |
+| SHL-09 | Route after onboarding | Live and preview onboarding end at Overview regardless of starting route | ui |
 
-### 2.2 Знакомство
+### 2.2 Onboarding
 
-| ID | Фича | Ключевые проверки | Тип |
+| ID | Feature | Key checks | Type |
 |---|---|---|---|
-| ONB-01 | Первый запуск | пустое хранилище + `!hasCompletedOnboarding` → welcome без сайдбара; счета/операции не создаются сами | persistence/ui |
-| ONB-02 | Шаг счёта | имя обязательно, сумма ≥0, выбор валюты под полем суммы, иконка/цвет; «Создать счёт» создаёт **настоящий** счёт, ставит `primaryCurrency`, ведёт к категориям; счёт всегда обычный — накопительный в знакомстве не предлагается (его заводят в листе счёта) | ui |
-| ONB-03 | Стиль счёта | popover иконок/цветов; выбранное отражается в превью; отмена не ломает форму | ui |
-| ONB-03b | Категории | сетки расходов и доходов, по умолчанию отмечены только Жильё, Еда и Зарплата; галочки; «Продолжить» создаёт выбранные, «Пропустить» — только «Прочее»; повтор не дублирует | ui/unit |
-| ONB-04 | Первый расход | сумма >0, категория, счёт; категория выбрана заранее («Еда» или первая созданная, после пропуска — «Прочее»); «Добавить расход» создаёт операцию; «Пропустить» ведёт к финалу без операции | ui |
-| ONB-05 | Финал | показывает счёт/расход; «Открыть Montra» ведёт на «Обзор» и перелетает карточкой счёта в его строку в сайдбаре (hero; Reduce Motion → fade) | ui |
-| ONB-06 | Валидация | пустое имя, пустая/отрицательная сумма, пустая категория — кнопка disabled; нельзя создать второй счёт на шаге | ui |
-| ONB-07 | Удаление всех данных | подтверждение; удаляются операции/счета/**категории**/периоды/**планы**; `hasCompletedOnboarding=false`; **сразу** открывается настоящее знакомство (реальное хранилище), категории создаёт его шаг; созданный счёт сохраняется | persistence/ui |
-| ONB-08 | Предпросмотр из «О программе» | временное in-memory хранилище; реальные данные не меняются; плашка «Предпросмотр · данные не сохранятся»; закрытие X; финал → «Обзор» | ui |
-| ONB-09 | `-preview-onboarding` | запуск на in-memory хранилище, реальные данные не трогаются | integration |
-| ONB-10 | Незавершённое знакомство | счёт создан, приложение закрыто до финала → следующий запуск **снова** открывает знакомство; после welcome сразу категории — счёт уже создан и второй не просится; так до «Открыть Montra», затем completed и больше не повторяется | persistence |
-| ONB-13 | Старая установка | счета есть, `hasStartedOnboarding = false` (хранилище до появления знакомства) → запуск не показывает первый запуск, а один раз помечает знакомство пройденным | persistence |
-| ONB-12 | Перелёт счёта | при завершении счёт-карточка летит в строку сайдбара (позиция и масштаб), строка скрыта до приземления; Reduce Motion → fade; без измеренных фреймов — обычный fade | ui |
-| ONB-11 | Категории знакомства | до шага знакомства категорий нет; выбранные создаются как системные + «Прочее» обоих типов; пропуск → только «Прочее»; повторный вызов не дублирует | unit/ui |
+| ONB-01 | First launch | Empty store and `!hasCompletedOnboarding` show Welcome without the sidebar. Accounts and transactions require user action | persistence/ui |
+| ONB-02 | Account step | Name required, amount ≥0, any supported currency, icon and color. Create Account persists a real regular account, sets `primaryCurrency`, and opens categories. Savings accounts are created later in the account sheet | ui |
+| ONB-03 | Account style | Icon and color popover. Selection updates preview and cancellation leaves the form usable | ui |
+| ONB-03b | Categories | Expense and income grids with checkmarks. Only Housing, Food, and Salary are selected by default. Continue creates the selection, Skip creates only Other, and retry creates no duplicates | ui/unit |
+| ONB-04 | First expense | Positive amount, category, and account. Preselect Food, the first created category, or Other after a skip. Add Expense saves a transaction. Skip proceeds without a transaction | ui |
+| ONB-05 | Completion | Shows account and expense. Open Montra opens Overview and moves the card into its sidebar row. Reduce Motion uses a fade | ui |
+| ONB-06 | Validation | Empty name, blank or negative amount, or missing category disables the action. The step cannot create a second account | ui |
+| ONB-07 | Delete All Data | Confirm deletion of transactions, accounts, categories, periods, and plans. Reset `hasCompletedOnboarding=false` and immediately open live onboarding. Its category step creates categories and its account persists | persistence/ui |
+| ONB-08 | Preview from About | Temporary in-memory store, live data stays intact, preview banner says data will not be saved, X closes, and completion opens Overview | ui |
+| ONB-09 | `-preview-onboarding` | Runs with an in-memory store and leaves live data intact | integration |
+| ONB-10 | Incomplete onboarding | Create an account and quit before completion. Relaunch opens onboarding again and proceeds from Welcome to Categories using the existing account. Open Montra marks the flow complete and ends relaunch prompts | persistence |
+| ONB-13 | Older installation | Existing accounts and `hasStartedOnboarding = false` indicate a pre-onboarding store. Launch marks onboarding complete once and opens the app | persistence |
+| ONB-12 | Account transition | Completion moves and scales the account card into its sidebar row. The row stays hidden until landing. Reduce Motion or missing frame measurements use a fade | ui |
+| ONB-11 | Onboarding categories | No categories before the category step. Create selected system categories and Other for both kinds. Skip creates only Other. Repeating creates no duplicates | unit/ui |
+| ONB-14 | Mascot hand-off into the icon | After the intro, the mascot flies into the welcome icon and shrinks onto the mascot painted inside it. Position and scale come from the eyes measured in both PNGs. While it flies, the icon is defocused and the copy and the button are hidden by opacity only, so the icon never shifts. It dissolves while the icon is still soft, so the swap is invisible, and the icon then focuses up. Reduce Motion, or a missing measurement, falls back to the old cross-fade | ui |
 
-### 2.3 Счета
+### 2.3 Accounts
 
-| ID | Фича | Ключевые проверки | Тип |
+| ID | Feature | Key checks | Type |
 |---|---|---|---|
-| ACC-01 | Создание счёта | сначала имя, затем начальный остаток, затем валюта, затем внешний вид; открывается из «+» в заголовке «Счета», ⇧⌘N или пустого обзора, а «+» у «Накоплений» включает накопительный сразу; имя trim; сумма 0 допустима; отрицательная/мусор — disabled | ui/unit |
-| ACC-02 | Редактирование | имя/остаток/иконка/цвет/накопительный/скрытие из обзора меняются; **валюту изменить нельзя** (подпись в шапке); начальный остаток пересчитывает баланс | ui |
-| ACC-03 | Удаление счёта | подтверждение с предупреждением; каскадом удаляются операции и запланированные платежи; страница счёта → «Счёт не найден»/обзор | persistence/ui |
-| ACC-04 | Баланс | `initial + income − expense`; переводы входят; скрытие сумм маскирует | unit/ui |
-| ACC-05 | Страница счёта | back, «Изменить», «Новая операция», «Удалить (N)» при выборе; баланс, «на счету», «За всё время»; конвертация в основную валюту | ui |
-| ACC-06 | Фильтр счёта | Все/Расходы/Доходы; счётчики; выбор/«Выбрать все»; удаление только выбранного | ui |
-| ACC-07 | Гармошка/ленивый список | ≤60 операций — раскрывающиеся строки; >60 — LazyVStack; фильтр не теряет строки/скролл; планы участвуют в списке | ui/performance |
-| ACC-08 | Планы на счёте | только планы этого счёта в пределах текущего периода; связанные скрыты; «План/Сегодня/Пропущен»; клик открывает карточку плана | ui |
-| ACC-08a | Фильтры планов на счёте | рядом с «Все/Расходы/Доходы» чипы «Пропущенные»/«Будущие» со счётчиками; взаимоисключающие с типом; «Выбрать все» скрыт; повторный клик возвращает к «Все» | ui |
-| ACC-08b | «Будущие» на счёте | pending планы счёта с датой от сегодня до min(+2 года, конец серии); порядок возрастающий, дневные секции; пусто → EmptyState | unit/ui |
-| ACC-08c | «Пропущенные» на счёте | pending планы счёта с датой < начало сегодня, включая прошлые периоды; порядок убывающий; пусто → EmptyState | unit/ui |
-| ACC-09 | Мультивалютность | суммы в валюте счёта; пересчёт в основную валюту; отсутствующий курс не выдумывается | unit/ui |
-| ACC-10 | Сайдбар | счета отсортированы, баланс/валюта, компактный BTC, маска; накопительные — отдельной группой «Накопления»; клик открывает счёт | ui |
-| ACC-11 | Накопительный счёт | флаг хранится и редактируется; подпись «накопительный» на странице счёта и в обзоре; баланс, доходы/расходы и переводы не меняются; API отдаёт `is_savings` | unit/ui/API |
-| ACC-12 | Скрытие из обзора | флаг хранится и редактируется; скрытый счёт не входит в итог, полосу, чипы валют и список счетов обзора; сайдбар, страница счёта, операции и аналитика не меняются; под списком — «Скрыто из обзора: N» с переходом к счёту; все счета скрыты → EmptyState «Все счета скрыты»; баланс и флаг накопительного не затрагиваются; в листе счёта блок «Скрыть из обзора» — карточка на всю ширину полей, её тумблер и тумблер накопительного стоят на одной вертикали | unit/ui |
-| ACC-13 | Иконка или emoji | в блоке «Оформление» переключатель «Иконка / Emoji», пять частых значков и «…» с полным списком (24) в popover без текстовой подсказки под сеткой; под значками — строка «Цвет» с 10 оттенками; выбор хранится в `iconName` (эмодзи — та же строка), сразу виден в превью, `IconTile`, сайдбаре, строке обзора и Touch Bar; переключение режима переносит выбор по смыслу (card ↔ 💳); копия `.montra` и Local API возвращают эмодзи без потерь | unit/ui/API |
+| ACC-01 | Account creation | Name, currency, opening balance, icon, color, Savings Account, and Hide from Overview. Trim name, accept zero, and disable for negative or invalid amounts | ui/unit |
+| ACC-02 | Editing | Change name, opening balance, icon, color, savings, or Overview visibility. Currency is read-only in the header. Opening balance changes recalculate the balance | ui |
+| ACC-03 | Account deletion | Confirmation warns that transactions and planned payments cascade. The account route shows Account Not Found or returns to Overview | persistence/ui |
+| ACC-04 | Balance | `initial + income − expense`. Transfers count. Hide Amounts masks it | unit/ui |
+| ACC-05 | Account detail | Back, Edit, New Transaction, and Delete (N) on selection. Balance, account label, all-time value, and conversion to the primary currency | ui |
+| ACC-05a | Accounts in Overview | Account color or the chosen emoji, drawn without a tile backing. Amount and share on the right. Click opens the account | ui/visual |
+| ACC-06 | Account filters | All, Expenses, Income, counts, selection and Select All. Delete only selected rows | ui |
+| ACC-07 | Collapsing or lazy list | Up to 60 transactions use collapsing rows. Above 60 use LazyVStack. Filters preserve rows and scroll behavior. Plans appear in the list | ui/performance |
+| ACC-08 | Account plans | Only this account's plans in the current period. Linked plans are hidden. Plan, Today, or Missed badge. Click opens plan detail | ui |
+| ACC-08a | Account plan filters | Missed and Upcoming chips with counts beside All, Expenses, and Income. Exclusive with kind filters. Select All hidden. Click active filter to return to All | ui |
+| ACC-08b | Upcoming on account | Pending plans from today through the earlier of two years ahead or the series end. Ascending day groups. Empty results show EmptyState | unit/ui |
+| ACC-08c | Missed on account | Pending plans before today, including past periods, in descending order. Empty results show EmptyState | unit/ui |
+| ACC-09 | Multiple currencies | Use the account currency and convert to the primary currency when a rate exists | unit/ui |
+| ACC-10 | Sidebar | Sorted accounts, balances and currencies, compact BTC, masked amounts, separate Savings group, and account navigation | ui |
+| ACC-11 | Savings account | Persist and edit the flag. Show savings label in detail and Overview. Preserve balance, income, expenses, and transfers. API returns `is_savings` | unit/ui/API |
+| ACC-12 | Hide from Overview | Persist and edit the flag. Exclude hidden accounts from Overview total, allocation bar, currency chips, and account list. Keep sidebar, detail, transactions, and Analytics behavior. Hidden from Overview: N opens the account. All hidden shows an empty state. Balance and savings flag are unaffected. The account sheet uses a full-width Hide from Overview card with its switch aligned to the savings switch | unit/ui |
 
-### 2.4 Список операций, дни, поиск, фильтры
+### 2.4 Transaction list, day groups, search, and filters
 
-| ID | Фича | Ключевые проверки | Тип |
+| ID | Feature | Key checks | Type |
 |---|---|---|---|
-| OPS-01 | Дневные секции | «Сегодня», «Вчера», «Завтра», даты «7 ноября»; для другого года — год; порядок от новых к старым; липкие заголовки | unit/ui |
-| OPS-02 | Фильтр типа | Все/Расходы/Доходы; счётчики по видимым (с учётом поиска); пустые состояния; смена фильтра сбрасывает выбор | ui |
-| OPS-03 | Поиск | AND по токенам; категория/счёт/место/комментарий/тип/«Перевод»/сумма/дата; счётчики и сумма в подписи пересчитываются; ⌘F/Escape; «Искать за всё время»; «В этом фильтре пусто»; «Очистить поиск» | unit/ui |
-| OPS-04 | Период | «Текущий период»/«Всё время»; границы периода включительно; подпись; смена сбрасывает выбор | ui/unit |
-| OPS-05 | Сортировка | «По дате» (секции) / «По сумме» (плоский список, планы блоком «Планы»); стабильность | ui |
-| OPS-06 | Выбор и удаление | чекбокс, «Выбрать все» только по видимым; удаление с подтверждением и экраном успеха; transfer-пара расширяется; выбор сбрасывается при поиске/фильтре/периоде/планах | ui/unit |
-| OPS-07 | Строка операции | категория/счёт/место/время/сумма/бейдж обязательности; transfer-строка; контекстное меню «Редактировать/Удалить»; новая строка подсвечивается | ui |
-| OPS-08 | Пустые состояния | нет операций в периоде; нет результатов поиска; ничего не найдено; кнопка создать/очистить | ui |
-| OPS-09 | Подпись шапки | «N операций · сумма за период/за всё время · M в плане»; при выборе — «Выбрано N»; при планах — «Пропущенные/Будущие платежи · N» | ui |
-| OPS-10 | Планы в общем списке | карточки как у операций в дневных секциях (в пределах периода); невыбираемые; бейдж «План/Сегодня/Пропущен» под суммой; клик → карточка плана | ui |
-| OPS-11 | Фильтры планов | кнопки «Пропущенные»/«Будущие» со счётчиками; активная подсветка; «Сбросить»; скрытие «Выбрать все»/периода/сортировки; поиск и тип применяются | ui |
-| OPS-12 | Планы «Будущие» | только pending с датой ≥ сегодня и ≤ min(+2 года, конец серии); сегодня входит; порядок возрастающий; пусто → EmptyState | unit/ui |
-| OPS-13 | Планы «Пропущенные» | pending с датой < начало сегодня; порядок убывающий; связанные скрыты; пусто → EmptyState | unit/ui |
-| OPS-14 | Производительность | 1062 операции не строят все строки вне lazy; поиск/переключение отзывчивы | performance |
+| OPS-01 | Day groups | Today, Yesterday, Tomorrow, and dates such as November 7. Include year for other years. Newest first and sticky headers | unit/ui |
+| OPS-02 | Kind filter | All, Expenses, and Income. Counts reflect search results. Empty states and selection reset on filter change | ui |
+| OPS-03 | Search | AND across tokens in category, account, place, note, kind, Transfer, amount, or date. Update counts and subtitle amount. Verify ⌘F, Escape, Search All Time, empty filter state, and Clear Search | unit/ui |
+| OPS-04 | Period | Current Period and All Time, inclusive boundaries, subtitle, and selection reset on change | ui/unit |
+| OPS-05 | Sort | By Date uses day groups. By Amount uses a flat list with Plans grouped separately. Stable ordering | ui |
+| OPS-06 | Selection and deletion | Checkboxes and Select All apply to visible rows. Confirm and show success. Expand transfer pairs. Reset selection on search, filter, period, or plan changes | ui/unit |
+| OPS-07 | Transaction row | Icon in the category color without a tile backing in Overview, the operations list, account pages, and lists inside dialogs. Account, place, time, amount, and mandatory badge. Transfer row, Edit and Delete menu, and new-row highlight | ui/visual |
+| OPS-08 | Empty states | No transactions in period, no search matches, create or clear action | ui |
+| OPS-09 | Header subtitle | Transaction count, period or all-time total, and plan count. Show selected count on selection and Missed or Upcoming count on plan filters | ui |
+| OPS-10 | Plans in full list | Transaction-style cards in the period's day groups. No selection. Plan, Today, or Missed badge under amount. Click opens plan | ui |
+| OPS-11 | Plan filters | Missed and Upcoming buttons with counts, active highlight, reset. Hide Select All, period, and sort. Apply search and kind | ui |
+| OPS-12 | Upcoming plans | Pending dates from today through the earlier of two years ahead or series end. Include today, ascending, with EmptyState for no results | unit/ui |
+| OPS-13 | Missed plans | Pending dates before today, newest first. Hide linked occurrences. Empty results show EmptyState | unit/ui |
+| OPS-14 | Performance | With 1,062 transactions, the lazy list builds rows on demand. Search and filter changes stay responsive | performance |
 
-### 2.5 Форма операции
+### 2.5 Transaction form
 
-| ID | Фича | Ключевые проверки | Тип |
+| ID | Feature | Key checks | Type |
 |---|---|---|---|
-| FRM-01 | Вкладки | Расход/Доход/Перевод; при редактировании только расход/доход; переключение сбрасывает несовместимые значения; «Новая операция» из списка открывается на вкладке активного фильтра (Доходы → Доход, Расходы → Расход) | ui |
-| FRM-02 | Сумма/счёт/категория | сумма >0; парсинг `12,50`, пробелы, NBSP; валюта из счёта; счёт выбирается; категория своего типа | unit/ui |
-| FRM-03 | Быстрые категории | 5 самых частых + выбранная; «Ещё» открывает полный пикер с поиском по иерархии; parent в подписи; галочка | ui/unit |
-| FRM-04 | Дата/время | дефолт «сейчас»; произвольные дата/время; границы/календарь; будущая дата | ui |
-| FRM-05 | Место | текст; геолокация подставляет имя/координаты; ошибка/недоступность не блокирует ручной ввод | ui/integration |
-| FRM-06 | Редактирование | поля заполнены; сохранение; «Удалить» с подтверждением; возврат; сумма/счёт/категория меняются | ui |
-| FRM-07 | Валидация | пусто/0/отрицательная сумма; нет счёта/категории; нет счетов; смена типа категории; disabled кнопки | unit/ui |
-| FRM-08 | Отмена/закрытие | X/Отмена/⌘. закрывают; sheet не оставляет мусора; повторное открытие чистое | ui |
-| FRM-09 | Повторяющийся платёж | блок только для create expense/income; toggle; частота (день/неделя/месяц/год, дефолт месяц); неделя → Пн–Вс (любые/все/ничего); «Повторять до» (дефолт +1 год, max +5 лет); summary с числом/склонением/периодом; «Создать план»; план не создаёт операцию | ui/unit |
-| FRM-10 | План как факт | «Сохранить как факт» открывает форму с суммой/счётом/категорией/местом/комментарием, дата — сегодня (редактируема), без блока повтора; сохранение создаёт факт и связывает план | ui |
-| FRM-11 | Перевод | см. TRF; на вкладке перевода блок повтора скрыт | ui |
+| FRM-01 | Tabs | Expense, Income, and Transfer. Editing offers expense and income only. Switching clears incompatible values. New Transaction follows the active kind filter | ui |
+| FRM-02 | Amount, account, category | Amount >0, parse `12,50`, spaces, and NBSP. Select the account and use its currency. Category matches kind | unit/ui |
+| FRM-03 | Quick categories | Five most frequent plus current selection. More opens hierarchy search. Parent subtitle and selection checkmark | ui/unit |
+| FRM-04 | Date and time | Defaults to now. Arbitrary date and time, calendar and bounds, and a future date | ui |
+| FRM-05 | Place | Manual text or geolocation supplies place and coordinates. Errors and unavailable location leave manual input usable | ui/integration |
+| FRM-06 | Editing | Prefilled fields, save, confirm deletion, return, and allow amount, account, and category changes | ui |
+| FRM-07 | Validation | Blank, zero, and negative amount, missing account or category, no accounts, and changed category kind. Action disables as applicable | unit/ui |
+| FRM-08 | Cancel and close | X, Cancel, and ⌘. dismiss without saving. Reopen cleanly | ui |
+| FRM-09 | Recurring payment | Only when creating expense or income. Toggle, day/week/month/year (month by default), weekly Mon–Sun with any/all/none, end date default +1 year and max +5 years, localized count and period summary, Create Plan leaves transactions unchanged | ui/unit |
+| FRM-10 | Record plan | Prefill amount, account, category, place, and note. Editable date defaults to today. No recurrence section. Save creates and links a transaction | ui |
+| FRM-11 | Transfer | See TRF. Hide recurrence on the transfer tab | ui |
 
-### 2.6 Переводы
+### 2.6 Transfers
 
-| ID | Фича | Ключевые проверки | Тип |
+| ID | Feature | Key checks | Type |
 |---|---|---|---|
-| TRF-01 | Счета перевода | «Откуда»/«Куда»; минимум два счёта; нельзя один и тот же; списки не дают выбрать одинаковый | ui/unit |
-| TRF-02 | Суммы | списание/зачисление >0; коды валют; при разных валютах «≈ по курсу»; ручное зачисление сохраняется; «По курсу» сбрасывает | unit/ui |
-| TRF-03 | Создание | две операции с общим `transferID`; списание с source, зачисление на destination; балансы меняются; валюты правильные | unit |
-| TRF-04 | Учёты | переводы исключены из расходов/доходов периода, обязательных и конвертированных итогов; строка с бейджем/иконкой перевода | unit/ui |
-| TRF-05 | Детали/удаление | read-only деталь пары; удаление одной части расширяется до обеих; обе удаляются; балансы возвращаются | ui/unit |
-| TRF-06 | Ограничение | повторяющиеся переводы не поддерживаются (блок повтора скрыт) | manual |
+| TRF-01 | Accounts | From and To, minimum two accounts, and pickers prevent the same account on both sides | ui/unit |
+| TRF-02 | Amounts | Positive debit and credit, currency codes, rate estimate for different currencies, manual received amount persists, and Use Rate resets it | unit/ui |
+| TRF-03 | Creation | Two transactions share `transferID`. Source debited, destination credited, balances updated, and currencies correct | unit |
+| TRF-04 | Totals | Exclude transfers from period expenses, income, mandatory and converted totals. Show transfer badge and icon | unit/ui |
+| TRF-05 | Detail and deletion | Read-only pair detail. Deleting one side expands to both, removes both, and reverses balance changes | ui/unit |
+| TRF-06 | Limitation | The transfer tab hides recurrence and supports one-off transfers | manual |
 
-### 2.7 Категории
+### 2.7 Categories
 
-| ID | Фича | Ключевые проверки | Тип |
+| ID | Feature | Key checks | Type |
 |---|---|---|---|
-| CAT-01 | Список | секции «Расходы/Доходы»; родитель + подкатегории с отступом/линией; счётчик родителя агрегирует детей; обязательные | ui |
-| CAT-02 | Создание | имя, тип, цвет, иконка, обязательность; родитель только top-level того же типа; «Без родителя»; один уровень вложенности | ui |
-| CAT-03 | Обязательность | у расхода; подкатегория наследует обязательность родителя; в форме/итогах учитывается; у дохода нет | unit/ui |
-| CAT-04 | Редактирование | имя/цвет/иконка/обязательность/родитель; нельзя выбрать ребёнка родителем; system-категории защищены | ui |
-| CAT-05 | Удаление | system нельзя; операции переходят в «Прочее»; планы — тоже fallback; дети становятся top-level; счётчики обновляются | unit/ui |
-| CAT-06 | Пикер | быстрые 5 по частоте + выбранная; «Ещё»; поиск по имени/родителю; иерархия; галочка выбранной; тип | ui |
-| CAT-07 | Пустое состояние | нет категорий типа → подсказка/запрет сохранения; «Прочее» как fallback | ui |
-| CAT-08 | Счётчики | категория в настройках/сайдбаре; количество операций; после удаления/создания обновляется | ui |
+| CAT-01 | List | Expense and Income sections. Icons in the category color without a tile backing. Subcategories indented with a connector line. Parent count includes subcategory transactions. Mandatory categories are marked | ui/visual |
+| CAT-02 | Creation | Name, kind, color, icon, and mandatory status. Parent must be top-level and same kind. No Parent available. One nesting level | ui |
+| CAT-03 | Mandatory status | Applies to expenses and is inherited by subcategories. Reflected in the form and totals. Unavailable for income | unit/ui |
+| CAT-04 | Editing | Name, color, icon, mandatory status, and parent. Prevent choosing a child as parent and protect system categories | ui |
+| CAT-05 | Deletion | Protect system categories. Reassign transactions and plans to Other, promote children to top level, and update counts | unit/ui |
+| CAT-06 | Picker | The five most frequent categories plus the selected one. More opens a search by name and parent with the hierarchy. Icons in the category color without a tile backing, a checkmark on the selected row, and the list limited to the operation kind | ui/visual |
+| CAT-07 | Empty state | If no categories match the kind, show guidance and block save. Other is the fallback | ui |
+| CAT-08 | Counts | Category count in Settings and sidebar. Transaction count updates after deletion and creation | ui |
 
-### 2.8 Периоды
+### 2.8 Periods
 
-| ID | Фича | Ключевые проверки | Тип |
+| ID | Feature | Key checks | Type |
 |---|---|---|---|
-| PER-01 | Генерация | периоды непрерывны; день зарплаты/длина; 31-е в коротком месяце → последний день; февраль/leap | unit |
-| PER-02 | Текущий период | корректный contains (границы включительно); title; дней осталось; current/all-time | unit/ui |
-| PER-03 | Настройки | payday/fixed; stepper 1…31 / 1…90; смена режима регенерирует; сохранение в defaults | unit/ui |
-| PER-04 | Лист периодов | список, выбор, границы, валидация диапазона/соседей, «Сохранить период», «Сбросить к правилу», «Пересчитать» с подтверждением | ui |
-| PER-05 | Ручная правка | `isManual`; соседние периоды подтягиваются; история непрерывна; сброс к правилу | unit/ui |
-| PER-06 | Границы/пустота | нет периодов; крайние; период без операций; смена периода не теряет данные | ui/unit |
-| PER-07 | Связь с UI | подпись шапки/«Текущий период», карточка периода, обновление после закрытия листа | ui |
+| PER-01 | Generation | Continuous periods, payday or fixed length, clamp the 31st to month end, February and leap year | unit |
+| PER-02 | Current period | Inclusive bounds, title, days remaining, and current or all-time scope | unit/ui |
+| PER-03 | Settings | Payday or fixed, stepper 1…31 or 1…90, mode change regenerates periods, and persist defaults | unit/ui |
+| PER-04 | Period sheet | List and selection, boundaries, range and neighbor validation, Save Period, Reset to Rule, and Recalculate with confirmation | ui |
+| PER-05 | Manual edit | Set `isManual`, update neighboring periods, keep history continuous, and reset to rule | unit/ui |
+| PER-06 | Bounds and empty cases | No periods, extreme boundaries, period without transactions, and switching preserves data | ui/unit |
+| PER-07 | UI updates | Header subtitle and Current Period label, period card, and refresh after closing the sheet | ui |
 
-### 2.9 Повторяющиеся платежи (планы)
+### 2.9 Recurring payments
 
-| ID | Фича | Ключевые проверки | Тип |
+| ID | Feature | Key checks | Type |
 |---|---|---|---|
-| PLN-01 | Создание серии | даты от start до end включительно; день/неделя/месяц/год; время старта; первый/последний; 31-е клампится; март возвращается к 31; неделя — выбранные дни; max 1000; seriesID общий | unit |
-| PLN-02 | Баланс | план — не `Operation`; баланс/итоги не меняются; нет автоматического факта | unit |
-| PLN-03 | Статусы | future/today/missed; linked скрыт из pending; «План/Сегодня/Пропущен» | unit |
-| PLN-04 | Строка плана | как строка операции: IconTile, заголовок headline, метаданные callout, сумма справа, бейдж «План/Сегодня/Пропущен» под суммой; без чекбокса и без «…»; tap → карточка | ui/visual |
-| PLN-05 | Карточка плана | сумма, счёт, категория, дата, повтор, «до», число в серии, место/комментарий; «Связать», «Сохранить как факт», удалить один/всю серию | ui |
-| PLN-06 | Связать с фактом | кандидаты только того же типа, не занятые другими планами, поиск, ближайшие по дате; выбор → plan.linkedOperationID, план скрыт, факт остаётся; пусто → подсказка | ui/unit |
-| PLN-07 | Сохранить как факт | форма предзаполнена, дата сегодня, можно изменить; create operation + link; отмена плана не меняет | ui/unit |
-| PLN-08 | Удаление | один платёж vs вся серия; подтверждение с числом; связанные факты остаются; после удаления серии pending исчезают | unit/ui |
-| PLN-09 | Список/счёт | All Operations — планы в дневных секциях текущего периода; счёт — планы счёта в текущем периоде; kind/search; amount sort — блок «Планы» | ui |
-| PLN-10 | Пропущенные/Будущие | см. OPS-11…13 и ACC-08a…c; лимит двух лет/конца серии; счётчики; reset; пустые состояния | unit/ui |
-| PLN-11 | Целостность | удаление счёта/категории/всех данных корректно чистит/переносит планы; связанный факт, удалённый отдельно, — проверить ограничение | unit/persistence |
+| PLN-01 | Series creation | Inclusive start and end, daily/weekly/monthly/yearly, start time, first and last occurrences, clamp the 31st and return to 31 in March, selected weekdays, max 1,000, and shared seriesID | unit |
+| PLN-02 | Balance | Plans leave `Operation` records, balances, and totals unchanged until recorded | unit |
+| PLN-03 | Status | Future, today, or missed. Hide linked from pending. Show Plan, Today, or Missed | unit |
+| PLN-04 | Plan row | Like a transaction row: icon in the category color without a tile backing, headline title, callout metadata, amount on the right, Plan/Today/Missed badge under the amount. No checkbox and no overflow menu. Click opens the plan | ui/visual |
+| PLN-05 | Plan detail | Amount, account, category, date, recurrence, end date, series count, place and note. Link, Record, and delete one or all | ui |
+| PLN-06 | Link to transaction | Candidates match kind and are unlinked to other plans. Search and sort by nearest date. Select to set plan.linkedOperationID, hide the plan, and retain the transaction. Empty state explains | ui/unit |
+| PLN-07 | Record as transaction | Prefilled form with editable date defaulting to today. Create and link the transaction. Cancel preserves the plan | ui/unit |
+| PLN-08 | Deletion | Choose occurrence or series, confirm with count, retain linked transactions, and remove pending occurrences on series deletion | unit/ui |
+| PLN-09 | Full and account lists | Plans appear in day groups in the current period. Account detail only includes its own plans. Apply kind and search. Amount sort groups Plans separately | ui |
+| PLN-10 | Missed and Upcoming | See OPS-11…13 and ACC-08a…c. Two-year or series-end limit, counts, reset, and empty states | unit/ui |
+| PLN-11 | Integrity | Account, category, and full deletion remove or reassign plans as applicable. Check the behavior when deleting a linked transaction separately | unit/persistence |
 
-### 2.10 Настройки
+### 2.10 Settings
 
-| ID | Фича | Ключевые проверки | Тип |
+| ID | Feature | Key checks | Type |
 |---|---|---|---|
-| SET-01 | Скрывать суммы | все суммы (обзор, сайдбар, строки, планы, пикеры) маскируются; переключение мгновенное; persisted | ui/unit |
-| SET-02 | Оформление | Авто/Светлая/Тёмная; применяется ко всему окну; persisted | ui/visual |
-| SET-03 | Основная валюта | общий итог/конвертации; persisted; missing rate не выдумывается | unit/ui |
-| SET-04 | Финансовый период | режим/день/длина; ссылка «Периоды»; регенерация; persisted | ui/unit |
-| SET-05 | Курсы | источник НБРБ/fallback, таблица, «Обновить», статус «Обновлено», ошибка, кеш 6 часов, disabled во время refresh | ui/unit |
-| SET-06 | Локальный API | вкл/выкл; запрещено до знакомства/недоступно; статус 127.0.0.1:port; копирование токена; allowDelete; persisted | ui/integration |
-| SET-07 | iCloud | статус «Не подключена», лист-инструкция; данные локальны; SyncService не работает | ui/manual |
-| SET-08 | CSV | экспорт всех операций; заголовки/разделитель `;`/BOM/CRLF/экранирование; сортировка дат; отмена/ошибка; планы не входят | unit/ui |
-| SET-09 | Удалить все данные | см. ONB-07; alert текст; сразу знакомство; категории/периоды остаются; планы/счета/операции удалены | ui/persistence |
-| SET-10 | О приложении | версия/хранилище/дизайн; статично | ui |
-| SET-11 | Сохранить копию | файл `.montra` с именем по дате; в копию входят счета, операции (обе части переводов), категории с родителями, планы, периоды, настройки, курсы и переключатели API; дата последней копии в строке; отмена и ошибка записи; повторное сохранение не перезаписывает файл | unit/ui |
-| SET-12 | Загрузить копию | open panel по расширению; отклонение чужого файла, старой/новой версии формата, подмены (SHA-256) и битых ссылок; лист с датой, версией, счётчиками и предупреждением о замене; «сначала сохранить текущее»; экран успеха | ui/persistence |
-| SET-13 | Безопасность восстановления | полная замена данных с сохранением `id`, дробных сумм, связей переводов и родителей категорий; ручные периоды не трогаются; настройки/курсы/API применяются; после — «Обзор»; пустая копия возвращает знакомство; ошибка до удаления оставляет текущие данные | unit/persistence |
+| SET-01 | Hide Amounts | Mask amounts in Overview, sidebar, rows, plans, and pickers immediately and persist the setting | ui/unit |
+| SET-02 | Appearance | System, light, and dark apply to the whole window and persist | ui/visual |
+| SET-03 | Primary currency | Converted total and amounts, persistence, and missing-rate handling | unit/ui |
+| SET-04 | Financial period | Mode, payday, length, Periods link, regeneration, and persistence | ui/unit |
+| SET-05 | Rates | National Bank of Belarus or fallback source, table, Refresh, updated state, error, six-hour cache, and disabled control during refresh | ui/unit |
+| SET-06 | Local API | On and off, unavailable before onboarding, 127.0.0.1 and port, copy token, allowDelete, and persistence | ui/integration |
+| SET-07 | iCloud | Disconnected status and instructions sheet. Data stays local and sync is inactive | ui/manual |
+| SET-08 | CSV | Export all recorded transactions. Header, `;` delimiter, BOM, CRLF, escaping, date sort, cancellation and error, and plans excluded | unit/ui |
+| SET-09 | Delete All Data | See ONB-07. Check alert text, immediate onboarding, and resulting category, period, plan, account, and transaction state | ui/persistence |
+| SET-10 | About in Settings | Static version and storage rows | ui |
+| SET-11 | Save backup | Dated `.montra` filename. Includes accounts, both transfer sides, categories and parents, plans, periods, settings, rates, and API switches. Last backup date, cancel and write failure, and repeat save without overwriting | unit/ui |
+| SET-12 | Load backup | Open panel filters by extension. Reject unrelated files, unsupported old or new format versions, checksum tampering, and broken references. Sheet shows date, version, counts, replacement warning, option to save current state, and success screen | ui/persistence |
+| SET-13 | Safe restore | Full replacement preserves `id`, decimal amounts, transfer links, category parents, and manual periods. Apply settings, rates, and API switches, then open Overview. Empty backup returns to onboarding. Validation failure leaves existing data intact | unit/persistence |
 
-### 2.11 Удаление и сохранность
+### 2.11 Deletion and persistence
 
-| ID | Фича | Ключевые проверки | Тип |
+| ID | Feature | Key checks | Type |
 |---|---|---|---|
-| DEL-01 | Удаление операций | подтверждение показывает элементы/сумму; success; удаление выбранных; счётчики/баланс/период обновляются | ui/unit |
-| DEL-02 | Удаление перевода | одна часть → вся пара; сообщение; две операции; баланс | unit/ui |
-| DEL-03 | Удаление счёта | см. ACC-03; операции+планы; страница не найдена | persistence |
-| DEL-04 | Удаление категории | см. CAT-05; fallback; дети top-level | unit |
-| DEL-05 | Удаление плана | один/серия; связанные факты; подтверждение | unit/ui |
-| DEL-06 | Удаление всех | см. ONB-07 | persistence |
-| DAT-01 | SwiftData схема | Account/Category/Operation/Period/PlannedOperation; CloudKit-safe defaults/optional/inverses; нет unique constraints | unit |
-| DAT-02 | Миграция | старый store → новый (PlannedOperation) без потери данных; counts; бэкап | persistence |
-| DAT-03 | Репозитории | единственный путь записи; save/rollback; каскады/fallback | unit |
-| DAT-04 | Перезапуск | счета/операции/планы/настройки/периоды сохраняются; удаление не воскресает | persistence |
-| DAT-05 | Нет демо на первом запуске | `SeedData.bootstrap` только категории/периоды; счета создаёт знакомство | unit |
-| DAT-06 | Резервная копия | см. SET-11…SET-13; формат `.montra`, round-trip без потерь, восстановление в чистый store | unit/persistence |
+| DEL-01 | Delete transactions | Confirmation shows items and total, success screen, selected rows removed, and counts, balance, and period update | ui/unit |
+| DEL-02 | Delete transfer | Selection expands to both sides. Check message, two removed transactions, and balance | unit/ui |
+| DEL-03 | Delete account | See ACC-03. Transactions and plans cascade, account page is unavailable | persistence |
+| DEL-04 | Delete category | See CAT-05. Reassign to fallback and promote children | unit |
+| DEL-05 | Delete plan | Occurrence or series, retain linked transactions, and confirm | unit/ui |
+| DEL-06 | Delete all | See ONB-07 | persistence |
+| DAT-01 | SwiftData schema | Account, Category, Operation, Period, and PlannedOperation. CloudKit-compatible defaults, optionals, inverses, and no unique constraints | unit |
+| DAT-02 | Migration | Upgrade older store to PlannedOperation schema without losing data. Check counts and backup | persistence |
+| DAT-03 | Repositories | Single write path, save and rollback, cascades, and fallbacks | unit |
+| DAT-04 | Relaunch | Accounts, transactions, plans, settings, and periods persist. Deleted records stay deleted | persistence |
+| DAT-05 | No first-launch demo data | `SeedData.bootstrap` is limited to categories and periods. Onboarding creates accounts | unit |
+| DAT-06 | Backup | See SET-11…SET-13. Verify `.montra` format, lossless round trip, and restore into a clean store | unit/persistence |
 
-### 2.12 Локальный API / Spotlight
+### 2.12 Local API and Spotlight
 
-| ID | Фича | Ключевые проверки | Тип |
+| ID | Feature | Key checks | Type |
 |---|---|---|---|
-| API-01 | Auth/status | токен; 127.0.0.1; POST; неверный токен → 401; onboarding/disabled → недоступно | integration |
-| API-02 | list_accounts/categories/operations | JSON, сортировка, фильтры дат/limit/offset, суммы/валюты | integration |
-| API-03 | create_account/category | валидация имени/валюты/типа/parent; trim; `is_savings` и `is_hidden_from_overview`; ошибки 422 | integration |
-| API-04 | create_operation/import | currency счёта; обязательные поля; external id idempotency; batch 1…100; 409 при unsaved changes; rollback при ошибке | integration |
-| API-05 | preview_import/import | preview token; mismatch 409; duplicates; max rows | integration |
-| API-06 | preview/delete account | allowDelete off → 403; preview token включает operation_ids и plan_ids; delete удаляет счёт+операции+планы; counts | integration |
-| API-07 | Spot action | add expense/income/transfer/account/category/subcategory; amount Double→Decimal; transfer received required для разных валют; ошибки/диалог | integration |
-| API-08 | Spotlight queries/overview | entity search по имени/валюте/родителю; balance/overview; missingCurrencies; hideBalances; macOS 26 only | integration |
-| API-09 | Настройки API | вкл/выкл, токен, allowDelete; интеграция стартует после onboarding; failure показывается | ui/integration |
+| API-01 | Auth and status | Token, 127.0.0.1, POST, 401 for invalid token, unavailable during onboarding or while disabled | integration |
+| API-02 | list_accounts/categories/operations | JSON, sorting, date filters, limit, offset, amounts, and currencies | integration |
+| API-03 | create_account/category | Validate name, currency, kind, and parent. Trim names, cover `is_savings` and `is_hidden_from_overview`, and check 422 errors | integration |
+| API-04 | create_operation/import | Account currency, required fields, idempotency by external ID, batch 1…100, 409 for unsaved changes, and rollback on error | integration |
+| API-05 | preview_import/import | Preview token, 409 on mismatch, duplicates, and row limit | integration |
+| API-06 | Preview and delete account | 403 with allowDelete off. Preview token covers operation_ids and plan_ids. Delete account, transactions, and plans and check counts | integration |
+| API-07 | Spotlight actions | Create expense, income, transfer, account, category, and subcategory. Double-to-Decimal amount, received amount required for different currencies, and errors and dialogs | integration |
+| API-08 | Spotlight queries and Overview | Entity search by name, currency, and parent. Balance, overview, missingCurrencies, hideBalances, and macOS 26 availability | integration |
+| API-09 | API settings | On and off, token, allowDelete, launch integration after onboarding, and surface failures | ui/integration |
 
-### 2.13 «О программе» и аналитика
+### 2.13 About and Analytics
 
-| ID | Фича | Ключевые проверки | Тип |
+| ID | Feature | Key checks | Type |
 |---|---|---|---|
-| ABT-01 | About | artwork Montra, версия, сумма по счетам в основной валюте, «Что умеет», footer | ui/visual |
-| ABT-02 | Replay | предпросмотр с плашкой, без записи, X, финал → Обзор | ui |
-| ABT-03 | Analytics | заглушка «Скоро», artwork, без вычислений/падений | ui |
+| ABT-01 | About | Montra artwork, version, total across accounts in the primary currency, feature summary, and footer | ui/visual |
+| ABT-02 | Replay | Preview banner, no writes, X closes, and completion opens Overview | ui |
+| ABT-03 | Analytics | Coming Soon placeholder and artwork, with no calculations or crashes | ui |
 
-### 2.14 Форматирование, доступность, анимации
+### 2.14 Formatting, accessibility, and animation
 
-| ID | Фича | Ключевые проверки | Тип |
+| ID | Feature | Key checks | Type |
 |---|---|---|---|
-| FMT-01 | Деньги | узкий NBSP, запятая, символ/код, fraction digits по валюте, compact BTC, маска, знак +/− | unit |
-| FMT-02 | Склонения | операция/операции/операций; счёт/счёта/счетов; день/дня/дней; платеж/платежа/платежей | unit |
-| FMT-03 | Даты | Сегодня/Вчера/Завтра; «7 ноября»; год для другого года; время; период; месяцы в родительном | unit |
-| A11Y-01 | VoiceOver/подписи | у иконок/кнопок/строк/заголовков есть label; selected traits; empty states | ui |
-| A11Y-02 | Клавиатура | Tab/Shift-Tab, Space/Return, Escape, ⌘F; нет огромных focus-колец в сайдбаре; standard — в контенте | ui |
-| A11Y-03 | Reduce motion | отключает blur/offset/spring/числовые переходы; контент остаётся доступным | ui |
-| VIS-01 | Анимации | маршрут: шапка постоянна, title/subtitle перетекают, контент кроссфейд; новая строка; числовые переходы; hover; sheet; onboarding; планы | visual |
-| VIS-02 | Визуал | светлая/тёмная; токены цвета/типографики; отсутствие обрезанного/двойного текста; header height | visual |
-| VIS-03 | Snapshot | 01…25 экраны рендерятся без падений; эталоны сравнимы | visual |
+| FMT-01 | Money | Narrow NBSP and decimal comma for Russian, symbol or code, per-currency precision, compact BTC, masks, and plus or minus signs | unit |
+| FMT-02 | Pluralization | Russian one, few, and many forms for transaction, account, day, and payment | unit |
+| FMT-03 | Dates | Today, Yesterday, Tomorrow, localized November 7, year for other years, time, periods, and genitive month names in Russian | unit |
+| A11Y-01 | VoiceOver and labels | Labels for icons, buttons, rows, and headings, plus selection traits and empty states | ui |
+| A11Y-02 | Keyboard | Tab and Shift-Tab, Space and Return, Escape, ⌘F, subtle sidebar focus, and standard content focus | ui |
+| A11Y-03 | Reduce Motion | Disable blur, offset, spring, and digit transitions while keeping content accessible | ui |
+| VIS-01 | Animations | Persistent route header with title and subtitle transitions and content crossfade. New rows, numeric transitions, hover, sheets, onboarding, and plans | visual |
+| VIS-02 | Visuals | Light and dark, color and typography tokens, no clipped or doubled text, and header height | visual |
+| VIS-03 | Snapshots | Screens 01…25 render without crashing and can be compared with baselines | visual |
 
-## 3. Сквозные инварианты (проверять в каждом сценарии)
+## 3. Invariants across scenarios
 
-1. **Деньги не врут**: `balance = initial + incomes − expenses`; transfer — две операции; переводы не входят в расходы/доходы/обязательные; планы не входят никуда до факта.
-2. **Одна запись — один репозиторий**: все изменения через `*Repository`, `save()`; ошибка не оставляет недосохранённое состояние.
-3. **Период**: границы включительно; операции вне периода не влияют на итоги текущего периода; ручные периоды непрерывны.
-4. **Категории**: операция всегда имеет fallback «Прочее»; обязательность наследуется; планы получают fallback при удалении.
-5. **Планы**: pending/линкованные; линк скрывает план, но не факт; удаление серии не удаляет факты; лимит future — два года/конец серии.
-6. **Маска**: при `hideBalances` нигде не проскакивает реальная сумма (включая планы, сайдбар, пикеры, API-снимки, CSV? CSV — отдельно).
-7. **Валюта**: суммы в валюте счёта; конвертация только по известному курсу; missing rate → не считать.
-8. **Маршрут**: onboarding всегда заканчивается Overview; незавершённое знакомство возвращается при следующем запуске, а старое хранилище со счетами — нет; About replay не меняет данные; удаление данных сразу запускает настоящее знакомство.
-9. **Идентичность**: удаление/переименование не ломает ссылки; transferID и seriesID стабильны.
-10. **Доступность**: любое действие доступно с клавиатуры; reduce motion не скрывает контент.
+1. **Balances.** `balance = initial + incomes − expenses`. A transfer has two
+   entries and stays out of expense, income, and mandatory totals. Plans stay
+   out of financial totals until recorded.
+2. **Writes.** Use the corresponding `*Repository` and `save()`. A failed write
+   leaves no partially saved state.
+3. **Periods.** Bounds are inclusive, transactions outside the current period
+   leave its totals unchanged, and manual periods remain continuous.
+4. **Categories.** Transactions have an Other fallback. Subcategories inherit
+   mandatory status. Plans fall back to Other on category deletion.
+5. **Plans.** Linking hides the pending plan and preserves the transaction.
+   Deleting a series preserves linked transactions. Upcoming extends to two
+   years or the series end, whichever comes first.
+6. **Masks.** Check `hideBalances` across plans, sidebar, pickers, and API
+   snapshots. Review CSV separately.
+7. **Currency.** Amounts use the account currency. Convert only when a rate is known.
+8. **Routing.** Onboarding ends at Overview. Incomplete onboarding resumes on
+   relaunch, while older stores with accounts open the app. About preview leaves
+   live data intact. Delete All Data immediately starts live onboarding.
+9. **Identity.** Deleting and renaming preserve valid references. `transferID`
+   and `seriesID` remain stable.
+10. **Accessibility.** All actions are keyboard-accessible. Reduce Motion
+    leaves content available.
 
-## 4. Что уже покрыто автоматически (`-selftest`, 143)
+## 4. Current automated coverage (`-selftest`, 131)
 
-- Периоды: генерация, непрерывность, 31-е → февраль, fixed, ручная правка, соседи.
-- Баланс/знаки/обязательные/доли; конвертация, итоги, BTC compact.
-- Счета: накопительный и скрытие из обзора — флаги сохраняются и снимаются, баланс и операции не меняются.
-- Внешний вид счёта: эмодзи отличается от имени символа, каталог иконок счетов разрешается,
-  эмодзи в `iconName` переживает копию `.montra`.
-- Удаление категории (fallback), подкатегории и наследование обязательности.
-- Перевод: пара, `transferID`, балансы, исключение из расходов, удаление пары.
-- Дневные секции «Сегодня/Вчера».
-- Подсветка новых строк.
-- Touch Bar: полоса счетов укладывается в ширину панели (366 pt при трёх счетах), не растёт больше трёх ячеек,
-  ужимается до оставшегося места, накопительные идут после обычных, открытый счёт подсвечен.
-- Первый запуск: нет демо-счетов, есть категории; удаление всех данных → onboarding, планы удаляются;
-  решение о запуске: прерванное знакомство возвращается и подхватывает свой счёт, хранилище до знакомства со счетами — нет.
-- Планы: месячный clamp, недельные дни, серия, баланс не меняется, link, missed/upcoming, удаление серии.
-- Форматирование и склонения.
-- Spotlight ledger: счёт/категория/подкатегория, перевод, received required, балансы, overview, missingCurrencies, hideBalances.
-- Бэкап: формат и checksum, capture/coding/чтение с диска, restore всех сущностей,
-  точные Decimal, флаг скрытия, подкатегории, переводы, планы, периоды, настройки,
-  курсы и настройки API, отказ от битых и чужих файлов.
-- Резервная копия: полный состав (5 счетов, 15 операций, категории, план, периоды, настройки, курсы, API), точность дробных сумм, файл на диске, контрольная сумма, отказ от подмены и чужого файла, восстановление балансов/родителей категорий/переводов/планов/ручных периодов/настроек, отказ от битой ссылки до удаления текущих данных.
+- Period generation, continuity, February clamping, fixed length, manual edits,
+  and neighboring boundaries.
+- Balances, signs, mandatory spending, allocation shares, conversions, totals,
+  and compact BTC.
+- Savings and Hide from Overview flags persist and can be cleared, with
+  balances and transactions preserved.
+- Category deletion fallback, subcategories, and inherited mandatory status.
+- Transfer pair and `transferID`, balances, expense exclusion, and pair deletion.
+- Today and Yesterday groups and new-row highlights.
+- First launch without demo accounts, starter categories, live onboarding
+  after reset with plans removed, resuming an interrupted flow with its existing
+  account, and launching an older store without onboarding.
+- Plans cover monthly clamping, weekly days, series, unchanged balance, linking,
+  missed and upcoming filters, and series deletion.
+- Formatting and pluralization.
+- Spotlight ledger covers accounts, categories, subcategories, transfers,
+  required received amounts, balances, Overview, missingCurrencies, and hideBalances.
+- Backups cover format and checksum, capture, encoding, on-disk read, restore
+  of all entities, exact Decimal amounts, hide flags, relationships, settings,
+  rates, API switches, and rejection of damaged or unrelated files.
+- The full round trip includes five accounts, 15 transactions, categories, a
+  plan, periods, settings, rates, and API switches. It verifies balances,
+  category parents, transfer links, plans, manual periods, and failure on a
+  broken reference before deleting current data.
 
-## 5. Что ещё не покрыто (приоритет для новых тестов)
+## 5. Gaps in automated coverage
 
-- UI-потоки знакомства (реальный/предпросмотр), удаление всех данных, route Overview.
-- Форма операции: валидации, quick categories, дата/время, геолокация, edit/delete, повторяющийся блок.
-- Планы UI: карточка, link picker, save-as-fact, удаление single/series, фильтры missed/upcoming.
-- Поиск/фильтры/периоды/сортировка, удаление выбранных, empty states.
-- Аккаунт: edit/delete, гармошка/lazy, планы на счёте.
-- Категории UI: parent picker, system, счётчики; периоды UI.
-- Настройки: tema, hide, primary, rates refresh/fallback, CSV, clear, API.
-- UI резервной копии: панели сохранения/открытия, лист предпросмотра, сохранение текущего состояния, экран успеха.
-- Локальный HTTP API (auth/errors/idempotency/delete/plans) и Spotlight App Intents.
-- Persistence: миграция старого store, перезапуск; round-trip резервной копии уже покрыт `-selftest`, UI восстановления — нет.
-- Визуальные: shared header title/subtitle, reduce motion, focus, dark/light, snapshot diffs.
+- Live and preview onboarding UI, Delete All Data, and routing to Overview.
+- Transaction form validation, quick categories, date and time, geolocation,
+  editing, deletion, and recurrence.
+- Plan detail, link picker, record flow, occurrence and series deletion, and
+  missed and upcoming filters.
+- Search, filters, periods, sorting, selected-row deletion, and empty states.
+- Account editing and deletion, collapsing and lazy rows, and account plans.
+- Category parent picker, system category protection, counts, and period UI.
+- Appearance, hidden amounts, primary currency, rate refresh and fallback,
+  CSV, reset, and API settings.
+- Backup save and open panels, preview, pre-restore save, and success screen.
+- Local HTTP API authentication, errors, idempotency, deletion and plans, and
+  Spotlight App Intents beyond the ledger tests.
+- Older store migration, relaunch, and restore UI. Self-test already covers
+  the backup round trip.
+- Shared header, Reduce Motion, focus, dark and light, and snapshot diffs.
 
-## 6. Известные ограничения / не-фичи
+## 6. Known limitations
 
-- iCloud выключен (CloudKit `.none`), SyncService — задел; не тестировать как рабочую синхронизацию.
-- «Аналитика» — заглушка.
-- Повторяющиеся **переводы** не поддерживаются; блок повтора скрыт на вкладке «Перевод».
-- Редактирование серии плана целиком отсутствует: только удалить один/всю серию и создать заново.
-- Связанный план хранит `linkedOperationID`; если факт удалить отдельно, план остаётся связанным (проверить/учесть как ограничение).
-- Планы на странице счёта — только текущий период; полный future — в «Все операции».
-- В «Все операции» нет отдельного пункта сайдбара: маршрут доступен из «Обзора», ⌘2 и меню.
-- Локальный API/Spotlight доступны не во всех режимах/macOS; в настройках показывается причина.
-- CSV экспортирует только факты, не планы.
+- iCloud uses CloudKit `.none`. `SyncService` is groundwork for future sync.
+- Analytics is a placeholder.
+- Recurrence is unavailable on Transfer.
+- Editing a whole plan series requires deleting and recreating it.
+- A linked plan stores `linkedOperationID`. Check the behavior when deleting
+  the transaction separately.
+- The default account list shows current-period plans. The full transaction list
+  offers a future view.
+- Open the full transaction list from Overview, ⌘2, or the menu.
+- Local API and Spotlight availability depend on mode and macOS version.
+  Settings shows why a feature is unavailable.
+- CSV exports recorded transactions only.
 
-## 7. Быстрый smoke-набор (P0, перед каждым релизом)
+## 7. Release smoke scenarios (P0)
 
-1. **ONB**: чистое хранилище → знакомство → счёт 1000 BYN → первый расход → финал → «Обзор», счёт на месте.
-2. **Онбординг после удаления**: удалить все данные → сразу настоящее знакомство → создать счёт → закрыть приложение до финала → следующий запуск снова открывает знакомство (счёт один) → финал → «Обзор», счёт сохраняется; планы удалены.
-3. **ACC**: создать EUR-счёт, изменить остаток, удалить счёт с операциями — баланс/списки не ломаются.
-4. **OPS**: 10 операций в разные дни → «Сегодня/Вчера/дата»; поиск; фильтр; период; сортировка; удалить выбранные.
-5. **FRM**: расход и доход; quick-категории/«Ещё»; дата/место; редактирование; удаление.
-6. **TRF**: BYN→EUR с ручным зачислением; две строки; балансы; удаление одной части → обе; расходы периода не искажены.
-7. **CAT**: родитель + подкатегория, обязательность; удалить родителя — дети top-level, операции в «Прочее».
-8. **PER**: день зарплаты 31 → февраль; ручная правка периода; соседи непрерывны; пересчёт.
-9. **PLN**: месячный план с пропущенным и будущим; «Пропущенные»/«Будущие»; «Связать с фактом»; «Сохранить как факт»; удалить один/серию.
-10. **SET**: скрыть суммы, тема, основная валюта, экспорт CSV, удалить все данные; проверить onboarding и Overview.
-11. **BAK**: сохранить копию → изменить/удалить данные → загрузить копию → счётчики, балансы, категории-родители, планы, ручные периоды, тема/маска/валюта на месте; после успеха открыт «Обзор»; битый файл отклоняется без потери текущих данных.
-12. **DAT**: перезапуск приложения — счета/операции/планы/периоды/настройки на месте.
-13. **API/SPT** (если доступно): статус/токен, create operation, delete account с планами; Spotlight-действия.
+1. **ONB.** Start from a clean store, create a 1,000 BYN account and first
+   expense, finish onboarding, and verify the account in Overview.
+2. **Onboarding after reset.** Delete all data, confirm live onboarding starts,
+   create an account, and quit before finishing. Relaunch and verify that
+   onboarding resumes with a single account. Complete it, verify Overview and
+   the persisted account, and check that old plans are gone.
+3. **ACC.** Create a EUR account, change its opening balance, and delete it
+   with transactions. Verify balances and lists.
+4. **OPS.** Create ten transactions on different days and check Today,
+   Yesterday, and dated groups. Search, filter, change period and sort, and
+   delete selected records.
+5. **FRM.** Record an expense and income, use quick categories and More, set
+   date and place, then edit and delete.
+6. **TRF.** Transfer BYN to EUR with a manual received amount. Verify two rows
+   and balances. Delete one side and verify both disappear and period spending
+   is correct.
+7. **CAT.** Create a mandatory parent and subcategory. Delete the parent and
+   verify the child moves to the top level and transactions move to Other.
+8. **PER.** Use payday on the 31st in February, edit a period, verify continuous
+   neighbors, and recalculate.
+9. **PLN.** Create a monthly plan with missed and upcoming occurrences. Test
+   both filters, link an existing transaction, record a new transaction, and
+   delete one occurrence and a series.
+10. **SET.** Hide amounts, switch appearance and primary currency, export CSV,
+    and delete all data. Verify onboarding and Overview.
+11. **BAK.** Save a backup, change or delete data, and restore. Verify counts,
+    balances, category parents, plans, manual periods, appearance, masks, and
+    currency. Verify Overview opens and a damaged file leaves current data intact.
+12. **DAT.** Relaunch and verify accounts, transactions, plans, periods, and settings.
+13. **API/SPT.** When available, verify status and token, create a transaction,
+    delete an account with plans, and run Spotlight actions.
 
-## 8. Рекомендуемый порядок покрытия
+## 8. Coverage priorities
 
-1. **P0-логика деньгами**: `Finance`, `PeriodService`, `PlanSchedule`, `MoneyFormat`, `CSVExporter`, репозитории (create/update/delete/каскады/fallback).
-2. **P0-целостность**: удаление операции/перевода/счёта/категории/плана/всех данных; миграция store; перезапуск; резервная копия (round-trip, восстановление, отказы).
-3. **P0-UI-потоки**: onboarding (real/preview/after clear), маршрут Overview; форма операции/перевод; удаление.
-4. **P1-списки**: дни, поиск, фильтры, период, сортировка, выбор, планы/фильтры планов.
-5. **P1-настройки**: hide, theme, primary, periods, rates, CSV, API, UI резервной копии.
-6. **P1-интеграции**: Local API (auth/errors/preview/import/delete), Spotlight (macOS 26).
-7. **P2-визуал/анимации/доступность**: shared header, reduce motion, focus, light/dark, snapshot diffs.
+1. **P0 money logic.** `Finance`, `PeriodService`, `PlanSchedule`,
+   `MoneyFormat`, `CSVExporter`, and repository writes, cascades, and fallbacks.
+2. **P0 data integrity.** Delete transactions, transfers, accounts, categories,
+   plans, and all data. Cover store migration, relaunch, backup round trip,
+   restore, and failures.
+3. **P0 UI flows.** Live, preview, and post-reset onboarding, Overview routing,
+   transaction and transfer forms, and deletion.
+4. **P1 lists.** Day groups, search, filters, period, sorting, selection, plans,
+   and plan filters.
+5. **P1 settings.** Masks, theme, primary currency, periods, rates, CSV, API,
+   and backup UI.
+6. **P1 integrations.** Local API authorization, errors, preview, import, and
+   deletion, plus Spotlight on macOS 26.
+7. **P2 visuals and accessibility.** Shared header, Reduce Motion, focus,
+   light and dark, and snapshot diffs.
 
-**Технические заметки для тестов**
-
-- Чистую логику удобно тестировать Swift Testing/XCTest на in-memory `ModelContainer` — как в `SelfTest.swift`.
-- UI-потоки — XCUITest с запуском на временном store (`-preview-onboarding` для onboarding, отдельный store для остальных).
-- API — поднимать `LocalHTTPServer` в тесте, проверять HTTP-коды/JSON; не забывать токен и onboarding-гейт.
-- Визуал — `-snapshot` + сравнение PNG (или новая эталонная папка); анимации — запись/покадровый тест не обязательны, но статический header/размеры проверять.
-- Перед destructive-тестами всегда копировать store; после теста восстанавливать.
+Use Swift Testing or XCTest with an in-memory `ModelContainer` for pure logic,
+as in `SelfTest.swift`. Use XCUITest on a temporary store for UI flows, with
+`-preview-onboarding` for onboarding and a separate store for other cases.
+Start `LocalHTTPServer` in API tests and check HTTP status and JSON, including
+the token and onboarding gate. Compare PNGs from `-snapshot` against baselines.
+Check static header and dimensions. Video and frame-by-frame animation checks
+are optional. Copy the store before destructive tests and restore it afterward.

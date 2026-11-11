@@ -4,9 +4,8 @@ import SwiftUI
 
 // MARK: - Colour tokens
 //
-// The palette is lifted from the reference app (Purge): warm graphite neutrals,
-// one light "primary action", and status tints used only for meaning. Every
-// token carries a light and a dark value, so switching appearance is free.
+// The palette uses warm graphite neutrals, a light primary action, and
+// semantic status colors. Every token has a light and a dark value.
 
 enum AppColors {
     // Text

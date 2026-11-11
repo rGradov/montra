@@ -1,199 +1,183 @@
 # MasterPrompt — Montra
 
-Единый источник правды по продукту, стилю и реализации. Документ описывает **то, что
-уже собрано**, а не намерение: по нему приложение можно воспроизвести или безопасно
-дорабатывать, не теряя визуальный язык.
+Product, design, and implementation reference for reproducing or extending
+Montra while preserving its visual language. It describes the implementation
+at the time of this specification. The feature inventory tracks later changes.
 
-Референс стиля — приложение **Purge** (`github.com/jithin-sabu/purge-app`): оттуда взяты
-палитра, шрифт, размеры окна, компоненты и характер анимаций. Всё, что относится к
-деньгам, спроектировано заново.
+## 1. Product
 
----
+**Montra** is a native macOS app for personal finances. It supports accounts in
+multiple currencies, expenses and income, mandatory expense categories, and an
+adjustable **payday-to-payday financial month**.
 
-## 1. Что это
+The stack is SwiftUI and SwiftData with no third-party dependencies. The single
+target supports macOS 15 and later. Data stays local. The app has groundwork
+for iCloud and CloudKit sync, which is disabled in this version.
+[iCloud setup](Docs/iCloud-Setup.md)
 
-**Montra** — нативное macOS-приложение для личного учёта денег. Счета в разных валютах,
-операции расходов и доходов, категории с признаком обязательности и **финансовый месяц
-«от зарплаты до зарплаты»**, который можно сдвинуть для конкретного месяца.
+## 2. User and scenario
 
-Стек: SwiftUI + SwiftData, без сторонних зависимостей. Один таргет — macOS 15+.
-Данные лежат локально и подготовлены к синхронизации через iCloud/CloudKit (в этой
-версии синхронизация не включена — см. `Docs/iCloud-Setup.md`).
+One person living in Belarus gets paid in BYN and keeps some money in EUR,
+USD, and crypto. Payday may be before or after the 15th. A financial month
+runs from one paycheck to the next, with adjustable dates for each period.
 
----
+1. See the total balance and where the money is held at a glance.
+2. Record an expense or income quickly using the account currency.
+3. Understand what happened in the current financial period.
+4. Keep mandatory and optional expenses separate.
 
-## 2. Пользователь и сценарий
+## 3. Visual language
 
-Один человек, живёт в Беларуси, получает зарплату в BYN, часть денег держит в EUR, USD и
-крипте. Зарплата приходит не строго 15-го числа: иногда раньше, иногда позже, бывают
-задержки. Поэтому «месяц» — это не календарный месяц, а отрезок от одной зарплаты до
-следующей, и границы каждого такого отрезка можно поправить.
+### 3.1 Window and layout
 
-Главные задачи:
-
-1. За один взгляд понять, сколько денег всего и где они.
-2. Быстро записать расход или доход, не думая о валюте (она берётся из счёта).
-3. Видеть, что происходит внутри текущего финансового периода.
-4. Держать категории в порядке: обязательные платежи отдельно от необязательных.
-
----
-
-## 3. Визуальный язык
-
-### 3.1 Окно и сетка
-
-| Параметр | Значение |
+| Parameter | Value |
 |---|---|
-| Ширина окна | **980 pt**, фиксированная (меняется только высота) |
-| Высота по умолчанию / минимум | 700 / 600 pt |
-| Стиль окна | `hiddenTitleBar`, traffic lights плавают над сайдбаром |
-| Сайдбар | **240 pt**, фон `surfaceCard`, разделитель 1 px `borderSubtle` |
-| Верхний отступ сайдбара | 42 pt (под traffic lights) |
-| Контент | горизонтальные отступы **24 pt**, верхний 20 pt |
-| Карточки | радиус **14**, фон `fillSecondary` или `surfaceCard`, обводка 0.5 px |
-| Строка карточки | паддинг 12 / 14, разделитель full-width 0.5 px |
-| Иконка-плашка | **28×28**, радиус 7.28 (0.26 continuous), белый глиф 13 medium |
-| Пилюля-кнопка | высота 30 (24 / 38), паддинг 14, capsule |
-| Чип-фильтр | высота ~28, capsule, иконка 14 + текст 13 + счётчик |
-| Чекбокс строки | нативный `.checkbox`, 14 pt |
-| Переключатель | 38×22, трек `fillSecondaryPressed` / `statusSafeText`, кнопка 18 |
+| Window width | Fixed at **980 pt**, with adjustable height |
+| Default and minimum heights | 700 and 600 pt |
+| Window style | `hiddenTitleBar`, with traffic lights over the sidebar |
+| Sidebar | **240 pt**, `surfaceCard` background, 1 px `borderSubtle` divider |
+| Sidebar top inset | 42 pt below the traffic lights |
+| Content | **24 pt** horizontal inset and 20 pt top inset |
+| Cards | **14 pt** radius, `fillSecondary` or `surfaceCard`, 0.5 px border |
+| Card row | 12 / 14 pt padding and a 0.5 px full-width divider |
+| Icon tile | **28×28**, continuous radius 7.28 (0.26), white 13 pt medium glyph |
+| Capsule button | 30 pt high (24 / 38 variants), 14 pt padding |
+| Filter chip | About 28 pt high, capsule shape, 14 pt icon, 13 pt label, and count |
+| Row checkbox | Native `.checkbox`, 14 pt |
+| Switch | 38×22 track in `fillSecondaryPressed` or `statusSafeText`, 18 pt thumb |
 
-### 3.2 Палитра
+### 3.2 Palette
 
-Тёплые графитовые нейтрали; значения — из `Montra/Design/Theme.swift`.
+Warm graphite neutrals from `Montra/Design/Theme.swift`.
 
-| Токен | Light | Dark | Назначение |
+| Token | Light | Dark | Use |
 |---|---|---|---|
-| `textPrimary` | `#2E2D2B` | `#ECEAE6` | заголовки и суммы |
-| `textSecondary` | `#64625E` | `#A6A39D` | подписи |
-| `textTertiary` | `#85827C` | `#807D78` | даты, проценты |
-| `surfaceBase` | `#F6F5F3` | `#171615` | фон страницы |
-| `surfaceCard` | `#FFFFFF` | `#1E1D1C` | сайдбар, «тихие» карточки обзора |
-| `surfaceRaised` | `#FFFFFF` | `#2B2A28` | поля, пикеры, hover |
-| `fillSecondary` | `#EFEDEA` | `#282725` | карточки-группы, вторичные кнопки |
-| `fillSecondaryHover` | `#E8E6E2` | `#2F2E2C` | hover |
-| `borderSubtle` | `#E6E3DF` | `#302F2D` | разделители, рамки |
-| `borderStrong` | `#D5D2CD` | `#3D3B38` | рамки контролов |
-| `actionPrimary` | `#353431` | `#ECEAE6` | главная кнопка (светлая пилюля в тёмной теме) |
-| `onActionPrimary` | `#FFFFFF` | `#171615` | текст на главной кнопке |
-| `statusSafeText/Fill` | `#1F7A35` / `#E6F4EA` | `#5FD36B` / `#1B2E22` | доходы, «сейчас» |
-| `statusCheckText/Fill` | `#8A5300` / `#FAEEDA` | `#F2B84B` / `#332910` | обязательные, предупреждения |
-| `statusDangerText/Fill` | `#B4302A` / `#FBE8E5` | `#F47468` / `#321B19` | удаление |
-| Chart blue / sky / amber / vermillion / purple / teal | Okabe–Ito | светлее | полоса баланса, плитки |
+| `textPrimary` | `#2E2D2B` | `#ECEAE6` | Titles and amounts |
+| `textSecondary` | `#64625E` | `#A6A39D` | Subtitles |
+| `textTertiary` | `#85827C` | `#807D78` | Dates and percentages |
+| `surfaceBase` | `#F6F5F3` | `#171615` | Page background |
+| `surfaceCard` | `#FFFFFF` | `#1E1D1C` | Sidebar and quiet Overview cards |
+| `surfaceRaised` | `#FFFFFF` | `#2B2A28` | Fields, pickers, hover |
+| `fillSecondary` | `#EFEDEA` | `#282725` | Grouped cards and secondary buttons |
+| `fillSecondaryHover` | `#E8E6E2` | `#2F2E2C` | Hover |
+| `borderSubtle` | `#E6E3DF` | `#302F2D` | Dividers and outlines |
+| `borderStrong` | `#D5D2CD` | `#3D3B38` | Control outlines |
+| `actionPrimary` | `#353431` | `#ECEAE6` | Primary button, a light capsule in Dark mode |
+| `onActionPrimary` | `#FFFFFF` | `#171615` | Primary button text |
+| `statusSafeText/Fill` | `#1F7A35` / `#E6F4EA` | `#5FD36B` / `#1B2E22` | Income and current time |
+| `statusCheckText/Fill` | `#8A5300` / `#FAEEDA` | `#F2B84B` / `#332910` | Mandatory expenses and warnings |
+| `statusDangerText/Fill` | `#B4302A` / `#FBE8E5` | `#F47468` / `#321B19` | Deletion |
+| Chart blue / sky / amber / vermillion / purple / teal | Okabe–Ito | Lighter variants | Allocation bar and tiles |
 
-Акцентный синий `#0A6ED1 / #4C9EEA` — только фокус полей. Основное действие всегда
-светлая пилюля с тёмным текстом, как `Stop` в референсе.
+Blue accent `#0A6ED1 / #4C9EEA` marks focused fields. Primary buttons use
+the appearance-specific text and fill tokens above.
 
-### 3.3 Типографика
+### 3.3 Typography
 
-Текст — **Onest** (variable, файл `Resources/Fonts/OnestText.ttf`, OFL). В шрифте
-намеренно удалены десять цифр: числа всегда рисуются **SF Rounded**, поэтому суммы
-выглядят как показатели в референсе.
+Text uses variable **Onest**, bundled as `Resources/Fonts/OnestText.ttf`
+under the OFL. Its numeral glyphs have been removed. The app draws numerals
+in **SF Rounded**.
 
-| Роль | Стиль |
+| Role | Style |
 |---|---|
-| Hero-сумма | Onest 26 semibold → **SF Rounded 26 bold** |
-| Заголовок страницы | Onest 20 semibold |
-| Заголовок секции | Onest 13 semibold (secondary) |
-| Заголовок строки | Onest 13 semibold |
-| Основной текст / кнопки | Onest 13 regular / semibold |
-| Подпись строки | Onest 12 regular |
-| Метаданные (даты, проценты) | Onest 11, числа SF Rounded 11 |
-| Бейдж | Onest 11 medium |
-| Сайдбар | Onest 13 medium / semibold |
-| Сумма в строке списка | SF Rounded 13 semibold |
-| Сумма в строке обзора | SF Rounded 15 semibold |
+| Hero amount | **SF Rounded 26 bold** |
+| Page title | Onest 20 semibold |
+| Section title | Onest 13 semibold in secondary color |
+| Row title | Onest 13 semibold |
+| Body and button text | Onest 13 regular or semibold |
+| Row subtitle | Onest 12 regular |
+| Metadata | Onest 11 and SF Rounded 11 for numerals |
+| Badge | Onest 11 medium |
+| Sidebar | Onest 13 medium or semibold |
+| Amount in a list row | SF Rounded 13 semibold |
+| Amount in an Overview row | SF Rounded 15 semibold |
 
-Числа всегда `monospacedDigit` и выровнены по правому краю.
+Numerals use `monospacedDigit` and align to the trailing edge.
 
-### 3.4 Компоненты
+### 3.4 Components
 
-- `MontraButtonStyle` — роли `primary / secondary / destructive / quiet / soft`, размеры
-  24 / 30 / 38, ширины `fit / fill / fixed / square`. Hover 0.12 s, disabled 0.45 opacity.
-- `InsetCard`, `OverviewCard`, `InsetCardDivider` — группы строк.
-- `IconTile` — цветная плашка с градиентом и белым глифом; пустой символ = пунктирная
-  «свободная» плашка. Если в ассетах есть картинка с именем иконки, рисуется она —
-  точка расширения под будущие ассеты счетов.
-- `AppBadge` — 11 medium, паддинг 6/2, радиус 6, фон-тон 14 %, рамка 22 %.
-- `FilterChip` — вкладки и дропдауны; выбранная вкладка меняет фон и вес текста.
-- `Chain`→`FlowLayout` — перенос чипов по строкам.
-- `MontraSwitchStyle` — тёмный трек, белая кнопка, зелёный при включении.
-- `NumberStepper` — 28 pt поле: минус, **редактируемое значение**, плюс; в покое
-  показывается целая подпись («15-е число»), при клике — поле с числом и суффиксом;
-  границы отключают кнопку, значение перекатывается `.numericText()`, ввод коммитится
-  по Return или клику вне, VoiceOver регулирует значение.
-- `PageHeader`, `SectionLabel`, `SheetHeader/Footer`, `FieldLabel`, `MontraTextField`,
-  `DropdownMenu` (поповер), `DatePickerField`, `PopoverMenu`, `EmptyState`, `RowCheckbox`.
-- `BalanceBar` — 14 pt. Сегменты — **обычные прямоугольники** с зазором 2 pt и
-  минимальной шириной 4 pt; скругление только у внешних концов, потому что весь ZStack
-  обрезается одной `Capsule` (как `OverviewDiskBar` в референсе). Отдельных капсул у
-  сегментов нет; трек показывается только если все значения ≤ 0. Hover приглушает
-  остальные сегменты до 30 % и подсвечивает строку счёта.
+- `MontraButtonStyle` supports `primary / secondary / destructive / quiet / soft`,
+  heights 24 / 30 / 38, and widths `fit / fill / fixed / square`. Hover takes
+  0.12 seconds. Disabled opacity is 0.45.
+- `InsetCard`, `OverviewCard`, and `InsetCardDivider` group rows.
+- `IconTile` shows a tinted gradient and white glyph. An empty symbol uses a
+  dashed tile. A matching image asset takes precedence over the glyph.
+- `AppBadge` uses 11 medium, 6 / 2 pt padding, a 6 pt radius, 14% fill, and
+  a 22% border.
+- `FilterChip` supports tabs and dropdowns. Selection changes background
+  and text weight. `Chain` uses `FlowLayout` to wrap chips.
+- `MontraSwitchStyle` uses a dark track, white thumb, and a green on state.
+- `NumberStepper` is a 28 pt control with minus, editable value, and plus.
+  At rest it shows a full label such as “15th day.” Clicking reveals a numeric
+  field and suffix. Bounds disable the corresponding button, numbers animate
+  with `.numericText()`, Return or loss of focus commits, and VoiceOver
+  can adjust the value.
+- Shared controls include `PageHeader`, `SectionLabel`, `SheetHeader/Footer`,
+  `FieldLabel`, `MontraTextField`, `DropdownMenu`, `DatePickerField`,
+  `PopoverMenu`, `EmptyState`, and `RowCheckbox`.
+- `BalanceBar` is 14 pt high. Rectangular segments have 2 pt gaps and a minimum
+  width of 4 pt. One `Capsule` clips the ZStack so only the outside ends are
+  rounded. The track appears when all values are ≤ 0. Hover dims the other
+  segments to 30% and highlights the corresponding account row.
 
-### 3.5 Анимации
+### 3.5 Animation
 
-| Что | Кривая |
+| Behavior | Timing and effect |
 |---|---|
-| Hover / нажатие | `easeOut 0.12` |
-| Смена значений-чисел | `easeInOut 0.45` + `.numericText()` |
-| Сегменты полосы баланса | `easeOut 0.6` |
-| Смена страницы | `easeInOut 0.22`, fade |
-| Появление строки | `easeInOut 0.22` |
-| Иконка сайдбара (outline → fill) | `snappy 0.2` |
-| Layout в настройках | `spring(response: 0.28, damping 0.9)` |
-| Появление новой операции | `spring(response: 0.34, damping 0.86)`: сдвиг 7 pt, масштаб 0.985→1, blur 1.2→0, fade |
-| Подсветка новой строки | фон светлее + рамка `borderStrong` + вуаль 4.5 %; гаснет через 1.4 с, `easeOut 0.9` |
-| Заголовок и подпись страницы | всплывают на 4 pt из blur 2, `easeOut 0.36`; подпись с задержкой 0.07 |
-| Счётчики в подписи | `.numericText()` + `easeInOut 0.45` при изменении |
-| Значение степпера | `.numericText()` + `easeInOut 0.2`, кнопки гаснут на границах |
-| Смена валюты в онбординге/новом счёте | символ в поле суммы: старый уезжает вверх и гаснет, новый въезжает снизу (0.22), слот фиксированной ширины — поле не дёргается |
-| Смена периода | диапазон в пилюле хедера обновляется, после закрытия листа подпись страницы появляется заново (fade/rise 0.36) |
-| Смена маршрута | шапка вынесена в общий слой (`SharedDetailHeader` + `DetailHeaderHost`) и не участвует в кроссфейде страницы; заголовок и подпись анимируются как в Purge (`AnimatedPageTitle`: старый уходит вверх/растворяется, новый въезжает снизу; подпись — тот же приём тише), контент страницы кроссфейдится `spring 0.4/0.92`, действия страницы обновляются в той же шапке |
-| Смена фильтра на счёте | строки не заменяются, а складывают высоту до 0 / раскрывают обратно (`spring 0.4 / 0.86`, стаггер 0.02 на строку), зазор складывается вместе со строкой; пустое состояние проявляется fade |
+| Hover or press | `easeOut 0.12` |
+| Number changes | `easeInOut 0.45` and `.numericText()` |
+| Balance segments | `easeOut 0.6` |
+| Page change | `easeInOut 0.22` fade |
+| Row entrance | `easeInOut 0.22` |
+| Sidebar icon from outline to fill | `snappy 0.2` |
+| Settings layout | `spring(response: 0.28, damping 0.9)` |
+| New transaction | `spring(response: 0.34, damping 0.86)`, offset 7 pt, scale 0.985→1, blur 1.2→0, and fade |
+| New row highlight | Lighter background, `borderStrong`, and 4.5% overlay. Fades after 1.4 seconds with `easeOut 0.9` |
+| Page title and subtitle | Rise 4 pt from blur 2 with `easeOut 0.36`. Subtitle delayed 0.07 seconds |
+| Subtitle counts | `.numericText()` and `easeInOut 0.45` |
+| Stepper | `.numericText()` and `easeInOut 0.2`. Buttons dim at bounds |
+| Currency switch in onboarding or new account | Old symbol moves up and fades, new one enters from below in 0.22 seconds, fixed-width slot |
+| Period change | Header range updates and the subtitle rises and fades back in over 0.36 seconds after closing the sheet |
+| Route change | `SharedDetailHeader` and `DetailHeaderHost` stay outside the content crossfade. `AnimatedPageTitle` moves the old title up and out and brings the new one in from below. Subtitle motion is subtler. Page content crossfades with `spring 0.4/0.92`. Actions update in the same header |
+| Account filter change | Rows collapse to zero height or reopen with `spring 0.4 / 0.86` and a 0.02-second stagger. Spacing collapses with the row and the empty state fades in |
 
-Уважать `accessibilityReduceMotion`: все переходы отключаются.
+Honor `accessibilityReduceMotion` by disabling motion transitions.
 
----
+## 4. Information architecture
 
-## 4. Информационная архитектура
-
-```
-[логотип Montra]
-Обзор
-Счета          → Наличные, Карта, Revolut, Крипто
-Накопления     → Сбережения …
-Деньги         → Категории
-Анализ         → Аналитика
+```text
+[Montra logo]
+Overview
+Accounts       → Cash, Card, Revolut, Crypto
+Savings        → Savings accounts …
+Money          → Categories
+Analysis       → Analytics
 …
-[+ Новый счёт]                ← главный CTA, внизу сайдбара
-Настройки
-О программе
-[iCloud не подключён]         ← статус-пилюля, открывает лист
+[+ New Account]                ← Primary action at the bottom of the sidebar
+Settings
+About
+[iCloud disconnected]          ← Status pill opens a sheet
 ```
 
-Отдельной вкладки операций нет: полный список — это подстраница обзора, она
-открывается по «Все операции» в секции последних операций (или ⌘2). В сайдбаре при
-этом подсвечен «Обзор», а на странице есть тихая ссылка «‹ Обзор».
+Open the full transaction list from Recent Transactions in Overview or with
+⌘2. Overview remains selected and the page offers a back link.
 
-Под «Обзором» перечислены все счета: цветная иконка, название и баланс в валюте счёта.
-Накопительные счета идут отдельной группой «Накопления» под обычными «Счетами»;
-строка ведёт на страницу счёта и подсвечивается, когда он открыт. Список скроллится,
-если счетов много; бренд и нижний блок остаются на месте.
+Under Overview, each account row shows a colored icon, name, and balance in
+its own currency. Savings accounts are grouped below regular accounts. Click
+a row to open it and see its selected state. The list scrolls independently
+of the branding and bottom block.
 
-Роуты: `overview`, `operations`, `categories`, `analytics`, `settings`, `about`,
-`account(id)`. Переход — кроссфейд без пересоздания окна.
+Routes are `overview`, `operations`, `categories`, `analytics`, `settings`,
+`about`, and `account(id)`. Route changes crossfade within the same window.
+The first launch opens onboarding.
 
-Первый запуск открывается **знакомством** вместо приложения (см. раздел 6.0).
+Shortcuts are ⌘N for a new transaction, ⇧⌘N for a new account, ⌘1 for Overview,
+⌘2 for all transactions, ⌘3 for Categories, ⌘4 for Analytics, and ⌘, for Settings.
 
-Горячие клавиши: ⌘N — новая операция, ⇧⌘N — новый счёт, ⌘1 — обзор, ⌘2 — все
-операции, ⌘3 — категории, ⌘4 — аналитика, ⌘, — настройки.
+## 5. Data model
 
----
-
-## 5. Модель данных
-
-SwiftData, все модели CloudKit-совместимы: у каждого атрибута есть значение по умолчанию,
-связи опциональные и с обратными, нет `.unique`.
+SwiftData models support CloudKit. Attributes have defaults and optional
+relationships have inverses. Models use no `.unique` constraints.
 
 ```swift
 Account  { id: UUID, name, currencyRaw, initialAmount: Decimal, iconName, colorRaw,
@@ -201,306 +185,285 @@ Account  { id: UUID, name, currencyRaw, initialAmount: Decimal, iconName, colorR
 Category { id, name, kindRaw, colorRaw, iconName, isMandatory, isSystem, sortIndex, createdAt }
 Operation{ id, kindRaw, amount: Decimal, currencyRaw, date, place, latitude?, longitude?,
            note, createdAt, account: Account?, category: Category? }
-Period   { id, start, end (включительно), isManual, createdAt }
+Period   { id, start, end (inclusive), isManual, createdAt }
 ```
 
-- `Account.balance = initialAmount + Σ доходов − Σ расходов счёта`.
-- `Account.isSavings` — только метка для группы «Накопления» и будущей динамики в
-  аналитике; баланс, операции и переводы она не меняет.
-- `Operation.currency` — снимок валюты счёта на момент создания.
-- `Operation.signedAmount` — плюс для дохода, минус для расхода; форматирование через
-  `MoneyFormat` (локаль `ru_RU`, узкий неразрывный пробел в разрядах, запятая).
-- Настройки (тема, скрытие сумм, основная валюта, правило периода) — `UserDefaults`
-  через `SettingsStore`, готовый к `NSUbiquitousKeyValueStore`.
-- Записи только через `AccountRepository`, `OperationRepository`, `CategoryRepository`,
-  `PeriodService` — одна точка для будущего sync-движка.
+- `Account.balance = initialAmount + Σ income − Σ expenses` for the account.
+- `Account.isSavings` groups accounts in Savings and supports future savings
+  trends. Balances, transactions, and transfers use the same logic.
+- `Operation.currency` records the account currency at creation.
+- `Operation.signedAmount` is positive for income and negative for expenses.
+  `MoneyFormat` originally used `ru_RU`, a narrow no-break thousands
+  separator, and a decimal comma.
+- `SettingsStore` stores appearance, hidden amounts, primary currency, and
+  period rule in `UserDefaults`, ready for `NSUbiquitousKeyValueStore`.
+- Writes go through `AccountRepository`, `OperationRepository`,
+  `CategoryRepository`, and `PeriodService` for future sync integration.
 
-### Валюты
+### Currencies
 
-`BYN, EUR, USD, USDC, USDT, BTC`. Символы: `Br, €, $, USDC, USDT, ₿`; знаков после
-запятой — 2, для BTC — 8. «UTC» из брифа трактован как **USDC**; добавить/переименовать
-валюту = изменить один enum.
+The original set is `BYN, EUR, USD, USDC, USDT, BTC` with symbols
+`Br, €, $, USDC, USDT, ₿`. It uses two decimal places, except BTC with eight.
+The brief's “UTC” was interpreted as USDC. The `Currency` enum defines the list.
 
-### Курсы валют
+### Exchange rates
 
-Общий итог и все межвалютные суммы считаются через таблицу курсов, где **BYN — опорная
-валюта** (сколько рублей стоит одна единица валюты).
+Totals and currency conversions use **BYN as the base**, expressed as BYN
+per unit of each currency.
 
-- **НБРБ** — официальный источник для USD и EUR:
-  `https://api.nbrb.by/exrates/rates?periodicity=0` (`Cur_OfficialRate / Cur_Scale`).
-- **Открытый фид** (`cdn.jsdelivr.net/.../currencies/byn.json`) — резерв и единственный
-  источник для BTC, USDT, USDC. Если НБРБ недоступен, фид закрывает и фиат.
-- USDT и USDC считаются по курсу USD — в интерфейсе это не скрывается.
-- Таблица кешируется в `UserDefaults` (`montra.rates.v1`), обновляется раз в 6 часов,
-  при старте и вручную из настроек. Без сети показывается кеш, без кеша — помеченный
-  «примерный курс».
-- `RateSource` (`nbrb / currencyAPI / cache / fallback`) виден в настройках и в строке
-  курса на обзоре.
+- The National Bank of Belarus is the official USD and EUR source. Use
+  `https://api.nbrb.by/exrates/rates?periodicity=0` and divide
+  `Cur_OfficialRate` by `Cur_Scale`.
+- The public feed at `cdn.jsdelivr.net/.../currencies/byn.json` provides BTC,
+  USDT, and USDC data and backs up fiat when the official source is unavailable.
+- USDT and USDC use the USD rate and the interface discloses that.
+- Cache the table in `UserDefaults` under `montra.rates.v1`. Refresh at launch,
+  every six hours, and on request in Settings. Offline, show cached rates or a
+  labeled approximate rate if the cache is empty.
+- `RateSource` (`nbrb / currencyAPI / cache / fallback`) appears in Settings
+  and the Overview rate row.
 
-### Регулярные платежи (планы)
-- `PlannedOperation` — один будущий/пропущенный платёж серии. Поля: серия `seriesID`,
-  шаблон (сумма, счёт, категория, место, комментарий), дата платежа, частота
-  (`day/week/month/year`), маска дней недели, начало/конец серии, `linkedOperationID`.
-- При создании серии платежи генерируются заранее (до 1000 штук), но **не являются
-  `Operation`** и не меняют баланс. Один платёж = одна строка, чтобы его можно было
-  связать, удалить или пропустить отдельно.
-- Частота: день — каждый день; неделя — выбранные Пн–Вс; месяц — то же число
-  (31-е в коротком месяце становится последним днём); год — тот же месяц/день.
-- Статус вычисляется: `Пропущен` (дата до сегодня и нет связи), `Сегодня`, `План`.
-  Связанный платёж скрывается из списка, факт остаётся обычной операцией.
+### Recurring payments
 
-### Финансовый период
+- A `PlannedOperation` represents one upcoming or missed occurrence. It holds
+  `seriesID`, template amount, account, category, place, note, payment date,
+  `day/week/month/year` frequency, weekday mask, series bounds, and `linkedOperationID`.
+- Generate up to 1,000 plans up front. They do not affect balances until
+  recorded as transactions. Each occurrence can be linked, deleted, or skipped.
+- Daily recurrence uses every day, weekly uses selected weekdays, monthly
+  uses the same day clamped to month end, and yearly uses the same month and day.
+- Unlinked dates before today are Missed, today's are Today, and future ones
+  are Plan. Linked plans disappear from the plan list. The recorded transaction stays.
 
-- Режим `payday`: границы — по числу зарплаты (1…31, клампится по длине месяца), период
-  `[зарплата_N, зарплата_{N+1} − 1 сек]`.
-- Режим `fixedDays`: отрезки фиксированной длины (7…60) от опорной даты.
-- Периоды материализуются в БД: 6 назад, текущий, 3 вперёд. **Границы всегда непрерывны**:
-  сдвиг начала периода сдвигает конец предыдущего, сдвиг конца — начало следующего.
-- Правка помечается `isManual`; «Пересчитать по правилу» пересоздаёт только авто-периоды.
-- Текущий период виден на обзоре и в настройках; лист «Периоды» позволяет выбрать любой
-  месяц, поправить начало/конец и сбросить к правилу.
+### Financial period
 
-### Категории по умолчанию
+- `payday` uses a day from 1 to 31, clamped to the month. A period ends one
+  second before the next payday.
+- `fixedDays` uses fixed lengths (7 to 60 days in this model description)
+  from an anchor date.
+- Persist six past periods, the current one, and three future periods.
+  Moving a start updates the previous end. Moving an end updates the next start.
+- Set `isManual` for manual edits. Recalculate from Rule rebuilds automatic
+  periods only.
+- Overview and Settings show the current period. The period sheet lets users
+  select a month, adjust either boundary, and reset it to the rule.
 
-Расходы: Жильё, Еда, Транспорт, Здоровье (обязательные), Рестораны, Развлечения, Покупки,
-Подписки, Прочее. Доходы: Зарплата, Фриланс, Подарки, Инвестиции, Прочее.
+### Default categories
 
-- Обязательность есть только у расходных категорий и влияет на строку «Обязательные
-  расходы» и «Свободно» на обзоре. Подкатегория наследует обязательность родителя.
-- Можно создать подкатегорию одного уровня: в листе категории выбрать «Родительскую
-  категорию» (или оставить «Без родителя»). У категории с детьми родитель не меняется.
-- Системные категории не удаляются; свою можно удалить — операции перейдут в «Прочее»
-  того же типа, а подкатегории станут обычными категориями.
+Expense categories are Housing, Food, Transport, and Health (mandatory), plus
+Restaurants, Entertainment, Shopping, Subscriptions, and Other. Income
+categories are Salary, Freelance, Gifts, Investments, and Other.
 
----
+- Mandatory status applies to expenses, affects the Mandatory Expenses and
+  Available values in Overview, and passes from parent to subcategory.
+- Subcategories have one level. Choose a Parent Category or No Parent.
+  A category with children cannot change its parent.
+- System categories cannot be deleted. Deleting a custom category sends its
+  transactions to Other of the same kind and promotes its children.
 
-## 6. Экраны
+## 6. Screens
 
-### 6.0 Знакомство (первый запуск)
-- «Удалить все данные» в настройках сразу открывает **настоящее** знакомство (с реальным
-  хранилищем), без перезапуска приложения. Созданный счёт сохраняется; после завершения
-  всегда открывается «Обзор», а не страница, с которой знакомство начали.
-- Знакомство из «О программе» — **предпросмотр**: оно идёт на временном хранилище, данные
-  не сохраняются; после завершения открывается «Обзор». Вверху показана плашка
-  «Предпросмотр · данные не сохранятся».
+### 6.0 Onboarding
 
-Повторяет онбординг референса: полноэкранный поток без сайдбара, колонка 520 pt,
-кнопки 240×38, переходы шагов через blur 8 + opacity за 0.45, элементы появляются
-каскадом (`index × 0.08`), финал — sparkles и анимированная сумма.
+Delete All Data immediately starts live onboarding in the real store. The
+created account persists and completion opens Overview. The preview from
+About uses a temporary store, shows a preview banner, and also ends on Overview.
 
-1. **Приветствие** — иконка приложения 148 с тенью, «Добро пожаловать в» (15 medium) и
-   «Montra» (SF Rounded 56 semibold), подпись, кнопка «Начать →».
-2. **Первый счёт** — название, валюта (3×2), начальная сумма; кнопка «Создать счёт»
-   неактивна без названия; сохраняется настоящий `Account`, валюта становится основной.
-   Накопительный счёт здесь не предлагается — его заводят позже в листе счёта.
-3. **Ваши категории** — две сетки чипов 3×N: «Расходы» и «Доходы», с галочкой у выбранных.
-   По умолчанию отмечены только Жильё, Еда и Зарплата — остальное в один клик.
-   «Продолжить» создаёт только выбранные категории, «Пропустить» — только «Прочее».
-   Категория «Прочее» для расходов и доходов создаётся всегда и в сетке не показывается.
-4. **Первый расход** — сумма, категория (сетка 3×3, заранее выбрана «Еда», если она была
-   выбрана на шаге категорий; иначе первая созданная — после пропуска это «Прочее»),
-   контекст счёта; «Добавить расход» или «Пропустить». Сохраняется настоящая `Operation`.
-5. **Готово** — sparkles, крупный баланс (56 rounded), карточка «Счёт создан /
-   Первый расход», кнопка «Открыть Montra». Выход — приложение проявляется, а карточка
-   счёта улетает в свою строку в сайдбаре (hero: позиция + масштаб, spring 0.58), затем
-   строка проявляется на её месте. При Reduce Motion — прежний blur 12 + fade 0.45.
+The flow fills the window without the sidebar. It uses a 520 pt column,
+240×38 buttons, blur 8 and opacity transitions over 0.45 seconds, staggered
+entrance at `index × 0.08`, and a completion screen with sparkles and an animated balance.
 
-Показывается, только если в хранилище **нет счетов** и знакомство не пройдено. Установки,
-где счета уже есть, помечаются пройденными при запуске. Демо-данные больше не создаются
-автоматически: их можно загрузить из настроек, а первый счёт создаёт знакомство.
-Категории тоже создаёт шаг знакомства — до него приложение не подсыпает стандартный
-набор; периоды добираются после завершения. «Удалить все данные» сбрасывает флаг и
-удаляет всё, включая категории, и при следующем запуске знакомство возвращается.
+1. **Welcome.** 148 pt app icon with shadow, 15 medium welcome text,
+   SF Rounded 56 semibold wordmark, subtitle, and Get Started.
+2. **First account.** Name, 3×2 currency grid, and opening balance. A name is
+   required. Save a real `Account` and make its currency primary. Savings
+   accounts are created later from the account sheet.
+3. **Categories.** Two 3×N chip grids for expenses and income, with checkmarks.
+   Housing, Food, and Salary are preselected. Continue creates the selection.
+   Skip creates Other only. Both kinds of Other are always created and stay
+   out of the grid.
+4. **First expense.** Amount, account context, and a 3×3 category grid. Default
+   to Food when selected earlier, otherwise the first created category or
+   Other after a skip. Add Expense saves a real `Operation`. Skip is available.
+5. **Done.** Sparkles, 56 pt rounded balance, account and expense summary,
+   and Open Montra. The app appears while the account card moves and scales
+   into its sidebar row with a 0.58-second spring. The row appears after
+   landing. Reduce Motion uses blur 12 and a 0.45-second fade.
 
-### Обзор
+Onboarding starts for a fresh store. Older stores with accounts are marked
+complete on launch. Demo data is available by an explicit Settings action.
+Onboarding creates the starter categories and fills in periods after completion.
+Delete All Data clears all records, including categories, and resets onboarding.
 
-- Заголовок «Обзор», подпись: `5 счетов · 13 операций за период · 6 дней до конца`.
-- Справа: пилюля «Период» (открывает лист) и главная «Новая операция».
-- Hero: **все деньги со всех счетов** в выбранной валюте (SF Rounded 26 bold), подпись
-  «на 5 счетах», справа «Расходы за период» — тоже с конвертацией.
-- Под фигурой — строка курса: `Курс НБРБ · обновлён 9 нояб., 12:40`. При наведении на
-  сегмент полосы или на строку счёта она заменяется разбором: `Revolut · 470,01 € ≈
-  1 572,65 Br`. Это же работает для валют, которых нет в выбранной валюте обзора.
-- Полоса баланса по **всем** счетам, длины — доли в валюте отображения; hover
-  подсвечивает строку счёта и приглушает остальные сегменты.
-- Чипы валют показывают **весь капитал** в каждой валюте и переключают валюту отображения.
-- Секция «Счета»: плашка, имя, `EUR · 1 операция`, доля в общем итоге, баланс в валюте
-  счёта и строкой ниже `≈ 1 572,65 Br` для инвалютных счетов. Клик — страница счёта.
-- Секция «Период»: текущий период (chevron), обязательные расходы, свободный остаток
-  (доходы − обязательные), всё в валюте отображения и с конвертацией операций в EUR/USDT/BTC.
-- Секция «Последние операции»: 5 строк, плашка категории, счёт и место, дата и сумма.
+### Overview
 
-### Все операции (подстраница обзора)
+- Overview title and a subtitle such as “5 accounts · 13 transactions this
+  period · 6 days left.” The header offers Period and New Transaction.
+- A 26 bold SF Rounded hero shows the converted total. The trailing value
+  shows converted period spending.
+- The rate row shows the source and refresh time. Hovering an account or
+  segment displays the original balance and its equivalent, such as
+  “Revolut · €470.01 ≈ Br 1,572.65.”
+- The allocation bar uses converted account shares. Hover highlights the
+  matching account and dims other segments. Currency chips show total capital
+  in each currency and switch the display currency.
+- Account rows show tile, name, currency, transaction count, share, native
+  balance, and converted equivalent where needed. Click to open account detail.
+- The Period card shows the current range, mandatory expenses, and the amount
+  available (income minus mandatory expenses), converted to the display currency.
+- Recent Transactions shows five rows with category tile, account, place,
+  date, and amount.
 
-- Открывается из обзора по «Все операции»; заголовок «Все операции», ссылка «‹ Обзор».
-- Чипы `Все / Расходы / Доходы` со счётчиками. Справа — **капсульный поиск** (как в
-  референсе): лупа, плейсхолдер, крестик очистки, рамка при фокусе, Escape очищает,
-  ⌘F фокусирует. Ищет по категории, счёту, месту, комментарию, типу, сумме и дате;
-  несколько слов — все должны встретиться.
-- Счётчики в чипах считаются по результатам поиска, а **подпись в хедере
-  пересчитывается**: количество и сумма (в основной валюте) только по видимым операциям.
-- Список идёт **секциями по дням**: «Сегодня», «Вчера», «Завтра», дальше даты
-  «7 октября» (год добавляется, если он не текущий). Заголовки дней липкие при
-  скролле; при сортировке «По сумме» список плоский, без дневных секций.
-- Выбор периода — во второй строке рядом с сортировкой.
-- Пустое состояние как в референсе: «Ничего не найдено», «По запросу «…» операций нет»,
-  кнопка «Очистить поиск». Если совпадения есть в другом типе — «Показать все»; если
-  только вне текущего периода — «Искать за всё время».
-- Строка «Выбрать все» + сортировка «По дате» / «По сумме».
-- Карточки-строки: чекбокс, плашка, категория, `дата · счёт · место`, сумма и бейдж
-  («Обязательная» / «Доход»).
-- Мультивыбор и удаление с подтверждением; клик по строке — редактирование.
-- Контекстное меню: редактировать / удалить.
-- **Добавленная операция не «просто появляется»**: карточка мягко выезжает сверху
-  (spring 0.34, лёгкий масштаб и blur), затем 1.4 секунды держит подсветку — более
-  светлый фон, усиленная рамка и вуаль — и плавно гаснет. То же в «Последних операциях»
-  на обзоре и в списке счёта. Массовые изменения (демо-данные, сброс) не мигают.
+### All transactions
 
-### Счёт
+- Open from Overview and use the back link to return. All, Expenses, and Income
+  chips show counts. Search uses a capsule, magnifier, placeholder, clear
+  button, and focus outline. ⌘F focuses and Escape clears. Search matches all
+  tokens across category, account, place, note, kind, amount, and date.
+- The chip counts, subtitle count, and total in the primary currency reflect
+  visible matches. Day groups use Today, Yesterday, Tomorrow, and localized
+  dates, with a year for other years. Headers stick. Amount sort uses a flat list.
+- Period selection is beside sort. Select All applies to visible rows.
+  Sort by date or amount.
+- No Results includes Clear Search, Show All when another kind matches, and
+  Search All Time when matches fall outside the period.
+- Rows show a checkbox, tile, category, date, account, place, amount, and
+  Mandatory or Income badge. Click to edit. The context menu offers Edit and
+  Delete. Multi-select deletion requires confirmation.
+- A new row enters with a 0.34-second spring, slight scale and blur. A lighter
+  background, stronger border, and overlay fade after 1.4 seconds. This also
+  applies in Overview and account detail. Batch demo loads and resets do not flash.
 
-- Назад «‹ Обзор», имя, `BYN · начальный остаток 420,00 Br`, «Изменить», «Новая операция».
-- Hero-баланс, справа итог за всё время.
-- Чипы по типу, чекбоксы у строк и «Выбрать все», справа «Выбрано N · сумма»,
-  в хедере появляется «Удалить (N)». Удаление идёт через тот же лист подтверждения
-  со списком операций и экран успеха, что и на «Все операции».
-- **Дни**: операции счёта также сгруппированы по дням («Сегодня», «Вчера», даты);
-  для небольших счетов гармошка сохраняется, у больших — ленивый список с липкими
-  заголовками.
-- **Планы**: в «Все операции» строки планов идут в тех же дневных секциях, что и факты
-  (карточка как у операции, бейдж «План/Сегодня/Пропущен» и статус под суммой). Кнопки «Пропущенные» и
-  «Будущие» показывают планы отдельно; «Будущие» ограничены двумя годами или концом серии.
-  На странице счёта те же две кнопки стоят в одном ряду с «Все/Расходы/Доходы»:
-  «Пропущенные» — планы прошлых дат без связи с фактом, «Будущие» — планы этого счёта
-  на два года вперёд. Взаимоисключающие с типом, повторный клик возвращает к «Все».
-  Действия открываются по клику на план: «Связать с фактом» (выбрать существующую
-  операцию), «Сохранить как факт» (открыть форму с подставленными полями), «Удалить
-  этот платёж», «Удалить всю серию».
-- **Производительность списка**: операции счёта берутся `@Query` с предикатом по счёту
-  и сортировкой в хранилище (без повторного `sortedOperations` на каждый рендер).
-  До 60 записей — прежняя гармошка; больше — `LazyVStack`, который создаёт только
-  видимые строки. Новые строки отслеживаются по изменению количества, а не по
-  пересборке массива id на каждом теле. Список, пустое состояние. При смене фильтра строки складываются
-  и раскрываются гармошкой: несовпавшие уезжают вверх, совпавшие занимают место, список
-  ниже перетекает без скачка; если не совпало ничего — проявляется пустое состояние.
+### Account detail
 
-### Категории
+- Back to Overview, account name, currency and opening balance, Edit, and New
+  Transaction. The hero shows the balance with an all-time total on the right.
+- Kind chips, checkboxes, and Select All support a selection count and amount.
+  Delete (N) opens the shared confirmation list and success screen.
+- Day groups use Today, Yesterday, and dates. Small accounts use collapsing
+  rows and larger accounts use a lazy list with sticky headers.
+- Plans appear alongside transactions in day groups, with Plan, Today, or
+  Missed badges and status under the amount. Missed lists unlinked past
+  occurrences. Upcoming includes up to two years or the end of the series.
+  Account chips are beside All, Expenses, and Income. They are mutually
+  exclusive with the kind filter. Clicking the active chip returns to All.
+- A plan opens actions to link an existing transaction, record a new one with
+  prefilled fields, delete the occurrence, or delete the series.
+- An account-specific `@Query` applies a predicate and store-side sorting.
+  Up to 60 records use collapsing rows. Above that, `LazyVStack` creates
+  visible rows on demand. Track new rows by count changes. For collapsing rows,
+  filter changes animate height and spacing, and an empty state fades in.
 
-- Две секции (Расходы / Доходы), строки с плашкой, именем, подписью
-  «Обязательная · системная» и числом операций; подкатегории идут под родителем с
-  отступом и вертикальной линией, счётчик родителя включает операции детей.
-- Лист: тип (при создании), имя, **родительская категория** («Без родителя» или верхняя
-  категория того же типа), обязательность (у подкатегории наследуется), иконка, цвет,
-  удаление. Для категории с детьми родитель не меняется.
-- Удаление родителя переводит его операции в «Прочее», а подкатегории поднимает на
-  верхний уровень.
+### Categories
 
-### Аналитика
+- Expense and Income sections show tile, name, mandatory or system subtitle,
+  and count. Indent children under their parents with a vertical line.
+  Parent counts include children's transactions.
+- The sheet offers kind at creation, name, Parent Category, mandatory status,
+  icon, color, and deletion. Parents must be top-level and of the same kind.
+  Subcategories inherit mandatory status. Parents with children stay top-level.
+- Deleting a parent moves its transactions to Other and promotes its children.
 
-- Заглушка: «Скоро», тихая карточка с призрачным графиком и объяснением, что появится.
-  Никаких фиктивных данных.
+### Analytics
 
-### Настройки
+A Coming Soon card uses a faint chart and explains the planned functionality.
+The placeholder uses no fictional figures.
 
-- **Основное**: «Скрывать суммы» (маскирует все суммы `••••`), «Оформление» — три
-  миниатюры окна (Авто / Светлая / Тёмная), выбранная с белой рамкой.
-- **Финансовый период**: режим; день зарплаты — **компактный степпер** `− 15-е число +`
-  (без меню на 31 строку), длина периода — такой же степпер 1…90; «Периоды» → лист.
-  Число в степпере **редактируется руками**: клик по значению открывает поле ввода,
-  принимаются только цифры, значение ограничивается диапазоном (1…31 / 1…90) по Return
-  или потере фокуса; `−`/`+` продолжают работать.
-- **Курсы валют**: источник (НБРБ / открытый фид / кеш / примерный курс), курсы USD, EUR,
-  USDT, BTC к рублю, время обновления, кнопка «Обновить» с состоянием загрузки.
-- **Данные**: основная валюта, синхронизация iCloud (статус «Не подключена» + лист),
-  экспорт CSV, удаление всех данных (с подтверждением).
-- **О приложении**: сверху логотип `MontraArtwork` (ассет `artwork.png`), название,
-  версия; карточка «Всего на счетах» с общей суммой и
-  чипом «N счетов · M операций»; карточка «Что умеет Montra»; единственная кнопка
-  «Пройти знакомство заново» — запускает онбординг с самого начала на временном
-  in-memory хранилище, реальные данные не меняются; закрывается крестиком или Escape;
-  футер.
+### Settings and About
 
-### Формы
+- **General.** Hide Amounts masks values as `••••`. Appearance shows system,
+  light, and dark window previews with an outline around the selection.
+- **Financial period.** Choose the mode. Compact steppers cover payday 1–31
+  and length 1–90 in the UI. Click the value to edit digits. Return or loss
+  of focus clamps the value. The minus and plus buttons still work.
+  Open the period sheet from Periods.
+- **Exchange rates.** Show the source (official, public feed, cache, or approximate),
+  USD/EUR/USDT/BTC rates against BYN, refresh time, and a Refresh button with loading state.
+- **Data.** Primary currency, iCloud disconnected status and explanatory sheet,
+  CSV export, and Delete All Data with confirmation.
+- **About.** Show `MontraArtwork` (`artwork.png`), name, version, a total across
+  accounts, account and transaction count, feature summary, and footer.
+  The onboarding preview opens over the window with an in-memory store and
+  closes with X or Escape.
 
-- Единый лист шириной 470: свой заголовок с крестиком, футер с hairline.
-- Счёт: превью плашки, имя, валюта (чипы, при редактировании только чтение), начальная
-  сумма, переключатель «Накопительный счёт» (для хранения денег; пополнение и списание
-  работают как обычно), сетка иконок, палитра.
-- Операция: сегмент Расход/Доход (из «Все операции» и страницы счёта открывается на
-  вкладке активного фильтра: «Доходы» → Доход, «Расходы» → Расход), крупная сумма с валютой счёта, счёт (меню с балансом),
-  дата и время — собственный календарь (`MontraDateTimePicker`): месяц со стрелками,
-  сетка 6×7, выбранный день заливкой, текущий обведён, поле времени `чч:мм`,
-  «Сейчас» и «Готово»; без системного белого циферблата; диапазон дат отключает
-  недоступные дни,
-  категория — пять самых частых по истории плюс чип «Ещё», открывающий поповер с
-  поиском и полной иерархией (родители и подкатегории); выбранная категория всегда
-  есть среди быстрых. Далее дата и время (поповер с календарём, по умолчанию
-  сейчас), место (текст + геолокация), комментарий, удаление при редактировании.
-- Валидация: сумма > 0, счёт и категория выбраны, имя не пустое.
+### Forms
 
----
+- The shared sheet is 470 pt wide and uses a custom header, close button,
+  and hairline footer.
+- The account form shows a tile preview, name, currency (read-only when editing),
+  opening balance, Savings Account switch, icon grid, and palette. The savings
+  flag leaves deposits and withdrawals available.
+- The transaction form opens on the active income or expense filter when
+  applicable. It shows a large amount in the account currency and an account
+  picker with balances.
+- `MontraDateTimePicker` provides month arrows, a 6×7 grid, selected day fill,
+  current day outline, validated `hh:mm`, Now, and Done. Date range constraints
+  disable unavailable days. The default is now.
+- Category selection offers the five most frequent categories and a searchable
+  More popover with the full parent-child hierarchy. Keep the selected category
+  among the quick choices. The form also supports place text, geolocation, notes,
+  and deletion when editing.
+- Require a positive amount, selected account and category, and a nonempty name
+  where applicable.
 
-## 7. Технические требования
+## 7. Technical requirements
 
-- Xcode-проект с `PBXFileSystemSynchronizedRootGroup`, `SWIFT_VERSION = 5.0`,
-  `MACOSX_DEPLOYMENT_TARGET = 15.0`, без зависимостей.
-- Один `ModelContainer`; `ModelContainerFactory` держит единственную точку переключения
-  на CloudKit (`.none` → `.private("iCloud.com.example.montra")`).
-- Модели CloudKit-safe; записи — через репозитории.
-- `RateStore` грузит кеш сразу, обновляет таблицу в фоне (НБРБ + открытый фид, короткий
-  таймаут, без блокировки UI), не теряет валюты при частичном ответе.
-- `SyncService` + `CloudSyncState` + `Docs/Montra.entitlements` + инструкция.
-- Шрифт регистрируется из копии в Application Support (CoreText перечитывает файл, а
-  debug-сборка может потерять бандл).
-- Тема применяется через `NSApplication.shared.appearance`; все цвета динамические.
-- Доступность: у иконочных кнопок подписи, у строк — `accessibilityElement`, у чисел
-  читаемые значения, контраст ≥ 4.5:1.
-- Проверки: `-selftest` (арифметика периода, баланс, знаки, категории, склонения,
-  конвертация, отсутствие демо-данных на чистом старте) и `-snapshot <dir>` (рендер всех
-  экранов и шагов знакомства в PNG через NSHostingView).
+- Xcode uses `PBXFileSystemSynchronizedRootGroup`, `SWIFT_VERSION = 5.0`,
+  and `MACOSX_DEPLOYMENT_TARGET = 15.0`, with no dependencies.
+- One `ModelContainer`. `ModelContainerFactory` is the CloudKit switch point
+  from `.none` to `.private("iCloud.com.vladrudenua.montra")`.
+- Use CloudKit-compatible models and repository writes.
+- `RateStore` loads cached rates immediately, refreshes from official and
+  public sources with a short timeout off the UI path, and preserves currencies
+  when a response is partial.
+- Sync groundwork includes `SyncService`, `CloudSyncState`, and
+  `Docs/Montra.entitlements`.
+- Register the font from a copy in Application Support so CoreText can
+  reread it even if a Debug build loses its bundle.
+- Apply theme through `NSApplication.shared.appearance` with dynamic colors.
+- Label icon-only controls, make rows accessible with `accessibilityElement`,
+  expose readable numeric values, and maintain contrast ≥ 4.5:1.
+- Use `-selftest` for period arithmetic, balances, signs, categories,
+  pluralization, conversion, and clean launch. Use `-snapshot <dir>` to render
+  screens and onboarding steps through NSHostingView.
 
----
+## 8. Decisions and assumptions
 
-## 8. Принятые решения и допущения
+1. The original interface and numeric formatting used Russian and `ru_RU`.
+2. Onest supplies text and SF Rounded supplies numerals.
+3. The brief's “UTC” currency entry maps to USDC in `Currency`.
+4. The window is fixed at 980 pt wide with adjustable height.
+5. Account currency is fixed at creation to preserve transaction history.
+6. Load demo data explicitly from Settings. Onboarding creates a real first
+   account and optionally a first expense.
+7. Account deletion warns the user and cascades to its transactions.
+8. Use the National Bank of Belarus for official USD/EUR rates. The public
+   feed covers timeouts and crypto rates. Stablecoins use the USD rate.
+   Show the source in the interface.
+9. Analytics is intentionally a placeholder in this specification.
 
-1. **Интерфейс на русском**, формат чисел — `ru_RU`; референс англоязычный, но сетка,
-   типографика и палитра повторены точно.
-2. **Onest + SF Rounded** — не приближение: взят файл шрифта из референса, из него
-   удалены цифры, числа рисуются SF Rounded.
-3. **«UTC» → USDC**: в брифе перечислены BYN, EUR, USD, UTC, BTC, USDT; «UTC» не является
-   валютой, выбрано ближайшее по смыслу USDC. Меняется в `Currency`.
-4. **Фиксированная ширина 980** — сознательное повторение UX референса; высота свободная.
-5. **Валюта счёта не меняется после создания** — иначе история операций теряет смысл.
-6. **Демо-данные** — только по действию в настройках. Первый запуск отдан знакомству,
-   которое создаёт один настоящий счёт и, по желанию, первый расход.
-7. **Удаление счёта каскадно** удаляет его операции (с предупреждением).
-8. **Курсы**: НБРБ — официальный источник для USD/EUR, но с этой сети он не отвечает
-   (таймаут), поэтому резервный открытый фид обязателен; BTC/USDT берутся только из него,
-   USDT и USDC считаются по курсу USD. Всё это видно в интерфейсе.
-9. Аналитика намеренно оставлена заглушкой.
+## 9. Acceptance criteria
 
----
+1. The window is 980 pt wide. Traffic lights sit over the sidebar and the
+   background uses the palette tokens.
+2. Overview follows the documented spacing, radii, tiles, and badges.
+3. Account creation accepts icon, color, currency, and opening balance.
+   Transactions affect balances, and sidebar rows show those balances.
+4. Overview converts and totals account balances. Hovering any account,
+   including Revolut, shows both the original and converted amount.
+5. Expenses and income use the account currency and default to now. They
+   support place and note, editing, and deletion.
+6. Filter categories by transaction kind and show and apply mandatory status.
+7. Configure periods, show the current one, and adjust boundaries while
+   preserving continuity.
+8. Appearance switches and Hide Amounts masks values.
+9. Refresh and cache rates and label fallback sources.
+10. Provide iCloud groundwork, accurate status, and setup instructions.
+11. `xcodebuild` completes without errors or warnings and `-selftest` passes.
 
-## 9. Критерии приёмки
+## 10. Outside the original iteration
 
-1. Окно 980 pt, traffic lights над сайдбаром, фон и палитра совпадают с токенами.
-2. Обзор визуально плотный, как референс: те же отступы, радиусы, плашки, бейджи.
-3. Счёт создаётся с иконкой, цветом, валютой и начальной суммой; баланс сразу учитывает
-   операции, а в сайдбаре под «Обзором» видны все счета с их балансами.
-4. Верхняя сумма обзора складывает **все** счета по курсам; наведение на любой счёт
-   (включая Revolut) показывает его сумму и эквивалент в валюте отображения.
-5. Расход и доход создаются с валютой из счёта, датой по умолчанию «сейчас», местом и
-   комментарием; редактируются и удаляются.
-6. Категории фильтруются по типу операции, обязательность видна и учитывается.
-7. Период настраивается, текущий отображается, границы месяцев правятся и остаются
-   непрерывными.
-8. Тема переключается, «Скрывать суммы» маскирует числа.
-9. Курсы обновляются, кешируются и честно помечают резервный источник.
-10. iCloud: код готов, статус честный, инструкция есть.
-11. `xcodebuild` без ошибок и предупреждений; `-selftest` проходит.
-
-## 10. Вне рамок этой итерации
-
-Графики и аналитика, бюджеты и лимиты, переводы между счетами с конвертацией, регулярные
-операции, реальная синхронизация, импорт выписок, iOS-таргет, локализация. Автоматическое
-определение курса на дату операции (сейчас исторические суммы пересчитываются по текущему
-курсу) — следующий шаг, если понадобится.
+Charts and analytics, budgets and limits, cross-currency transfers, recurring
+transactions, live sync, statement import, an iOS target, and localization were
+outside the original iteration. Historical amounts use current exchange rates.
+Transaction-date rates were deferred.

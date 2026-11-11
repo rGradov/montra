@@ -1,7 +1,7 @@
 import SwiftUI
 
 extension Operation {
-    /// Transfers have no category, but they still need a title, glyph and tile.
+    /// Transfers have no category and use their own title, icon and color.
     var displayTitle: String {
         isTransfer ? String(localized: "transaction.transfer") : (category?.displayName ?? String(localized: "common.uncategorized"))
     }
@@ -11,6 +11,6 @@ extension Operation {
     }
 
     var displayColor: Color {
-        isTransfer ? PaletteColor.sky.tileColor : (category?.color.tileColor ?? AppColors.Chart.neutralTile)
+        isTransfer ? PaletteColor.sky.tileColor : (category?.color.color ?? AppColors.textTertiary)
     }
 }

@@ -26,7 +26,7 @@ struct OperationCompactRow: View {
 
             Button(action: onOpen) {
                 HStack(spacing: AppStyle.Spacing.small) {
-                    IconTile(
+                    ListRowIcon(
                         symbol: operation.displayIcon,
                         color: operation.displayColor
                     )

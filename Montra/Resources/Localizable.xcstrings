@@ -3486,23 +3486,6 @@
         }
       }
     },
-    "common.design": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Design"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Дизайн"
-          }
-        }
-      }
-    },
     "common.destination_account": {
       "extractionState": "manual",
       "localizations": {
@@ -8662,23 +8645,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Если в месяце меньше дней, берётся последний."
-          }
-        }
-      }
-    },
-    "settings.inspired_by_purge": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Inspired by Purge"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "В духе Purge"
           }
         }
       }

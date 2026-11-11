@@ -3,7 +3,7 @@
 As of **November 9, 2026**. The code in `Montra/` is the source of truth.
 Each area has IDs, checks, expected outcomes, and negative or edge cases.
 
-> Automated coverage includes **166 checks** in `-selftest` and full screen
+> Automated coverage includes **169 checks** in `-selftest` and full screen
 > rendering with `-snapshot`. See sections 4 and 5 for coverage and gaps.
 
 ## 0. How to use this inventory

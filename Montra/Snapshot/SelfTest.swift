@@ -319,6 +319,88 @@ enum SelfTest {
               "аналитика: сумма, счётчик и образец группы")
         check(groupingDay?.groups.reduce(Decimal(0)) { $0 + $1.amount } == groupingDay?.amount,
               "аналитика: группы дня равны итогу дня в копейку")
+
+        // 5c. Day popup geometry. The card is 340 wide, so it must still clamp
+        // inside the page on the edge columns, never cover its own cell, keep the
+        // 8 pt gap and put the caret on the cell centre.
+        let popupPage = CGSize(width: 980, height: 700)
+        // The real heat grid: columns at 95.5 pt pitch from x = 279, rows from 369.
+        let popupColumns: [CGFloat] = [24, 279, 374.5, 470, 565.5, 661.5, 757, 852.5, 890.5]
+        let popupRows: [CGFloat] = [20, 60, 110, 160, 210, 260, 310, 360, 410, 460, 510, 560, 620]
+        var placementIssues: [String] = []
+        for column in popupColumns {
+            for row in popupRows {
+                let cell = CGRect(x: column, y: row, width: 89.5, height: 44)
+                for height in [77.5, 141.5, 237.5, 309.5] {
+                    let layout = AnalyticsPopupLayout.make(
+                        cell: cell,
+                        popupHeight: height,
+                        pageSize: popupPage
+                    )
+                    let popup = CGRect(
+                        x: layout.x,
+                        y: layout.y,
+                        width: AnalyticsPopupLayout.width,
+                        height: height
+                    )
+                    if popup.minX < AnalyticsPopupLayout.pageInset - 0.01
+                        || popup.maxX > popupPage.width - AnalyticsPopupLayout.pageInset + 0.01
+                        || popup.minY < AnalyticsPopupLayout.pageInset - 0.01
+                        || popup.maxY > popupPage.height - AnalyticsPopupLayout.pageInset + 0.01 {
+                        placementIssues.append("page \(column),\(row) h\(height)")
+                    }
+                    if popup.intersects(cell) {
+                        placementIssues.append("covers \(column),\(row) h\(height)")
+                    }
+                    if !layout.isClamped {
+                        let gap = layout.side == .above
+                            ? cell.minY - popup.maxY
+                            : popup.minY - cell.maxY
+                        if gap < AnalyticsPopupLayout.gap - 0.01 {
+                            placementIssues.append("gap \(column),\(row) h\(height)")
+                        }
+                    }
+                    if abs(layout.x + layout.caretX - cell.midX) > 0.5 {
+                        placementIssues.append("caret \(column),\(row) h\(height)")
+                    }
+                }
+            }
+        }
+        check(placementIssues.isEmpty,
+              "аналитика: попап 340 влезает в страницу, не накрывает ячейку и смотрит в её центр \(placementIssues)")
+
+        // The longest category in the store must fit the title's budget, and the
+        // widest row (a ×N chip plus the biggest amount of the month) must fit the
+        // fixed trailing block, so a chip can never squeeze the title again.
+        AppFonts.register()
+        let onestFont = NSFont(name: "Onest", size: AppStyle.Typography.callout.size)
+        let longestTitle = "Покупки: одежда, техника"
+        let longestTitleWidth = onestFont.map { font in
+            (longestTitle as NSString).size(withAttributes: [
+                .font: font,
+                .kern: AppStyle.Typography.callout.tracking,
+            ]).width
+        } ?? .infinity
+        check(longestTitleWidth <= AnalyticsPopupLayout.titleWidth,
+              "аналитика: самый длинный заголовок попапа не обрезается "
+              + "(\(longestTitleWidth) ≤ \(AnalyticsPopupLayout.titleWidth))")
+
+        let widestAmount = MoneyFormat.string(-181.41, currency: .byn, sign: .always)
+        let widestAmountWidth = onestFont.map { font in
+            (widestAmount as NSString).size(withAttributes: [
+                .font: font,
+                .kern: AppStyle.Typography.metadataEmphasis.tracking,
+            ]).width
+        } ?? .infinity
+        let chipWidth = onestFont.map { font in
+            ("×2" as NSString).size(withAttributes: [
+                .font: font,
+                .kern: AppStyle.Typography.metadata.tracking,
+            ]).width
+        } ?? .infinity
+        check(chipWidth + 6 + widestAmountWidth <= AnalyticsPopupLayout.trailingWidth,
+              "аналитика: чип и самая широкая сумма влезают в правый блок "
+              + "(\(chipWidth + 6 + widestAmountWidth) ≤ \(AnalyticsPopupLayout.trailingWidth))")
         check(analytics.filterCounts.all == 2
                 && analytics.filterCounts.mandatory == 1
                 && analytics.filterCounts.free == 1,

@@ -313,9 +313,13 @@ struct AnalyticsView: View {
             return .handled
         }
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didResignActiveNotification)) { _ in
+            // QA captures drive the app while the harness owns the screen, so an
+            // activation change must not remove the popup mid-capture.
+            guard !isShotMode else { return }
             closePopup()
         }
         .onReceive(NotificationCenter.default.publisher(for: NSWindow.didResignKeyNotification)) { _ in
+            guard !isShotMode else { return }
             closePopup()
         }
         .modifier(
@@ -393,15 +397,22 @@ struct AnalyticsView: View {
                 }
                 .offset(x: layout.x, y: layout.y)
                 .opacity(popupSize.height > 0 ? 1 : 0)
-                .onGeometryChange(for: CGRect.self) { proxy in
-                    proxy.frame(in: .global)
-                } action: { frame in
-                    popupFrameGlobal = frame
-                    popupAnchorFrameGlobal = cellGlobal
+                // `.offset` is a visual shift: `proxy.frame(in: .global)` keeps
+                // reporting the popup at the overlay's origin, which made every
+                // click on the page look like a click on the card. Publish the
+                // drawn rect instead, from the same origin + layout the harness
+                // checks against the pixels.
+                .onChange(of: popupGlobalRect(layout: layout, origin: globalOrigin)) { _, rect in
+                    popupFrameGlobal = rect
                 }
                 .transition(isShotMode ? .opacity : popupTransition(layout))
-                .onAppear { updateShotBox(day: day, cell: cell, pageOrigin: globalOrigin, pageSize: geometry.size) }
+                .onAppear {
+                    popupFrameGlobal = popupGlobalRect(layout: layout, origin: globalOrigin)
+                    popupAnchorFrameGlobal = cellGlobal
+                    updateShotBox(day: day, cell: cell, pageOrigin: globalOrigin, pageSize: geometry.size)
+                }
                 .onChange(of: cellGlobal) { _, _ in
+                    popupAnchorFrameGlobal = cellGlobal
                     updateShotBox(day: day, cell: cell, pageOrigin: globalOrigin, pageSize: geometry.size)
                 }
                 .task(id: "shot-\(day.id)") {
@@ -423,6 +434,18 @@ struct AnalyticsView: View {
         guard !reduceMotion else { return .opacity }
         return .opacity.combined(
             with: .scale(scale: 0.98, anchor: layout.side == .above ? .bottom : .top)
+        )
+    }
+
+    /// The popup's drawn rect in the same corner-based space the click monitor
+    /// uses. The height is the measured card, so the rect follows the card instead
+    /// of the layout input that moved it.
+    private func popupGlobalRect(layout: AnalyticsPopupLayout, origin: CGPoint) -> CGRect {
+        CGRect(
+            x: origin.x + layout.x,
+            y: origin.y + layout.y,
+            width: AnalyticsPopupLayout.width,
+            height: popupSize.height
         )
     }
 
@@ -494,7 +517,9 @@ struct AnalyticsView: View {
             "caretOffsetX": Double(layout.caretX),
             "coversCell": popup.intersects(cell),
             "groupCount": day.groups.count,
-            "rowCount": day.groups.count,
+            // Rows that are laid out without inner scrolling. This is the only
+            // row count in the payload: a second field equal to `groupCount`
+            // would make the height check circular.
             "visibleRowCount": min(day.groups.count, AnalyticsDayPopup.maxRows),
             "pageTop": Double(shotBox.pageOrigin.y),
             "popupHeight": Double(popupSize.height),
@@ -1652,8 +1677,12 @@ private struct AnalyticsHeatCard: View {
             }
             RoundedRectangle(cornerRadius: AppStyle.Radius.md, style: .continuous)
                 .strokeBorder(
-                    isActive && !day.isToday ? AppColors.textSecondary : (day.isToday ? AppColors.textPrimary : .clear),
-                    lineWidth: 1
+                    isActive && !day.isToday
+                        ? AppColors.selectionRing
+                        : (day.isToday ? AppColors.textPrimary : .clear),
+                    // A 2 pt ring on the selected cell keeps the state legible on
+                    // the low-contrast blue heat fill; today keeps its 1 pt ring.
+                    lineWidth: isActive && !day.isToday ? 2 : 1
                 )
         }
         .opacity(day.isFuture ? 0.5 : 1)
@@ -1845,12 +1874,27 @@ struct AnalyticsPopupLayout {
     }
 
     /// The popup keeps one width so the rows and the caret stay predictable.
-    static let width: CGFloat = 300
+    /// 340 keeps the longest category in the store ("Покупки: одежда, техника",
+    /// 156.3 pt in Onest 12) inside the title's budget next to a chip and the
+    /// widest amount of the month.
+    static let width: CGFloat = 340
     /// Space between the popup and the cell, and the page edge.
     static let gap: CGFloat = 8
     static let pageInset: CGFloat = 8
     /// Keeps the caret away from the rounded corners.
     static let caretInset: CGFloat = 20
+
+    // Row geometry. The chip and the amount share a fixed trailing block, so the
+    // title's width never depends on whether a row carries a `×N` chip.
+    static let rowHorizontalInset: CGFloat = 12
+    static let rowIconSize: CGFloat = 22
+    static let rowSpacing: CGFloat = 8
+    static let trailingWidth: CGFloat = 112
+    /// What is left for the title once the icon, the gaps and the block are paid
+    /// for: 340 − 24 − 22 − 16 − 112 = 166 pt.
+    static var titleWidth: CGFloat {
+        width - rowHorizontalInset * 2 - rowIconSize - trailingWidth - rowSpacing * 2
+    }
 
     let x: CGFloat
     let y: CGFloat
@@ -1986,28 +2030,33 @@ private struct AnalyticsDayPopup: View {
     }
 
     private func row(_ group: AnalyticsDayGroup) -> some View {
-        HStack(spacing: 8) {
+        HStack(spacing: AnalyticsPopupLayout.rowSpacing) {
             ListRowIcon(
                 symbol: group.sample.displayIcon,
                 color: group.sample.displayColor,
-                frameSize: 22
+                frameSize: AnalyticsPopupLayout.rowIconSize
             )
             Text(figures: group.title, style: AppStyle.Typography.callout)
                 .lineLimit(1)
-            Spacer(minLength: 6)
-            if group.count > 1 {
-                Text(verbatim: "×\(group.count)")
-                    .font(AppStyle.Typography.metadata)
-                    .foregroundStyle(AppColors.textTertiary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            // The chip and the amount share one fixed-width trailing block, so the
+            // title keeps the same budget whether or not a chip is present.
+            HStack(spacing: 0) {
+                if group.count > 1 {
+                    Text(verbatim: "×\(group.count)")
+                        .font(AppStyle.Typography.metadata)
+                        .foregroundStyle(AppColors.textTertiary)
+                        .monospacedDigit()
+                        .padding(.trailing, 6)
+                }
+                // The day total is an expense, so every row carries its minus.
+                Text(figures: expenseText(group.amount), style: AppStyle.Typography.metadataEmphasis)
                     .monospacedDigit()
+                    .lineLimit(1)
             }
-            // The day total is an expense, so every row carries its minus.
-            Text(figures: expenseText(group.amount), style: AppStyle.Typography.metadataEmphasis)
-                .monospacedDigit()
-                .lineLimit(1)
-                .layoutPriority(1)
+            .frame(width: AnalyticsPopupLayout.trailingWidth, alignment: .trailing)
         }
-        .padding(.horizontal, 12)
+        .padding(.horizontal, AnalyticsPopupLayout.rowHorizontalInset)
         .frame(height: Self.rowHeight)
         .accessibilityElement(children: .combine)
         .accessibilityLabel(groupAccessibility(group))
@@ -2135,9 +2184,13 @@ private final class AnalyticsPopupDismissState {
     var onDismiss: (() -> Void)?
 
     func dismissIfOutside(window: NSWindow, event: NSEvent) {
-        guard !popupFrame.isEmpty else { return }
         let point = Self.point(for: event, in: window)
-        guard !popupFrame.contains(point), !anchorCellFrame.contains(point) else { return }
+        // The anchor cell keeps its own tap, which toggles the popup: the monitor
+        // must not pre-close it. Every other click dismisses, even while the
+        // popup rect is still unknown — a click that misses the card is never
+        // swallowed, and an extra dismissal is better than a stuck popup.
+        if anchorCellFrame.contains(point) { return }
+        if !popupFrame.isEmpty, popupFrame.contains(point) { return }
         onDismiss?()
     }
 

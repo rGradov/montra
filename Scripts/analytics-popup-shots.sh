@@ -28,6 +28,25 @@ if [ ! -x "$BIN" ]; then
     exit 2
 fi
 
+# The pixel assertion needs Pillow. Prefer an explicit interpreter, then the
+# project venv, then the DSH runtime; refuse to run without one, because a
+# harness that only trusts the JSON can save a popup-less frame as a pass.
+PIL_PY=""
+for candidate in "${MONTRA_PIL_PYTHON:-}" python3 "$ROOT/mcp/.venv/bin/python" \
+    "${HOME:-/Users/vladrudenua}/.dsh/dsh-runtimes/dsh-primary-runtime/dependencies/python/bin/python3"; do
+    [ -n "$candidate" ] || continue
+    [ -x "$candidate" ] || command -v "$candidate" >/dev/null 2>&1 || continue
+    if "$candidate" -c "import PIL" 2>/dev/null; then
+        PIL_PY="$candidate"
+        break
+    fi
+done
+if [ -z "$PIL_PY" ]; then
+    echo "error: Pillow is required to assert that every popup is actually drawn." >&2
+    echo "point MONTRA_PIL_PYTHON at a python with Pillow installed." >&2
+    exit 3
+fi
+
 MONTH="${2:-}"
 mkdir -p "$OUTDIR"
 OUTDIR="$(cd "$OUTDIR" && pwd)"
@@ -88,7 +107,38 @@ print(eval(expression, {"__builtins__": {}, "builtins": builtins}, {"d": d, **he
 PY
 }
 
-printf 'day\tpopup\tside\tpopup_height\tcovers_cell\tinside_window\tcaret_ok\tgroups\trows\tpng_bytes\tregion\n' > "$INDEX"
+# Fraction of the reported popup rect that is drawn in the popup's own surface
+# colour (`AppColors.surfaceRaised` = 0x2B2A28 = 43,42,40 in dark appearance,
+# which the page never uses). A popup that was closed mid-capture by an
+# activation change reads 0.0 here instead of being written as a pass.
+popup_surface_fraction() {
+    "$PIL_PY" - "$1" "$2" <<'PY'
+import json
+import sys
+
+from PIL import Image
+
+png, telemetry = sys.argv[1], sys.argv[2]
+with open(telemetry, encoding="utf-8") as handle:
+    d = json.load(handle)
+popup = d["popup"]
+scale = d["scale"]
+surface = (43, 42, 40)
+im = Image.open(png).convert("RGB")
+x0 = max(0, int(popup["x"] * scale) + 3)
+y0 = max(0, int(popup["y"] * scale) + 3)
+x1 = min(im.width, int((popup["x"] + popup["w"]) * scale) - 3)
+y1 = min(im.height, int((popup["y"] + popup["h"]) * scale) - 3)
+matched = total = 0
+for y in range(y0, y1, 3):
+    for x in range(x0, x1, 3):
+        total += 1
+        matched += im.getpixel((x, y)) == surface
+print(f"{matched / max(1, total):.3f}")
+PY
+}
+
+printf 'day\tpopup\tside\tpopup_height\tcovers_cell\tinside_window\tcaret_ok\tgroups\trows\tpopup_pixels\tpng_bytes\tregion\n' > "$INDEX"
 
 failures=0
 popup_days=0
@@ -159,7 +209,7 @@ for day in $(seq 1 "$DAYS_IN_MONTH"); do
     if [ "$captured" -ne 1 ]; then
         echo "FAIL day $day: screencapture failed three times for region $region" >&2
         failures=$((failures + 1))
-        printf '%s\tcapture failed\t-\t-\t-\t-\t-\t-\t-\t0\t%s\n' "$day" "$region" >> "$INDEX"
+        printf '%s\tcapture failed\t-\t-\t-\t-\t-\t-\t-\t-\t0\t%s\n' "$day" "$region" >> "$INDEX"
         continue
     fi
 
@@ -195,6 +245,16 @@ for day in $(seq 1 "$DAYS_IN_MONTH"); do
         groups="$(json_field "$json" 'd["groupCount"]')"
         rows="$(json_field "$json" 'd["visibleRowCount"]')"
 
+        # The JSON alone is not proof: require the card's pixels in the frame.
+        fraction="$(popup_surface_fraction "$png" "$json")"
+        if ! awk -v value="$fraction" 'BEGIN { exit !(value >= 0.6) }'; then
+            echo "FAIL day $day: telemetry reports a popup at $region but only $fraction of the card is drawn; the frame has no popup (activation change or a missing overlay)" >&2
+            failures=$((failures + 1))
+            printf '%s\tpopup missing\t-\t-\t-\t-\t-\t%s\t%s\t%s\t%s\t%s\n' \
+                "$day" "$groups" "$rows" "$fraction" "$bytes" "$region" >> "$INDEX"
+            continue
+        fi
+
         if [ "$covers" = "True" ]; then
             echo "FAIL day $day: the popup covers the clicked cell" >&2
             failures=$((failures + 1))
@@ -207,13 +267,13 @@ for day in $(seq 1 "$DAYS_IN_MONTH"); do
             echo "FAIL day $day: the caret does not point at the cell centre" >&2
             failures=$((failures + 1))
         fi
-        printf '%s\tyes\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
-            "$day" "$side" "$height" "$covers" "$inside" "$caret_ok" "$groups" "$rows" "$bytes" "$region" \
+        printf '%s\tyes\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
+            "$day" "$side" "$height" "$covers" "$inside" "$caret_ok" "$groups" "$rows" "$fraction" "$bytes" "$region" \
             >> "$INDEX"
-        echo "day $day: popup=yes side=$side height=$height groups=$groups coversCell=$covers -> $png"
+        echo "day $day: popup=yes side=$side height=$height groups=$groups coversCell=$covers pixels=$fraction -> $png"
     else
         reason="$(json_field "$json" 'd.get("reason", "unknown")')"
-        printf '%s\tno (%s)\t-\t-\t-\t-\t-\t-\t-\t%s\t%s\n' \
+        printf '%s\tno (%s)\t-\t-\t-\t-\t-\t-\t-\t-\t%s\t%s\n' \
             "$day" "$reason" "$bytes" "$region" >> "$INDEX"
         echo "day $day: popup=no reason=$reason -> $png"
     fi

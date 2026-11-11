@@ -732,6 +732,23 @@
         }
       }
     },
+    "analytics.click_day": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Click a day"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Нажмите на день"
+          }
+        }
+      }
+    },
     "analytics.day_genitive_many": {
       "extractionState": "manual",
       "localizations": {
@@ -983,23 +1000,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Скрыть категории"
-          }
-        }
-      }
-    },
-    "analytics.hover_day": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Hover a day"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Наведите на день"
           }
         }
       }

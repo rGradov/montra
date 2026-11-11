@@ -145,6 +145,13 @@ enum AppStyle {
         static let cardHorizontalPadding: CGFloat = 14
     }
 
+    /// Layers that float above the page rather than sitting in it.
+    enum Elevation {
+        static let floatingColor = Color.black.opacity(0.28)
+        static let floatingRadius: CGFloat = 18
+        static let floatingY: CGFloat = 8
+    }
+
     /// One step of the type scale: family, size, weight and (for Onest) tracking.
     struct TextStyle: Hashable {
         enum Family: Hashable {

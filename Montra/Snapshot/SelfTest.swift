@@ -260,6 +260,65 @@ enum SelfTest {
               "аналитика: операции привязаны к дням")
         check(analytics.days.filter { $0.amount > 0 }.map(\.level).max() == 4,
               "аналитика: верхний уровень тепловой карты")
+        check(analytics.days.allSatisfy { day in
+            day.groups.reduce(Decimal(0)) { $0 + $1.amount } == day.amount
+              && day.groups.reduce(0) { $0 + $1.count } == day.operationCount
+        }, "аналитика: группы дня сходятся с итогом и счётчиком")
+
+        // Day groups: the popup shows one row per category, largest first, and
+        // every row is the sum of its operations in the display currency.
+        let groupingAccount = Account(
+            name: "Группы",
+            currency: .byn,
+            initialAmount: 0,
+            iconName: "creditcard.fill",
+            color: .blue
+        )
+        let groupingFood = Category(
+            name: "Продукты",
+            kind: .expense,
+            color: .green,
+            iconName: "cart.fill"
+        )
+        let groupingTaxi = Category(
+            name: "Такси",
+            kind: .expense,
+            color: .amber,
+            iconName: "car.fill"
+        )
+        let groupingOps = [
+            Operation(kind: .expense, amount: 30, currency: .byn,
+                      date: date(year: 2026, month: 11, day: 5),
+                      account: groupingAccount, category: groupingFood),
+            Operation(kind: .expense, amount: 22.49, currency: .byn,
+                      date: date(year: 2026, month: 11, day: 5),
+                      account: groupingAccount, category: groupingFood),
+            Operation(kind: .expense, amount: 15, currency: .byn,
+                      date: date(year: 2026, month: 11, day: 5),
+                      account: groupingAccount, category: groupingTaxi),
+            Operation(kind: .expense, amount: 4, currency: .byn,
+                      date: date(year: 2026, month: 11, day: 5),
+                      account: groupingAccount, category: nil),
+        ]
+        let groupingSnapshot = AnalyticsEngine.snapshot(
+            range: AnalyticsEngine.monthRange(containing: analyticsNow),
+            operations: groupingOps,
+            displayCurrency: .byn,
+            rates: .fallback,
+            now: analyticsNow
+        )
+        let groupingDay = groupingSnapshot.days.first(where: { $0.id == 5 })
+        check(groupingDay?.groups.count == 3,
+              "аналитика: группы дня собираются по категориям")
+        check(groupingDay?.groups.map(\.title) == [
+            "Продукты", "Такси", String(localized: "common.uncategorized"),
+        ], "аналитика: группы дня по убыванию суммы")
+        check(groupingDay?.groups.first?.amount == 52.49
+                && groupingDay?.groups.first?.count == 2
+                && groupingDay?.groups.first?.sample.displayIcon == "cart.fill",
+              "аналитика: сумма, счётчик и образец группы")
+        check(groupingDay?.groups.reduce(Decimal(0)) { $0 + $1.amount } == groupingDay?.amount,
+              "аналитика: группы дня равны итогу дня в копейку")
         check(analytics.filterCounts.all == 2
                 && analytics.filterCounts.mandatory == 1
                 && analytics.filterCounts.free == 1,

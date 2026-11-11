@@ -116,12 +116,27 @@ struct AnalyticsSlice: Identifiable {
     let delta: Double?
 }
 
+/// One category's share of a day, already converted to the display currency.
+/// The day popup shows one row per group instead of one row per operation.
+struct AnalyticsDayGroup: Identifiable {
+    /// Stable key: the category's UUID string, `"transfer"` or `"uncategorized"`.
+    let id: String
+    let title: String
+    /// Sum of the group's operations in the display currency, positive.
+    let amount: Decimal
+    let count: Int
+    /// Representative operation for the icon and colour.
+    let sample: Operation
+}
+
 struct AnalyticsDay: Identifiable {
     let id: Int
     let date: Date
     let amount: Decimal
     let operationCount: Int
     let operations: [Operation]
+    /// `operations` rolled up by category, largest first.
+    let groups: [AnalyticsDayGroup]
     let level: Int
     let isToday: Bool
     let isFuture: Bool
@@ -367,15 +382,17 @@ enum AnalyticsEngine {
         let days = (0..<range.totalDays).map { index -> AnalyticsDay in
             let date = calendar.date(byAdding: .day, value: index, to: calendarStart) ?? calendarStart
             let day = index + 1
+            let operations = dailyOperations[index].sorted {
+                if $0.date != $1.date { return $0.date > $1.date }
+                return $0.createdAt > $1.createdAt
+            }
             return AnalyticsDay(
                 id: day,
                 date: date,
                 amount: dailyAmounts[index],
                 operationCount: dailyCounts[index],
-                operations: dailyOperations[index].sorted {
-                    if $0.date != $1.date { return $0.date > $1.date }
-                    return $0.createdAt > $1.createdAt
-                },
+                operations: operations,
+                groups: dayGroups(for: operations, currency: displayCurrency, rates: rates),
                 level: levels[index],
                 isToday: range.isCurrent && day == range.elapsedDays,
                 isFuture: range.isCurrent && day > range.elapsedDays
@@ -453,6 +470,66 @@ enum AnalyticsEngine {
             average: expenses / Decimal(max(1, range.elapsedDays)),
             chartMax: chartMax
         )
+    }
+
+    // MARK: - Day groups
+
+    /// Rolls one day's operations up by category. Every operation contributes
+    /// its amount converted the same way the daily total does, so the group
+    /// amounts add up to `AnalyticsDay.amount` exactly.
+    static func dayGroups(
+        for operations: [Operation],
+        currency: Currency,
+        rates: ExchangeRates
+    ) -> [AnalyticsDayGroup] {
+        struct Bucket {
+            let title: String
+            var amount: Decimal
+            var count: Int
+            let sample: Operation
+        }
+
+        var buckets: [String: Bucket] = [:]
+        for operation in operations {
+            let key: String
+            if let category = operation.category {
+                key = category.id.uuidString
+            } else if operation.isTransfer {
+                key = "transfer"
+            } else {
+                key = "uncategorized"
+            }
+            let value = rates.convert(operation.amount, from: operation.currency, to: currency) ?? 0
+            if var bucket = buckets[key] {
+                bucket.amount += value
+                bucket.count += 1
+                buckets[key] = bucket
+            } else {
+                // `operations` arrives newest first, so the sample is the most
+                // recent operation of the group.
+                buckets[key] = Bucket(
+                    title: operation.displayTitle,
+                    amount: value,
+                    count: 1,
+                    sample: operation
+                )
+            }
+        }
+
+        return buckets
+            .map { key, bucket in
+                AnalyticsDayGroup(
+                    id: key,
+                    title: bucket.title,
+                    amount: bucket.amount,
+                    count: bucket.count,
+                    sample: bucket.sample
+                )
+            }
+            .sorted { lhs, rhs in
+                if lhs.amount != rhs.amount { return lhs.amount > rhs.amount }
+                return lhs.title < rhs.title
+            }
     }
 
     // MARK: - Grouping

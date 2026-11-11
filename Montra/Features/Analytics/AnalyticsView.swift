@@ -1,3 +1,4 @@
+import AppKit
 import SwiftData
 import SwiftUI
 
@@ -20,6 +21,14 @@ struct AnalyticsView: View {
     @State private var selectedPeriodID: UUID?
     @State private var selectedMonthStart: Date?
     @State private var selectedYearStart: Date?
+    /// The day's popup lives at page level so it floats above every card and is
+    /// never clipped by the heat card or by the scroll view.
+    @State private var popupDay: AnalyticsDay?
+    @State private var popupSize: CGSize = .zero
+    @State private var popupFrameGlobal = CGRect.null
+    @State private var popupAnchorFrameGlobal = CGRect.null
+    @State private var shotReported = false
+    @State private var shotBox = AnalyticsShotBox()
 
     private var calendar: Calendar { .current }
     private var now: Date { .now }
@@ -187,73 +196,92 @@ struct AnalyticsView: View {
     }
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: AppStyle.Spacing.large) {
-                if let snapshot, snapshot.hasExpenses {
-                    AnalyticsSummaryCard(
-                        snapshot: snapshot,
-                        currency: displayCurrency,
-                        masked: masked
-                    )
-
-                    AnalyticsBreakdownCard(
-                        snapshot: snapshot,
-                        currency: displayCurrency,
-                        masked: masked,
-                        allCategories: allCategories,
-                        hiddenCategoryIDs: hiddenCategoryIDs,
-                        onToggleCategory: toggleCategory,
-                        onShowAllCategories: showAllCategories
-                    )
-
-                    AnalyticsPaceCard(
-                        snapshot: snapshot,
-                        currency: displayCurrency,
-                        masked: masked
-                    )
-
-                    if scope == .year {
-                        AnalyticsYearMonthsCard(
-                            snapshot: snapshot,
-                            currency: displayCurrency,
-                            masked: masked
-                        )
-                    } else {
-                        AnalyticsHeatCard(
-                            snapshot: snapshot,
-                            currency: displayCurrency,
-                            masked: masked,
-                            initialPopupDay: debugPopupDay
-                        )
-                    }
-                } else {
-                    OverviewCard {
-                        if hiddenCategoryIDs.isEmpty {
-                            EmptyState(
-                                symbol: "chart.bar",
-                                title: scope == .year
-                                    ? String(localized: "analytics.empty_year")
-                                    : (scope == .month
-                                        ? String(localized: "analytics.empty_month")
-                                        : String(localized: "analytics.empty_period")),
-                                message: String(localized: "analytics.empty_message"),
-                                actionTitle: String(localized: "transaction.new"),
-                                action: onNewOperation
+        ZStack(alignment: .topLeading) {
+            ScrollViewReader { proxy in
+                ScrollView {
+                    VStack(alignment: .leading, spacing: AppStyle.Spacing.large) {
+                        if let snapshot, snapshot.hasExpenses {
+                            AnalyticsSummaryCard(
+                                snapshot: snapshot,
+                                currency: displayCurrency,
+                                masked: masked
                             )
+
+                            AnalyticsBreakdownCard(
+                                snapshot: snapshot,
+                                currency: displayCurrency,
+                                masked: masked,
+                                allCategories: allCategories,
+                                hiddenCategoryIDs: hiddenCategoryIDs,
+                                onToggleCategory: toggleCategory,
+                                onShowAllCategories: showAllCategories
+                            )
+
+                            AnalyticsPaceCard(
+                                snapshot: snapshot,
+                                currency: displayCurrency,
+                                masked: masked
+                            )
+
+                            if scope == .year {
+                                AnalyticsYearMonthsCard(
+                                    snapshot: snapshot,
+                                    currency: displayCurrency,
+                                    masked: masked
+                                )
+                            } else {
+                                AnalyticsHeatCard(
+                                    snapshot: snapshot,
+                                    currency: displayCurrency,
+                                    masked: masked,
+                                    popupDay: $popupDay,
+                                    initialActiveDay: debugPopupDay
+                                )
+                                .id(heatCardID)
+                            }
                         } else {
-                            EmptyState(
-                                symbol: "eye.slash",
-                                title: String(localized: "analytics.hidden_categories_empty"),
-                                message: String(localized: "analytics.hidden_categories_empty_message"),
-                                actionTitle: String(localized: "analytics.show_all_categories"),
-                                action: showAllCategories
-                            )
+                            OverviewCard {
+                                if hiddenCategoryIDs.isEmpty {
+                                    EmptyState(
+                                        symbol: "chart.bar",
+                                        title: scope == .year
+                                            ? String(localized: "analytics.empty_year")
+                                            : (scope == .month
+                                                ? String(localized: "analytics.empty_month")
+                                                : String(localized: "analytics.empty_period")),
+                                        message: String(localized: "analytics.empty_message"),
+                                        actionTitle: String(localized: "transaction.new"),
+                                        action: onNewOperation
+                                    )
+                                } else {
+                                    EmptyState(
+                                        symbol: "eye.slash",
+                                        title: String(localized: "analytics.hidden_categories_empty"),
+                                        message: String(localized: "analytics.hidden_categories_empty_message"),
+                                        actionTitle: String(localized: "analytics.show_all_categories"),
+                                        action: showAllCategories
+                                    )
+                                }
+                            }
                         }
                     }
+                    .padding(.horizontal, AppDetailPageLayout.horizontalInset)
+                    .padding(.bottom, AppStyle.Spacing.large + shotBottomRoom)
                 }
+                .background(AppColors.surfaceBase)
+                .onScrollGeometryChange(for: CGFloat.self) { geometry in
+                    geometry.contentOffset.y
+                } action: { previous, current in
+                    // A page scroll moves the anchor out from under the popup, so
+                    // close it instead of letting it point at the wrong cell.
+                    guard popupDay != nil, abs(current - previous) > 8 else { return }
+                    closePopup()
+                }
+                .task { await prepareDebugLaunch(proxy) }
             }
-            .padding(.horizontal, AppDetailPageLayout.horizontalInset)
-            .padding(.bottom, AppStyle.Spacing.large)
+            .overlayPreferenceValue(AnalyticsHeatAnchorKey.self) { anchors in
+                popupOverlay(anchors)
+            }
         }
         .background(AppColors.surfaceBase)
         .onAppear {
@@ -263,12 +291,292 @@ struct AnalyticsView: View {
             if selectedMonthStart == nil {
                 selectedMonthStart = calendar.dateInterval(of: .month, for: now)?.start
             }
-            if ProcessInfo.processInfo.environment["MONTRA_ANALYTICS_SCOPE"] == "year" {
-                scope = .year
+            switch ProcessInfo.processInfo.environment["MONTRA_ANALYTICS_SCOPE"] {
+            case "month": scope = .month
+            case "year": scope = .year
+            default: break
+            }
+            // QA screenshots can ask for a past month, so a day with many
+            // categories can be captured from real data.
+            if let raw = ProcessInfo.processInfo.environment["MONTRA_ANALYTICS_MONTH"],
+               let requested = launchMonth(from: raw),
+               monthStarts.contains(where: { calendar.isDate($0, equalTo: requested, toGranularity: .month) }) {
+                selectedMonthStart = requested
             }
             syncHeader()
         }
         .onChange(of: headerKey) { _, _ in syncHeader() }
+        .onChange(of: snapshot?.range) { _, _ in closePopup() }
+        .onKeyPress(.escape) {
+            guard popupDay != nil else { return .ignored }
+            closePopup()
+            return .handled
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didResignActiveNotification)) { _ in
+            closePopup()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSWindow.didResignKeyNotification)) { _ in
+            closePopup()
+        }
+        .modifier(
+            AnalyticsPopupDismissModifier(
+                isActive: popupDay != nil,
+                popupFrame: popupFrameGlobal,
+                anchorCellFrame: popupAnchorFrameGlobal,
+                onDismiss: closePopup
+            )
+        )
+    }
+
+    private var heatCardID: String { "analytics.heat" }
+
+    private var isShotMode: Bool {
+        ProcessInfo.processInfo.environment["MONTRA_ANALYTICS_SHOT"] == "1"
+    }
+
+    private var shotTopAnchor: Bool {
+        isShotMode && ProcessInfo.processInfo.environment["MONTRA_ANALYTICS_SHOT_ANCHOR"] == "top"
+    }
+
+    /// The heat card is the last block, so aligning it to the page top needs room
+    /// below it. Only the QA screenshots that capture the "no room above" branch
+    /// add that room; normal launches keep the tight page.
+    private var shotBottomRoom: CGFloat {
+        shotTopAnchor ? 360 : 0
+    }
+
+    /// The snapshot is rebuilt on every body pass, so resolve the popup by id and
+    /// fall back to the stored day only when the day disappeared.
+    private var popupDayResolved: AnalyticsDay? {
+        guard let popupDay else { return nil }
+        return snapshot?.days.first(where: { $0.id == popupDay.id }) ?? popupDay
+    }
+
+    // MARK: - Day popup
+
+    private func closePopup() {
+        guard popupDay != nil else { return }
+        popupDay = nil
+        popupFrameGlobal = .null
+        popupAnchorFrameGlobal = .null
+    }
+
+    @ViewBuilder
+    private func popupOverlay(_ anchors: [Int: Anchor<CGRect>]) -> some View {
+        GeometryReader { geometry in
+            if let day = popupDayResolved,
+               let anchor = anchors[day.id],
+               !day.groups.isEmpty {
+                let cell = geometry[anchor]
+                let globalOrigin = geometry.frame(in: .global).origin
+                let layout = AnalyticsPopupLayout.make(
+                    cell: cell,
+                    popupHeight: popupSize.height,
+                    pageSize: geometry.size,
+                    pageOriginY: globalOrigin.y
+                )
+                let cellGlobal = cell.offsetBy(dx: globalOrigin.x, dy: globalOrigin.y)
+
+                AnalyticsDayPopup(
+                    day: day,
+                    currency: displayCurrency,
+                    masked: masked,
+                    caretX: layout.caretX,
+                    caretSide: layout.side
+                )
+                .frame(width: AnalyticsPopupLayout.width)
+                .fixedSize(horizontal: false, vertical: true)
+                .onGeometryChange(for: CGSize.self) { proxy in
+                    proxy.size
+                } action: { size in
+                    if popupSize != size { popupSize = size }
+                }
+                .offset(x: layout.x, y: layout.y)
+                .opacity(popupSize.height > 0 ? 1 : 0)
+                .onGeometryChange(for: CGRect.self) { proxy in
+                    proxy.frame(in: .global)
+                } action: { frame in
+                    popupFrameGlobal = frame
+                    popupAnchorFrameGlobal = cellGlobal
+                }
+                .transition(isShotMode ? .opacity : popupTransition(layout))
+                .onAppear { updateShotBox(day: day, cell: cell, pageOrigin: globalOrigin, pageSize: geometry.size) }
+                .onChange(of: cellGlobal) { _, _ in
+                    updateShotBox(day: day, cell: cell, pageOrigin: globalOrigin, pageSize: geometry.size)
+                }
+                .task(id: "shot-\(day.id)") {
+                    // Report only after the popup has settled: the first measuring
+                    // pass and the entry transition both move the card for a moment.
+                    guard isShotMode else { return }
+                    try? await Task.sleep(nanoseconds: 900_000_000)
+                    reportShot()
+                }
+            }
+        }
+        .animation(
+            isShotMode || reduceMotion ? nil : .easeOut(duration: 0.12),
+            value: popupDay == nil
+        )
+    }
+
+    private func popupTransition(_ layout: AnalyticsPopupLayout) -> AnyTransition {
+        guard !reduceMotion else { return .opacity }
+        return .opacity.combined(
+            with: .scale(scale: 0.98, anchor: layout.side == .above ? .bottom : .top)
+        )
+    }
+
+    /// Keeps the harness' inputs live without touching view state.
+    private func updateShotBox(day: AnalyticsDay, cell: CGRect, pageOrigin: CGPoint, pageSize: CGSize) {
+        guard isShotMode else { return }
+        shotBox.day = day
+        shotBox.cell = cell
+        shotBox.pageOrigin = pageOrigin
+        shotBox.pageSize = pageSize
+    }
+
+    /// Scrolls the heat card into view and opens the requested day, then reports
+    /// the layout to the screenshot harness.
+    private func prepareDebugLaunch(_ proxy: ScrollViewProxy) async {
+        guard isShotMode || debugPopupDay != nil || ProcessInfo.processInfo.environment["MONTRA_ANALYTICS_SCOPE"] != nil else {
+            return
+        }
+        // The first pass still reads `@Query` and applies the debug scope.
+        try? await Task.sleep(nanoseconds: 200_000_000)
+        if isShotMode, debugPopupDay != nil, scope != .year {
+            // The default keeps the whole grid on screen; `top` puts the first row
+            // near the page top so the "no room above" placement can be captured.
+            let anchor: UnitPoint = ProcessInfo.processInfo.environment["MONTRA_ANALYTICS_SHOT_ANCHOR"] == "top"
+                ? .top
+                : .bottom
+            proxy.scrollTo(heatCardID, anchor: anchor)
+            try? await Task.sleep(nanoseconds: 450_000_000)
+        }
+        if let id = debugPopupDay, let day = snapshot?.days.first(where: { $0.id == id }) {
+            popupDay = day.groups.isEmpty ? nil : day
+        }
+        guard isShotMode else { return }
+        // The popup itself reports after it settles; this only covers the days
+        // that legitimately have no popup, so it waits longer than that report.
+        try? await Task.sleep(nanoseconds: 2_400_000_000)
+        reportMissingPopupIfNeeded()
+    }
+
+    private func reportShot() {
+        guard isShotMode, !shotReported,
+              popupSize.height > 0,
+              let day = shotBox.day else { return }
+        shotReported = true
+        // Recompute from the settled inputs: `popupSize` is read live, so the
+        // offsets below are the ones SwiftUI actually applies now.
+        let layout = AnalyticsPopupLayout.make(
+            cell: shotBox.cell,
+            popupHeight: popupSize.height,
+            pageSize: shotBox.pageSize,
+            pageOriginY: shotBox.pageOrigin.y
+        )
+        let popup = CGRect(
+            x: shotBox.pageOrigin.x + layout.x,
+            y: shotBox.pageOrigin.y + layout.y,
+            width: AnalyticsPopupLayout.width,
+            height: popupSize.height
+        )
+        let cell = shotBox.cell.offsetBy(dx: shotBox.pageOrigin.x, dy: shotBox.pageOrigin.y)
+        let payload: [String: Any] = [
+            "day": day.id,
+            "window": windowJSON(),
+            "scale": Double(windowScale),
+            "cell": rectJSON(cell),
+            "popup": rectJSON(popup),
+            "side": layout.side.rawValue,
+            "clamped": layout.isClamped,
+            "caretX": Double(popup.minX + layout.caretX),
+            "caretOffsetX": Double(layout.caretX),
+            "coversCell": popup.intersects(cell),
+            "groupCount": day.groups.count,
+            "rowCount": day.groups.count,
+            "visibleRowCount": min(day.groups.count, AnalyticsDayPopup.maxRows),
+            "pageTop": Double(shotBox.pageOrigin.y),
+            "popupHeight": Double(popupSize.height),
+        ]
+        print("ANALYTICS_SHOT_JSON \(json(payload))")
+        // A redirected stdout is block-buffered; the harness kills the app, so flush.
+        fflush(stdout)
+    }
+
+    private func reportMissingPopupIfNeeded() {
+        guard isShotMode, !shotReported, let id = debugPopupDay else { return }
+        shotReported = true
+        let reason: String
+        if let day = snapshot?.days.first(where: { $0.id == id }) {
+            reason = day.isFuture ? "future" : (day.groups.isEmpty ? "empty" : "notPlaced")
+        } else {
+            reason = "missing"
+        }
+        let payload: [String: Any] = [
+            "day": id,
+            "popup": NSNull(),
+            "reason": reason,
+            "window": windowJSON(),
+            "scale": Double(windowScale),
+        ]
+        print("ANALYTICS_SHOT_JSON \(json(payload))")
+        fflush(stdout)
+    }
+
+    private var shotWindow: NSWindow? {
+        NSApp.windows.first { $0.isVisible && $0.contentView != nil }
+    }
+
+    private var windowScale: CGFloat {
+        shotWindow?.backingScaleFactor ?? NSScreen.main?.backingScaleFactor ?? 1
+    }
+
+    /// The window's frame in the same corner-based space `screencapture -R` uses,
+    /// so the harness can capture exactly the window.
+    private func windowJSON() -> [String: Double] {
+        guard let window = shotWindow else {
+            return ["x": 0, "y": 0, "w": Double(AppWindowLayout.width),
+                    "h": Double(AppWindowLayout.defaultHeight)]
+        }
+        let screen = window.screen ?? NSScreen.main
+        let originY = (screen?.frame.maxY ?? 0) - window.frame.maxY
+        return [
+            "x": Double(window.frame.minX),
+            "y": Double(originY),
+            "w": Double(window.frame.width),
+            "h": Double(window.frame.height),
+        ]
+    }
+
+    private func rectJSON(_ rect: CGRect) -> [String: Double] {
+        [
+            "x": Double(rect.minX),
+            "y": Double(rect.minY),
+            "w": Double(rect.width),
+            "h": Double(rect.height),
+        ]
+    }
+
+    private func json(_ payload: [String: Any]) -> String {
+        let data = (try? JSONSerialization.data(
+            withJSONObject: payload,
+            options: [.sortedKeys]
+        )) ?? Data("{}".utf8)
+        return String(decoding: data, as: UTF8.self)
+    }
+
+    private func launchMonth(from raw: String) -> Date? {
+        let parts = raw.split(separator: "-")
+        guard parts.count == 2,
+              let year = Int(parts[0]),
+              let month = Int(parts[1]),
+              (1...12).contains(month) else { return nil }
+        var components = DateComponents()
+        components.year = year
+        components.month = month
+        components.day = 1
+        return calendar.date(from: components)
     }
 
     private func syncHeader() {
@@ -1099,11 +1407,11 @@ private struct AnalyticsHeatCard: View {
     let snapshot: AnalyticsSnapshot
     let currency: Currency
     let masked: Bool
+    @Binding var popupDay: AnalyticsDay?
+    /// Set by the QA launch env, so the readout shows the day whose popup the
+    /// screenshot harness asks for.
+    let initialActiveDay: Int?
     @State private var activeDay: AnalyticsDay?
-    @State private var popupDay: AnalyticsDay?
-    @State private var hoverTask: Task<Void, Never>?
-    @State private var closeTask: Task<Void, Never>?
-    @State private var popupHovered = false
 
     @FocusState private var gridFocused: Bool
 
@@ -1111,16 +1419,18 @@ private struct AnalyticsHeatCard: View {
         snapshot: AnalyticsSnapshot,
         currency: Currency,
         masked: Bool,
-        initialPopupDay: Int? = nil
+        popupDay: Binding<AnalyticsDay?>,
+        initialActiveDay: Int? = nil
     ) {
         self.snapshot = snapshot
         self.currency = currency
         self.masked = masked
-        let initial = initialPopupDay.flatMap { id in
+        self.initialActiveDay = initialActiveDay
+        _popupDay = popupDay
+        let initial = initialActiveDay.flatMap { id in
             snapshot.days.first(where: { $0.id == id })
         }
         _activeDay = State(initialValue: initial)
-        _popupDay = State(initialValue: initial)
     }
 
     private var title: String {
@@ -1221,11 +1531,25 @@ private struct AnalyticsHeatCard: View {
             .accessibilityElement(children: .contain)
             .accessibilityLabel(String(localized: "analytics.heat_accessibility"))
             .onChange(of: snapshot.range) { _, _ in
-                activeDay = nil
+                // The launch scope switch lands here after the first render, so the
+                // debug day is restored instead of being cleared with the old range.
+                activeDay = initialActiveDay.flatMap { id in
+                    snapshot.days.first(where: { $0.id == id })
+                }
                 popupDay = nil
-                popupHovered = false
-                hoverTask?.cancel()
-                closeTask?.cancel()
+            }
+            .onKeyPress(.return) {
+                togglePopupForActiveDay()
+                return .handled
+            }
+            .onKeyPress(.space) {
+                togglePopupForActiveDay()
+                return .handled
+            }
+            .onKeyPress(.escape) {
+                guard popupDay != nil else { return .ignored }
+                popupDay = nil
+                return .handled
             }
 
             readout
@@ -1233,124 +1557,25 @@ private struct AnalyticsHeatCard: View {
                 .padding(.top, AppStyle.Spacing.xSmall)
                 .padding(.bottom, AppStyle.Row.cardHorizontalPadding)
         }
-        .overlayPreferenceValue(AnalyticsHeatAnchorKey.self) { anchors in
-            GeometryReader { geometry in
-                if let popupDay,
-                   let anchor = anchors[popupDay.id],
-                   !popupDay.operations.isEmpty {
-                    let rect = geometry[anchor]
-                    let width: CGFloat = 300
-                    let height: CGFloat = 220
-                    let x = min(max(rect.midX - width / 2, 6), max(6, geometry.size.width - width - 6))
-                    let y = max(8, rect.minY - height - 8)
-                    let caretX = min(max(rect.midX - x, 20), width - 20)
-                    popup(popupDay, caretX: caretX, caretOnTop: false)
-                        .frame(width: width, height: height, alignment: .bottom)
-                        .offset(x: x, y: y)
-                        .onHover { hovering in
-                            popupHovered = hovering
-                            if hovering {
-                                closeTask?.cancel()
-                            } else {
-                                scheduleClose()
-                            }
-                        }
-                        .transition(.opacity)
-                }
-            }
-        }
-        .onDisappear {
-            hoverTask?.cancel()
-            closeTask?.cancel()
-        }
     }
 
-    private func handleHover(_ hovering: Bool, on day: AnalyticsDay) {
-        if hovering {
-            closeTask?.cancel()
-            activeDay = day
-            hoverTask?.cancel()
-            guard !day.operations.isEmpty else {
-                popupDay = nil
-                return
-            }
-            let id = day.id
-            hoverTask = Task { @MainActor in
-                try? await Task.sleep(nanoseconds: 350_000_000)
-                guard !Task.isCancelled, activeDay?.id == id else { return }
-                popupDay = day
-            }
-        } else {
-            hoverTask?.cancel()
-            scheduleClose()
-        }
-    }
-
-    private func scheduleClose() {
-        closeTask?.cancel()
-        let id = popupDay?.id
-        closeTask = Task { @MainActor in
-            try? await Task.sleep(nanoseconds: 220_000_000)
-            guard !Task.isCancelled, !popupHovered, popupDay?.id == id else { return }
+    /// Click, Return or Space: the same cell closes its popup, another day
+    /// replaces it in one state update, an empty day only moves the readout.
+    private func handleSelection(of day: AnalyticsDay) {
+        guard !day.isFuture else { return }
+        activeDay = day
+        guard day.amount > 0, !day.groups.isEmpty else {
             popupDay = nil
+            return
         }
+        popupDay = popupDay?.id == day.id ? nil : day
     }
 
-    private func popup(_ day: AnalyticsDay, caretX: CGFloat, caretOnTop: Bool) -> some View {
-        VStack(alignment: .leading, spacing: 0) {
-            HStack(alignment: .firstTextBaseline, spacing: 8) {
-                Text(figures: AppDate.short(day.date), style: AppStyle.Typography.headline)
-                Spacer(minLength: 4)
-                Text(money(day.amount))
-                    .font(AnalyticsStyle.amount)
-                    .monospacedDigit()
-            }
-            .padding(.horizontal, 12)
-            .padding(.top, 10)
-            .padding(.bottom, 8)
-
-            InsetCardDivider(horizontalInset: 12)
-
-            ScrollView(.vertical, showsIndicators: true) {
-                LazyVStack(spacing: 0) {
-                    ForEach(day.operations, id: \.id) { operation in
-                        HStack(spacing: 8) {
-                            ListRowIcon(
-                                symbol: operation.displayIcon,
-                                color: operation.displayColor,
-                                frameSize: 22
-                            )
-                            Text(figures: operation.displayTitle, style: AppStyle.Typography.callout)
-                                .lineLimit(1)
-                            Spacer(minLength: 6)
-                            Text(figures: operation.amountText(masked: masked),
-                                 style: AppStyle.Typography.metadataEmphasis)
-                                .lineLimit(1)
-                        }
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 5)
-                    }
-                }
-                .padding(.vertical, 4)
-            }
-            .frame(maxHeight: 180)
-        }
-        .frame(width: 300, alignment: .leading)
-        .background {
-            RoundedRectangle(cornerRadius: AppStyle.Radius.lg, style: .continuous)
-                .fill(AppColors.surfaceRaised)
-        }
-        .overlay(alignment: caretOnTop ? .top : .bottom) {
-            AnalyticsCaret(pointsUp: caretOnTop)
-                .fill(AppColors.surfaceRaised)
-                .frame(width: 14, height: 7)
-                .offset(x: caretX - 150)
-        }
-        .overlay {
-            RoundedRectangle(cornerRadius: AppStyle.Radius.lg, style: .continuous)
-                .strokeBorder(AppColors.borderStrong, lineWidth: 1)
-        }
+    private func togglePopupForActiveDay() {
+        guard let day = activeDay else { return }
+        handleSelection(of: day)
     }
+
 
     private var legend: some View {
         HStack(spacing: AppStyle.Spacing.xxxSmall) {
@@ -1434,9 +1659,10 @@ private struct AnalyticsHeatCard: View {
         .opacity(day.isFuture ? 0.5 : 1)
         .contentShape(Rectangle())
         .anchorPreference(key: AnalyticsHeatAnchorKey.self, value: .bounds) { [day.id: $0] }
-        .onHover { hovering in
-            handleHover(hovering, on: day)
+        .onTapGesture {
+            handleSelection(of: day)
         }
+        .pointingHandOnHover(day.amount > 0 && !day.isFuture)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(accessibilityText(day))
     }
@@ -1458,7 +1684,7 @@ private struct AnalyticsHeatCard: View {
                     .foregroundStyle(AppColors.textTertiary)
             }
         } else {
-            Text(String(localized: "analytics.hover_day"))
+            Text(String(localized: "analytics.click_day"))
                 .font(AppStyle.Typography.metadata)
                 .foregroundStyle(AppColors.textTertiary)
         }
@@ -1471,6 +1697,9 @@ private struct AnalyticsHeatCard: View {
             ?? 1
         let next = min(max(current + delta, 1), max(1, snapshot.range.totalDays))
         activeDay = snapshot.days.first(where: { $0.id == next })
+        // Arrows move the highlighted day; the popup stays anchored to the cell
+        // it was opened from, so a move closes it. Return opens the new day.
+        popupDay = nil
     }
 
     private func accessibilityText(_ day: AnalyticsDay) -> String {
@@ -1601,6 +1830,323 @@ private struct AnalyticsYearMonthsCard: View {
 
     private func money(_ value: Decimal) -> String {
         MoneyFormat.string(value, currency: currency, masked: masked)
+    }
+}
+
+// MARK: - Day popup
+
+/// Placement for the day popup in the page's coordinate space. The popup is
+/// measured first, then put on the side of the cell that has room for it, so it
+/// never covers the cell while either side fits.
+struct AnalyticsPopupLayout {
+    enum Side: String {
+        case above
+        case below
+    }
+
+    /// The popup keeps one width so the rows and the caret stay predictable.
+    static let width: CGFloat = 300
+    /// Space between the popup and the cell, and the page edge.
+    static let gap: CGFloat = 8
+    static let pageInset: CGFloat = 8
+    /// Keeps the caret away from the rounded corners.
+    static let caretInset: CGFloat = 20
+
+    let x: CGFloat
+    let y: CGFloat
+    /// Caret apex in the popup's own horizontal space.
+    let caretX: CGFloat
+    let side: Side
+    /// True when the chosen side did not fit and the popup was pinned to the page.
+    let isClamped: Bool
+    /// The page's top in window coordinates, for the screenshot harness.
+    let pageOriginY: CGFloat
+
+    static func make(
+        cell: CGRect,
+        popupHeight: CGFloat,
+        pageSize: CGSize,
+        pageOriginY: CGFloat = 0
+    ) -> AnalyticsPopupLayout {
+        let height = max(popupHeight, 1)
+        let topLimit = pageInset
+        let bottomLimit = pageSize.height - pageInset
+        let aboveRoom = cell.minY - topLimit
+        let belowRoom = bottomLimit - cell.maxY
+        let fitsAbove = aboveRoom >= height + gap
+        let fitsBelow = belowRoom >= height + gap
+
+        let side: Side
+        if fitsAbove {
+            side = .above
+        } else if fitsBelow {
+            side = .below
+        } else {
+            side = aboveRoom >= belowRoom ? .above : .below
+        }
+
+        let preferredY = side == .above ? cell.minY - height - gap : cell.maxY + gap
+        let minY = topLimit
+        let maxY = max(minY, pageSize.height - height - pageInset)
+        let isClamped = preferredY < minY || preferredY > maxY
+        let y = min(max(preferredY, minY), maxY)
+
+        let x = min(
+            max(cell.midX - width / 2, pageInset),
+            max(pageInset, pageSize.width - width - pageInset)
+        )
+        let caretX = min(max(cell.midX - x, caretInset), width - caretInset)
+
+        return AnalyticsPopupLayout(
+            x: x,
+            y: y,
+            caretX: caretX,
+            side: side,
+            isClamped: isClamped,
+            pageOriginY: pageOriginY
+        )
+    }
+}
+
+/// The floating card for one day: the date and total, then one row per category.
+private struct AnalyticsDayPopup: View {
+    let day: AnalyticsDay
+    let currency: Currency
+    let masked: Bool
+    let caretX: CGFloat
+    let caretSide: AnalyticsPopupLayout.Side
+
+    static let maxRows = 8
+    static let rowHeight: CGFloat = 32
+    private static let caretWidth: CGFloat = 14
+    /// One point of the caret overlaps the border so the seam disappears.
+    private static let caretHeight: CGFloat = 9
+    private static let caretOffset: CGFloat = 8
+
+    private var pointsUp: Bool { caretSide == .below }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            header
+            InsetCardDivider(horizontalInset: 12)
+            rows
+        }
+        .frame(width: AnalyticsPopupLayout.width, alignment: .leading)
+        .background {
+            RoundedRectangle(cornerRadius: AppStyle.Radius.lg, style: .continuous)
+                .fill(AppColors.surfaceRaised)
+        }
+        .overlay {
+            RoundedRectangle(cornerRadius: AppStyle.Radius.lg, style: .continuous)
+                .strokeBorder(AppColors.borderStrong, lineWidth: 1)
+        }
+        .overlay(alignment: pointsUp ? .top : .bottom) { caret }
+        .compositingGroup()
+        .shadow(
+            color: AppStyle.Elevation.floatingColor,
+            radius: AppStyle.Elevation.floatingRadius,
+            y: AppStyle.Elevation.floatingY
+        )
+        .accessibilityElement(children: .contain)
+    }
+
+    private var header: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            Text(figures: AppDate.short(day.date), style: AppStyle.Typography.headline)
+            Spacer(minLength: 4)
+            Text(figures: money(day.amount), style: AnalyticsStyle.amount)
+                .monospacedDigit()
+                .lineLimit(1)
+        }
+        .padding(.horizontal, 12)
+        .padding(.top, 10)
+        .padding(.bottom, 8)
+        .accessibilityElement(children: .combine)
+    }
+
+    @ViewBuilder
+    private var rows: some View {
+        if day.groups.count > Self.maxRows {
+            ScrollView(.vertical, showsIndicators: true) {
+                rowStack
+            }
+            .frame(height: CGFloat(Self.maxRows) * Self.rowHeight + 8)
+        } else {
+            rowStack
+        }
+    }
+
+    private var rowStack: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            ForEach(day.groups) { group in
+                row(group)
+            }
+        }
+        .padding(.vertical, 4)
+    }
+
+    private func row(_ group: AnalyticsDayGroup) -> some View {
+        HStack(spacing: 8) {
+            ListRowIcon(
+                symbol: group.sample.displayIcon,
+                color: group.sample.displayColor,
+                frameSize: 22
+            )
+            Text(figures: group.title, style: AppStyle.Typography.callout)
+                .lineLimit(1)
+            Spacer(minLength: 6)
+            if group.count > 1 {
+                Text(verbatim: "×\(group.count)")
+                    .font(AppStyle.Typography.metadata)
+                    .foregroundStyle(AppColors.textTertiary)
+                    .monospacedDigit()
+            }
+            // The day total is an expense, so every row carries its minus.
+            Text(figures: expenseText(group.amount), style: AppStyle.Typography.metadataEmphasis)
+                .monospacedDigit()
+                .lineLimit(1)
+                .layoutPriority(1)
+        }
+        .padding(.horizontal, 12)
+        .frame(height: Self.rowHeight)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(groupAccessibility(group))
+    }
+
+    /// The caret sits outside the card and covers the border at its base, so the
+    /// bubble and the pointer read as one shape.
+    private var caret: some View {
+        ZStack {
+            AnalyticsCaret(pointsUp: pointsUp)
+                .fill(AppColors.surfaceRaised)
+            AnalyticsCaretEdges(pointsUp: pointsUp)
+                .stroke(AppColors.borderStrong, lineWidth: 1)
+        }
+        .frame(width: Self.caretWidth, height: Self.caretHeight)
+        .offset(
+            x: caretX - AnalyticsPopupLayout.width / 2,
+            y: caretSide == .above ? Self.caretOffset : -Self.caretOffset
+        )
+    }
+
+    private func money(_ value: Decimal) -> String {
+        MoneyFormat.string(value, currency: currency, masked: masked)
+    }
+
+    private func expenseText(_ value: Decimal) -> String {
+        MoneyFormat.string(-value, currency: currency, sign: .always, masked: masked)
+    }
+
+    private func groupAccessibility(_ group: AnalyticsDayGroup) -> String {
+        "\(group.title), \(expenseText(group.amount)), \(Finance.operationsCountText(group.count))"
+    }
+}
+
+/// Two slanted edges of the caret, without its base: the base is covered by the
+/// popup's fill so the stroke does not cut the bubble off.
+private struct AnalyticsCaretEdges: Shape {
+    let pointsUp: Bool
+
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        if pointsUp {
+            path.move(to: CGPoint(x: rect.minX, y: rect.maxY))
+            path.addLine(to: CGPoint(x: rect.midX, y: rect.minY))
+            path.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY))
+        } else {
+            path.move(to: CGPoint(x: rect.minX, y: rect.minY))
+            path.addLine(to: CGPoint(x: rect.midX, y: rect.maxY))
+            path.addLine(to: CGPoint(x: rect.maxX, y: rect.minY))
+        }
+        return path
+    }
+}
+
+/// Closes the popup on a click outside it while it is open. The click is passed
+/// on untouched, so it still does whatever it normally would. Clicks on the
+/// anchor cell are left to the cell's own tap, which toggles the popup.
+private struct AnalyticsPopupDismissModifier: ViewModifier {
+    let isActive: Bool
+    let popupFrame: CGRect
+    let anchorCellFrame: CGRect
+    let onDismiss: () -> Void
+
+    @State private var state = AnalyticsPopupDismissState()
+    @State private var monitor: Any?
+
+    func body(content: Content) -> some View {
+        content
+            .onAppear {
+                sync()
+                install()
+            }
+            .onChange(of: isActive) { _, active in
+                sync()
+                if active {
+                    install()
+                } else {
+                    remove()
+                }
+            }
+            .onChange(of: popupFrame) { _, _ in sync() }
+            .onChange(of: anchorCellFrame) { _, _ in sync() }
+            .onDisappear { remove() }
+    }
+
+    private func sync() {
+        state.popupFrame = popupFrame
+        state.anchorCellFrame = anchorCellFrame
+        state.onDismiss = onDismiss
+    }
+
+    private func install() {
+        guard isActive, monitor == nil else { return }
+        monitor = NSEvent.addLocalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown, .keyDown]) { event in
+            if event.type == .keyDown {
+                // Escape closes the popup even when the grid does not have focus.
+                if event.keyCode == 53 { state.onDismiss?() }
+                return event
+            }
+            guard let window = event.window else { return event }
+            state.dismissIfOutside(window: window, event: event)
+            return event
+        }
+    }
+
+    private func remove() {
+        guard let monitor else { return }
+        NSEvent.removeMonitor(monitor)
+        self.monitor = nil
+    }
+}
+
+/// Live inputs for the screenshot harness: the overlay updates it on every
+/// layout pass, and the report reads it once everything has settled.
+private final class AnalyticsShotBox {
+    var day: AnalyticsDay?
+    var cell: CGRect = .null
+    var pageOrigin: CGPoint = .zero
+    var pageSize: CGSize = .zero
+}
+
+private final class AnalyticsPopupDismissState {
+    var popupFrame: CGRect = .null
+    var anchorCellFrame: CGRect = .null
+    var onDismiss: (() -> Void)?
+
+    func dismissIfOutside(window: NSWindow, event: NSEvent) {
+        guard !popupFrame.isEmpty else { return }
+        let point = Self.point(for: event, in: window)
+        guard !popupFrame.contains(point), !anchorCellFrame.contains(point) else { return }
+        onDismiss?()
+    }
+
+    /// SwiftUI's `.global` space starts at the hosting view's top-left corner.
+    private static func point(for event: NSEvent, in window: NSWindow) -> CGPoint {
+        guard let view = window.contentView else { return .zero }
+        let local = view.convert(event.locationInWindow, from: nil)
+        let y = view.isFlipped ? local.y : view.bounds.height - local.y
+        return CGPoint(x: local.x - view.bounds.minX, y: y - view.bounds.minY)
     }
 }
 

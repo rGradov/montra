@@ -3,7 +3,7 @@
 As of **November 9, 2026**. The code in `Montra/` is the source of truth.
 Each area has IDs, checks, expected outcomes, and negative or edge cases.
 
-> Automated coverage includes **161 checks** in `-selftest` and full screen
+> Automated coverage includes **166 checks** in `-selftest` and full screen
 > rendering with `-snapshot`. See sections 4 and 5 for coverage and gaps.
 
 ## 0. How to use this inventory
@@ -269,7 +269,7 @@ Use a 980×700 window with a 240 pt sidebar and `hiddenTitleBar`.
 |---|---|---|---|
 | ABT-01 | About | Montra artwork, version, total across accounts in the primary currency, feature summary, and footer | ui/visual |
 | ABT-02 | Replay | Preview banner, no writes, X closes, and completion opens Overview | ui |
-| ABT-03 | Analytics | Period, month, and year scopes, previous/current stepper, summary expenses/income/left, savings transfers shown separately, category or account split, essential/discretionary filters, informational rows with plain transaction-style icons, expandable "Other" group for categories below 1% of expenses, always pinned last with its children aligned to the same amount/share column, cumulative chart with previous/even pace and month labels on the year axis, chart hover and keyboard, heat map with today marker, above-average accent palette, hidden-category menu with show-all reset, hidden-state empty screen and readout, interactive day-operations popup anchored above the hovered cell with scroll and close delay, non-clickable informational category/account rows, empty state, light/dark, and year boundaries. Engine: totals, savings in/out, comparison windows, cumulative endpoint, heat levels, chart ceiling, year day count | unit/ui/visual |
+| ABT-03 | Analytics | Period, month, and year scopes, previous/current stepper, summary expenses/income/left, savings transfers shown separately, category or account split, essential/discretionary filters, informational rows with plain transaction-style icons, expandable "Other" group for categories below 1% of expenses, always pinned last with its children aligned to the same amount/share column, cumulative chart with previous/even pace and month labels on the year axis, chart hover and keyboard, heat map with today marker, above-average accent palette, hidden-category menu with show-all reset, hidden-state empty screen and readout, click-to-open day popup with one row per category (sum, repeat count, sample icon), content-sized card above or below the clicked cell so it never covers it, caret aimed at the day, and dismissal by the same cell, another cell, an outside click, Escape, a page scroll, or the window losing focus, non-clickable informational category/account rows, empty state, light/dark, and year boundaries. Engine: totals, savings in/out, comparison windows, cumulative endpoint, heat levels, chart ceiling, year day count | unit/ui/visual |
 
 ### 2.14 Formatting, accessibility, and animation
 
@@ -326,7 +326,7 @@ Use a 980×700 window with a 240 pt sidebar and `hiddenTitleBar`.
   account, and launching an older store without onboarding.
 - Plans cover monthly clamping, weekly days, series, unchanged balance, linking,
   missed and upcoming filters, and series deletion.
-- Analytics totals, free/mandatory split, savings in/out (transfers excluded from expenses and income), category rollup, previous-period comparison, cumulative endpoint, daily heat levels and their operations, filter counts, average, chart ceiling, month range, and current-year range with elapsed days.
+- Analytics totals, free/mandatory split, savings in/out (transfers excluded from expenses and income), category rollup, previous-period comparison, cumulative endpoint, daily heat levels and their operations, per-day category groups that add up to the day total and operation count, filter counts, average, chart ceiling, month range, and current-year range with elapsed days.
 - Formatting and pluralization.
 - Spotlight ledger covers accounts, categories, subcategories, transfers,
   required received amounts, balances, Overview, missingCurrencies, and hideBalances.
@@ -356,7 +356,7 @@ Use a 980×700 window with a 240 pt sidebar and `hiddenTitleBar`.
 - Older store migration, relaunch, and restore UI. Self-test already covers
   the backup round trip.
 - Shared header, Reduce Motion, focus, dark and light, and snapshot diffs.
-- Analytics chart hover/focus, row keyboard navigation, and heat-grid arrow keys need a UI pass; the engine math and static snapshots are covered.
+- Analytics chart hover/focus, row keyboard navigation, heat-grid arrow keys, and the day-popup click, outside-click, scroll, and window-deactivation dismissal need a UI pass; the engine math, the placement telemetry, and the screenshots in `Scripts/analytics-popup-shots.sh` cover the geometry.
 
 ## 6. Known limitations
 
@@ -368,7 +368,7 @@ Use a 980×700 window with a 240 pt sidebar and `hiddenTitleBar`.
 - The year scope shows a 12-month summary card instead of the day calendar; use Period or Month for the day-level heat map.
 - The "Other" group covers expense categories below 1% of total expenses and expands to its children; the other category rows remain read-only. The demo store has no such category, so it is not visible in the docs image.
 - The Analytics category menu hides categories from the current and previous totals, the chart, the heat map, and the Other group. The hidden set is stored in AppStorage for this Mac; it is not part of the .montra backup or Local API.
-- The calendar day popup is hover-only. It stays open while the pointer is over the cell or the popup and closes after a short delay when both are left.
+- The calendar day popup opens on click and shows one row per category, not one row per operation. It is sized to its content, lists at most eight groups and scrolls inside the card beyond that, and stays on the side of the cell that has room.
 - Recurrence is unavailable on Transfer.
 - Editing a whole plan series requires deleting and recreating it.
 - A linked plan stores `linkedOperationID`. Check the behavior when deleting
@@ -415,7 +415,8 @@ Use a 980×700 window with a 240 pt sidebar and `hiddenTitleBar`.
     delete an account with plans, and run Spotlight actions.
 14. **ABT.** Open Analytics, switch Period and Month, step through periods and
     months, change Category/Account and the filters, expand a row, hover the
-    chart and heat map, and verify the empty state on a store without spending.
+    chart, click a day cell to open and close its popup, then verify the empty
+    state on a store without spending.
 
 ## 8. Coverage priorities
 

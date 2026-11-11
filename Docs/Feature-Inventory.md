@@ -3,7 +3,7 @@
 As of **November 9, 2026**. The code in `Montra/` is the source of truth.
 Each area has IDs, checks, expected outcomes, and negative or edge cases.
 
-> Automated coverage includes **131 checks** in `-selftest` and full screen
+> Automated coverage includes **155 checks** in `-selftest` and full screen
 > rendering with `-snapshot`. See sections 4 and 5 for coverage and gaps.
 
 ## 0. How to use this inventory
@@ -269,7 +269,7 @@ Use a 980×700 window with a 240 pt sidebar and `hiddenTitleBar`.
 |---|---|---|---|
 | ABT-01 | About | Montra artwork, version, total across accounts in the primary currency, feature summary, and footer | ui/visual |
 | ABT-02 | Replay | Preview banner, no writes, X closes, and completion opens Overview | ui |
-| ABT-03 | Analytics | Coming Soon placeholder and artwork, with no calculations or crashes | ui |
+| ABT-03 | Analytics | Period and month scopes, previous/current stepper, summary expenses/income/left, category or account split, essential/discretionary filters, expandable rows with latest operations, cumulative chart with previous/even pace, chart hover and keyboard, heat map with today marker and readout, empty state, light/dark, and month boundaries. Engine: totals, comparison windows, cumulative endpoint, heat levels, chart ceiling | unit/ui/visual |
 
 ### 2.14 Formatting, accessibility, and animation
 
@@ -283,7 +283,7 @@ Use a 980×700 window with a 240 pt sidebar and `hiddenTitleBar`.
 | A11Y-03 | Reduce Motion | Disable blur, offset, spring, and digit transitions while keeping content accessible | ui |
 | VIS-01 | Animations | Persistent route header with title and subtitle transitions and content crossfade. New rows, numeric transitions, hover, sheets, onboarding, and plans | visual |
 | VIS-02 | Visuals | Light and dark, color and typography tokens, no clipped or doubled text, and header height | visual |
-| VIS-03 | Snapshots | Screens 01…25 render without crashing and can be compared with baselines | visual |
+| VIS-03 | Snapshots | All screens render without crashing and can be compared with baselines, including Analytics tall dark and light | visual |
 
 ## 3. Invariants across scenarios
 
@@ -310,7 +310,7 @@ Use a 980×700 window with a 240 pt sidebar and `hiddenTitleBar`.
 10. **Accessibility.** All actions are keyboard-accessible. Reduce Motion
     leaves content available.
 
-## 4. Current automated coverage (`-selftest`, 131)
+## 4. Current automated coverage (`-selftest`, 155)
 
 - Period generation, continuity, February clamping, fixed length, manual edits,
   and neighboring boundaries.
@@ -326,6 +326,7 @@ Use a 980×700 window with a 240 pt sidebar and `hiddenTitleBar`.
   account, and launching an older store without onboarding.
 - Plans cover monthly clamping, weekly days, series, unchanged balance, linking,
   missed and upcoming filters, and series deletion.
+- Analytics totals, free/mandatory split, category rollup, previous-period comparison, cumulative endpoint, daily heat levels, filter counts, average, chart ceiling, and month range.
 - Formatting and pluralization.
 - Spotlight ledger covers accounts, categories, subcategories, transfers,
   required received amounts, balances, Overview, missingCurrencies, and hideBalances.
@@ -355,11 +356,14 @@ Use a 980×700 window with a 240 pt sidebar and `hiddenTitleBar`.
 - Older store migration, relaunch, and restore UI. Self-test already covers
   the backup round trip.
 - Shared header, Reduce Motion, focus, dark and light, and snapshot diffs.
+- Analytics chart hover/focus, row keyboard navigation, and heat-grid arrow keys need a UI pass; the engine math and static snapshots are covered.
 
 ## 6. Known limitations
 
 - iCloud uses CloudKit `.none`. `SyncService` is groundwork for future sync.
-- Analytics is a placeholder.
+- Analytics converts every figure to the primary currency. A missing rate contributes zero rather than a guessed value.
+- Analytics groups spending at the top-level category; a subcategory rolls into its parent.
+- The Analytics month scope compares the previous month through the same elapsed days for totals and rows, while the chart shows the previous full month for context.
 - Recurrence is unavailable on Transfer.
 - Editing a whole plan series requires deleting and recreating it.
 - A linked plan stores `linkedOperationID`. Check the behavior when deleting
@@ -404,6 +408,9 @@ Use a 980×700 window with a 240 pt sidebar and `hiddenTitleBar`.
 12. **DAT.** Relaunch and verify accounts, transactions, plans, periods, and settings.
 13. **API/SPT.** When available, verify status and token, create a transaction,
     delete an account with plans, and run Spotlight actions.
+14. **ABT.** Open Analytics, switch Period and Month, step through periods and
+    months, change Category/Account and the filters, expand a row, hover the
+    chart and heat map, and verify the empty state on a store without spending.
 
 ## 8. Coverage priorities
 

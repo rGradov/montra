@@ -27,6 +27,10 @@ uses Onest typography, SF Rounded numerals, warm graphite tones, and raised card
 |---|---|
 | ![Categories](Docs/screenshots/categories.png) | ![Category picker](Docs/screenshots/category-picker.png) |
 
+| Analytics | Analytics (light) |
+|---|---|
+| ![Analytics](Docs/screenshots/analytics.png) | ![Analytics light](Docs/screenshots/analytics-light.png) |
+
 ## Onboarding
 
 | Welcome | First account |
@@ -106,6 +110,12 @@ checks, and edge cases.
   bar, mandatory expenses, remaining spendable balance for the period, and recent
   transactions. Hidden accounts stay out of the total and bar and are accessible
   through a row below the account list.
+- **Analytics.** See expenses, income, and what is left for the financial period
+  or a calendar month. Switch between category and account breakdowns, filter
+  essential or discretionary spending, expand a row for its latest operations,
+  compare the cumulative pace with the previous period, and scan the spending
+  calendar with a day readout. Hover the chart or use the keyboard to inspect
+  any day.
 - **Exchange rates.** USD and EUR use National Bank of Belarus rates, and crypto
   uses a public feed. Rates are cached for six hours, can be refreshed manually,
   and show their source. Hover over an account to see its original and converted

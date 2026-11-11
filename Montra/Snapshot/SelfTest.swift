@@ -130,6 +130,107 @@ enum SelfTest {
         check(Finance.mandatoryExpenses([income, expense], currency: .byn) == 20, "обязательные расходы посчитаны")
         check(Finance.shareText(0.5) == (english ? "50.0%" : "50,0%"), "доля печатается как процент")
 
+        // 5b. Analytics: period totals, previous comparison, cumulative chart
+        // and the heat grid all come from the same operations.
+        let analyticsNow = date(year: 2026, month: 11, day: 11)
+        let analyticsAccount = Account(
+            name: "Аналитика",
+            currency: .byn,
+            initialAmount: 0,
+            iconName: "creditcard.fill",
+            color: .blue
+        )
+        let analyticsHousing = Category(
+            name: "Жильё",
+            kind: .expense,
+            color: .blue,
+            iconName: "house.fill",
+            isMandatory: true
+        )
+        let analyticsFood = Category(
+            name: "Еда",
+            kind: .expense,
+            color: .green,
+            iconName: "cart.fill",
+            isMandatory: false
+        )
+        let analyticsSalary = Category(
+            name: "Доход",
+            kind: .income,
+            color: .green,
+            iconName: "banknote.fill"
+        )
+        let analyticsOps = [
+            Operation(kind: .expense, amount: 600, currency: .byn,
+                      date: date(year: 2026, month: 10, day: 20),
+                      account: analyticsAccount, category: analyticsHousing),
+            Operation(kind: .expense, amount: 400, currency: .byn,
+                      date: date(year: 2026, month: 11, day: 1),
+                      account: analyticsAccount, category: analyticsFood),
+            Operation(kind: .income, amount: 1_000, currency: .byn,
+                      date: date(year: 2026, month: 11, day: 2),
+                      account: analyticsAccount, category: analyticsSalary),
+            Operation(kind: .expense, amount: 500, currency: .byn,
+                      date: date(year: 2026, month: 9, day: 20),
+                      account: analyticsAccount, category: analyticsHousing),
+            Operation(kind: .expense, amount: 200, currency: .byn,
+                      date: date(year: 2026, month: 10, day: 1),
+                      account: analyticsAccount, category: analyticsFood),
+        ]
+        let analyticsPeriod = Period(
+            start: date(year: 2026, month: 10, day: 15),
+            end: date(year: 2026, month: 11, day: 14)
+        )
+        let analyticsPrevious = Period(
+            start: date(year: 2026, month: 9, day: 15),
+            end: date(year: 2026, month: 10, day: 14)
+        )
+        let analyticsRange = AnalyticsEngine.periodRange(
+            period: analyticsPeriod,
+            previous: analyticsPrevious,
+            now: analyticsNow
+        )
+        let analytics = AnalyticsEngine.snapshot(
+            range: analyticsRange,
+            operations: analyticsOps,
+            displayCurrency: .byn,
+            rates: .fallback,
+            now: analyticsNow
+        )
+        check(analytics.range.totalDays == 31 && analytics.range.elapsedDays == 28,
+              "аналитика: период 31 день, прошло 28")
+        check(analytics.expenses == 1_000 && analytics.income == 1_000 && analytics.mandatory == 600,
+              "аналитика: расходы, доходы и обязательные")
+        check(analytics.freeExpenses == 400 && analytics.remaining == 0,
+              "аналитика: свободные расходы и остаток")
+        check(analytics.categories.count == 2
+                && analytics.categories.first?.amount == 600
+                && analytics.categories.last?.amount == 400,
+              "аналитика: категории сложены и отсортированы")
+        check(analytics.previousFullTotal == 700 && analytics.comparisonTotal == 700,
+              "аналитика: прошлый период для сравнения")
+        check(analytics.currentCumulative[27] == 1_000
+                && analytics.currentCumulative[28] == nil
+                && analytics.previousCumulative.last == 700,
+              "аналитика: накопительный график и прошлый итог")
+        check(analytics.days.first(where: { $0.id == 6 })?.amount == 600
+                && analytics.days.first(where: { $0.id == 18 })?.amount == 400,
+              "аналитика: расходы по дням")
+        check(analytics.days.filter { $0.amount > 0 }.map(\.level).max() == 4,
+              "аналитика: верхний уровень тепловой карты")
+        check(analytics.filterCounts.all == 2
+                && analytics.filterCounts.mandatory == 1
+                && analytics.filterCounts.free == 1,
+              "аналитика: счётчики фильтра")
+        check(analytics.average > 35.7 && analytics.average < 35.8,
+              "аналитика: средний расход в день")
+        check(analytics.chartMax == 1_200, "аналитика: верхняя граница графика")
+        let analyticsMonth = AnalyticsEngine.monthRange(containing: analyticsNow)
+        check(analyticsMonth.totalDays == 30
+                && analyticsMonth.elapsedDays == 11
+                && analyticsMonth.previousTotalDays == 31,
+              "аналитика: календарный месяц и его прошлый месяц")
+
         // 6. Deleting a custom category moves its operations to "Other".
         let fallback = Category(name: "Прочее", kind: .expense, color: .graphite, iconName: "ellipsis.circle.fill", isSystem: true)
         context.insert(fallback)

@@ -285,6 +285,15 @@ enum SnapshotRunner {
         )
 
         render(
+            AppRootView(initialRoute: .analytics).environmentObject(settings).environmentObject(previewRates).modelContainer(container),
+            size: CGSize(width: AppWindowLayout.width, height: 1600),
+            colorScheme: .dark,
+            name: "06b-analytics-tall",
+            chrome: true,
+            in: directory
+        )
+
+        render(
             AppRootView(initialRoute: .about).environmentObject(settings).environmentObject(previewRates).modelContainer(container),
             size: CGSize(width: AppWindowLayout.width, height: AppWindowLayout.defaultHeight),
             colorScheme: .dark,
@@ -299,6 +308,15 @@ enum SnapshotRunner {
             size: CGSize(width: AppWindowLayout.width, height: AppWindowLayout.defaultHeight),
             colorScheme: .light,
             name: "08-overview-light",
+            chrome: true,
+            in: directory
+        )
+
+        render(
+            AppRootView(initialRoute: .analytics).environmentObject(settings).environmentObject(previewRates).modelContainer(container),
+            size: CGSize(width: AppWindowLayout.width, height: 1600),
+            colorScheme: .light,
+            name: "08b-analytics-light",
             chrome: true,
             in: directory
         )

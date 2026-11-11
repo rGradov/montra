@@ -255,6 +255,9 @@ enum SelfTest {
         check(analytics.days.first(where: { $0.id == 6 })?.amount == 600
                 && analytics.days.first(where: { $0.id == 18 })?.amount == 400,
               "аналитика: расходы по дням")
+        check(analytics.days.first(where: { $0.id == 6 })?.operations.count == 1
+                && analytics.days.first(where: { $0.id == 18 })?.operations.count == 1,
+              "аналитика: операции привязаны к дням")
         check(analytics.days.filter { $0.amount > 0 }.map(\.level).max() == 4,
               "аналитика: верхний уровень тепловой карты")
         check(analytics.filterCounts.all == 2

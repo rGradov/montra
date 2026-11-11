@@ -11,7 +11,7 @@ pass; no separate critic agent could be launched from this delegated session.
 
 ## Build and evidence
 
-- `-selftest`: **ALL CHECKS PASSED**, 157 checks.
+- `-selftest`: **ALL CHECKS PASSED**, 158 checks.
 - `audit-feature-sync.py --require-dmg`: **7 passed, 0 warnings, 0 failures**.
 - DMG: `build/Montra-1.0-analytics-screen-v3.dmg`.
 - Renders: `build/analytics-snaps/06b-analytics-tall.png`,
@@ -65,6 +65,17 @@ They appear only in the savings line. The engine test covers both directions:
    legible in light mode; the plain icons keep their colour.
 7. **Density.** The plain icons reduce visual noise in the breakdown. The summary
    footer adds one row without breaking the three-column rhythm.
+8. **Day operations popup — added.** After a 350 ms hover, the heat cell opens a
+   floating card with the date, the day's total, up to four expense operations
+   (category icon, title, original amount), and “ещё N” when there are more. It
+   uses the raised surface, hairline border, app typography and plain row icon;
+   it disappears when the pointer leaves. The readout and popup now use the
+   actual `AnalyticsDay`, so the amount and the operations always agree.
+9. **Category rows — simplified.** The rows and the bar are no longer clickable,
+   and the partial four-operation inline list is gone. A category shows its
+   total, count, share and delta; the full ledger is opened in Operations, and a
+   single day can be inspected in the calendar popup. This removes the
+   “random four operations” problem the owner reported.
 
 ## Interaction and performance findings
 
@@ -109,6 +120,8 @@ They appear only in the savings line. The engine test covers both directions:
 - The plain icons match the transaction list and make the breakdown quieter.
 - Above-average amber is an explainable signal rather than decoration.
 - The chart and heat interactions survive the focus and performance changes.
+- The day popup is the right place for a per-day operation preview; it does not
+  turn Analytics into a second, truncated ledger.
 
 ## Recommended next checks
 
@@ -119,3 +132,5 @@ They appear only in the savings line. The engine test covers both directions:
    unchanged.
 3. Make a transfer out of savings and verify the negative «Из сбережений» line.
 4. Inspect the month scope and the empty state visually.
+5. Hover several heat cells, including the first/last column, and check the popup
+   stays inside the card and above/below the cell without clipping.

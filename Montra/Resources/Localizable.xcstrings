@@ -1006,6 +1006,23 @@
         }
       }
     },
+    "analytics.more_operations %lld": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld more"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ещё %lld"
+          }
+        }
+      }
+    },
     "analytics.next": {
       "extractionState": "manual",
       "localizations": {

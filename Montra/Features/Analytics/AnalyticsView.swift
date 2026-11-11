@@ -87,6 +87,11 @@ struct AnalyticsView: View {
     private var displayCurrency: Currency { settings.primaryCurrency }
     private var masked: Bool { settings.hideBalances }
 
+    private var debugPopupDay: Int? {
+        guard let raw = ProcessInfo.processInfo.environment["MONTRA_ANALYTICS_POPUP"] else { return nil }
+        return Int(raw)
+    }
+
     private var subtitle: String {
         guard let snapshot else { return String(localized: "analytics.no_data") }
         var parts = [
@@ -154,7 +159,8 @@ struct AnalyticsView: View {
                     AnalyticsHeatCard(
                         snapshot: snapshot,
                         currency: displayCurrency,
-                        masked: masked
+                        masked: masked,
+                        initialPopupDay: debugPopupDay
                     )
                 } else {
                     OverviewCard {
@@ -516,9 +522,7 @@ private struct AnalyticsBreakdownCard: View {
 
     @State private var dimension: AnalyticsDimension = .category
     @State private var filter: AnalyticsFilter = .all
-    @State private var selectedSliceID: UUID?
     @State private var hoveredSliceID: UUID?
-    @FocusState private var focusedSlice: UUID?
 
     private var visible: [AnalyticsSlice] {
         let list = dimension == .category ? snapshot.categories : snapshot.accounts
@@ -548,7 +552,6 @@ private struct AnalyticsBreakdownCard: View {
                     ForEach(AnalyticsDimension.allCases) { option in
                         Button {
                             dimension = option
-                            selectedSliceID = nil
                             hoveredSliceID = nil
                         } label: {
                             Text(option.title)
@@ -613,29 +616,18 @@ private struct AnalyticsBreakdownCard: View {
                         if index > 0 {
                             InsetCardDivider(horizontalInset: AppStyle.Row.cardHorizontalPadding)
                         }
-                        VStack(spacing: 0) {
-                            row(slice)
-                            if selectedSliceID == slice.id {
-                                AnalyticsInlineOperations(
-                                    operations: Array(slice.operations.prefix(4)),
-                                    masked: masked
-                                )
-                            }
-                        }
+                        row(slice)
                     }
                 }
             }
         }
         .onChange(of: snapshot.range) { _, _ in
-            selectedSliceID = nil
             hoveredSliceID = nil
         }
         .onChange(of: dimension) { _, _ in
-            selectedSliceID = nil
             hoveredSliceID = nil
         }
         .onChange(of: filter) { _, _ in
-            selectedSliceID = nil
             hoveredSliceID = nil
         }
     }
@@ -643,7 +635,6 @@ private struct AnalyticsBreakdownCard: View {
     private func filterButton(_ option: AnalyticsFilter, count: Int) -> some View {
         Button {
             filter = option
-            selectedSliceID = nil
             hoveredSliceID = nil
         } label: {
             HStack(spacing: AppStyle.Spacing.xxSmall) {
@@ -662,7 +653,7 @@ private struct AnalyticsBreakdownCard: View {
             }
             .overlay {
                 Capsule(style: .continuous)
-                    .strokeBorder(AppColors.borderSubtle, lineWidth: 0.5)
+                    .strokeBorder(AppColors.borderStrong, lineWidth: 1)
             }
             .contentShape(Capsule(style: .continuous))
         }
@@ -671,86 +662,57 @@ private struct AnalyticsBreakdownCard: View {
     }
 
     private func row(_ slice: AnalyticsSlice) -> some View {
-        Button {
-            selectedSliceID = selectedSliceID == slice.id ? nil : slice.id
-        } label: {
-            HStack(spacing: AppStyle.Spacing.small) {
-                ListRowIcon(
-                    symbol: slice.symbol,
-                    color: slice.color
-                )
+        HStack(spacing: AppStyle.Spacing.small) {
+            ListRowIcon(
+                symbol: slice.symbol,
+                color: slice.color
+            )
 
-                VStack(alignment: .leading, spacing: AppStyle.Spacing.xxxSmall) {
-                    Text(slice.name)
-                        .font(AppStyle.Typography.headline)
-                        .lineLimit(1)
-                    Text(figures: Finance.operationsCountText(slice.operationCount),
+            VStack(alignment: .leading, spacing: AppStyle.Spacing.xxxSmall) {
+                Text(slice.name)
+                    .font(AppStyle.Typography.headline)
+                    .lineLimit(1)
+                Text(figures: Finance.operationsCountText(slice.operationCount),
+                     style: AppStyle.Typography.metadata)
+                    .foregroundStyle(AppColors.textSecondary)
+                    .lineLimit(1)
+            }
+
+            Spacer(minLength: AppStyle.Spacing.small)
+
+            VStack(alignment: .trailing, spacing: AppStyle.Spacing.xxxSmall) {
+                Text(money(slice.amount))
+                    .font(AnalyticsStyle.amount)
+                    .monospacedDigit()
+                    .lineLimit(1)
+
+                HStack(spacing: AppStyle.Spacing.xxxSmall) {
+                    Text(figures: AnalyticsFormat.percent(share(slice), signed: false),
                          style: AppStyle.Typography.metadata)
-                        .foregroundStyle(AppColors.textSecondary)
-                        .lineLimit(1)
-                }
-
-                Spacer(minLength: AppStyle.Spacing.small)
-
-                VStack(alignment: .trailing, spacing: AppStyle.Spacing.xxxSmall) {
-                    Text(money(slice.amount))
-                        .font(AnalyticsStyle.amount)
-                        .monospacedDigit()
-                        .lineLimit(1)
-
-                    HStack(spacing: AppStyle.Spacing.xxxSmall) {
-                        Text(figures: AnalyticsFormat.percent(share(slice), signed: false),
-                             style: AppStyle.Typography.metadata)
+                        .foregroundStyle(AppColors.textTertiary)
+                    if let delta = slice.delta {
+                        Text("·")
+                            .font(AppStyle.Typography.metadata)
                             .foregroundStyle(AppColors.textTertiary)
-                        if let delta = slice.delta {
-                            Text("·")
-                                .font(AppStyle.Typography.metadata)
-                                .foregroundStyle(AppColors.textTertiary)
-                            Text(figures: AnalyticsFormat.percent(delta),
-                                 style: AppStyle.Typography.metadata)
-                                .foregroundStyle(delta >= 0 ? AppColors.statusCheckText : AppColors.statusSafeText)
-                        }
+                        Text(figures: AnalyticsFormat.percent(delta),
+                             style: AppStyle.Typography.metadata)
+                            .foregroundStyle(delta >= 0 ? AppColors.statusCheckText : AppColors.statusSafeText)
                     }
                 }
             }
-            .padding(.horizontal, AppStyle.Row.cardHorizontalPadding)
-            .padding(.vertical, AppStyle.Spacing.xSmall)
-            .background {
-                (selectedSliceID == slice.id || hoveredSliceID == slice.id)
-                    ? AppColors.fillSecondary.opacity(0.5)
-                    : .clear
-            }
-            .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .padding(.horizontal, AppStyle.Row.cardHorizontalPadding)
+        .padding(.vertical, AppStyle.Spacing.xSmall)
+        .background {
+            hoveredSliceID == slice.id
+                ? AppColors.fillSecondary.opacity(0.5)
+                : .clear
+        }
+        .contentShape(Rectangle())
         .onHover { hovering in
             hoveredSliceID = hovering ? slice.id : nil
         }
-        .focused($focusedSlice, equals: slice.id)
-        .onKeyPress(.downArrow) {
-            moveFocus(by: 1)
-            return .handled
-        }
-        .onKeyPress(.upArrow) {
-            moveFocus(by: -1)
-            return .handled
-        }
-        .onKeyPress(.escape) {
-            selectedSliceID = nil
-            return .handled
-        }
-        .pointingHandOnHover()
         .accessibilityElement(children: .combine)
-        .accessibilityAddTraits(.isButton)
-    }
-
-    private func moveFocus(by delta: Int) {
-        guard !visible.isEmpty else { return }
-        let current = focusedSlice ?? selectedSliceID
-        let index = current.flatMap { id in visible.firstIndex { $0.id == id } } ?? (delta > 0 ? -1 : 0)
-        let next = min(max(index + delta, 0), visible.count - 1)
-        focusedSlice = visible[next].id
-        selectedSliceID = visible[next].id
     }
 
     private func share(_ slice: AnalyticsSlice) -> Double {
@@ -761,39 +723,6 @@ private struct AnalyticsBreakdownCard: View {
 
     private func money(_ value: Decimal) -> String {
         MoneyFormat.string(value, currency: currency, masked: masked)
-    }
-}
-
-private struct AnalyticsInlineOperations: View {
-    let operations: [Operation]
-    let masked: Bool
-
-    var body: some View {
-        VStack(spacing: AppStyle.Spacing.xxSmall) {
-            ForEach(operations, id: \.id) { operation in
-                HStack(spacing: AppStyle.Spacing.xSmall) {
-                    Text(figures: AppDate.short(operation.date), style: AppStyle.Typography.metadata)
-                        .foregroundStyle(AppColors.textTertiary)
-                        .frame(width: 42, alignment: .leading)
-                    Text(figures: operation.displayTitle, style: AppStyle.Typography.callout)
-                        .foregroundStyle(AppColors.textPrimary)
-                        .lineLimit(1)
-                    Spacer(minLength: AppStyle.Spacing.xSmall)
-                    Text(figures: operation.amountText(masked: masked),
-                         style: AppStyle.Typography.metadataEmphasis)
-                        .foregroundStyle(AppColors.textSecondary)
-                        .lineLimit(1)
-                }
-            }
-        }
-        .padding(AppStyle.Spacing.xSmall)
-        .background {
-            RoundedRectangle(cornerRadius: AppStyle.Radius.md, style: .continuous)
-                .fill(AppColors.fillSecondary)
-        }
-        .padding(.leading, 42)
-        .padding(.trailing, AppStyle.Row.cardHorizontalPadding)
-        .padding(.bottom, AppStyle.Spacing.xSmall)
     }
 }
 
@@ -930,9 +859,27 @@ private struct AnalyticsHeatCard: View {
     let snapshot: AnalyticsSnapshot
     let currency: Currency
     let masked: Bool
-    @State private var activeDay: Int?
+    @State private var activeDay: AnalyticsDay?
+    @State private var popupDay: AnalyticsDay?
+    @State private var hoverTask: Task<Void, Never>?
 
     @FocusState private var gridFocused: Bool
+
+    init(
+        snapshot: AnalyticsSnapshot,
+        currency: Currency,
+        masked: Bool,
+        initialPopupDay: Int? = nil
+    ) {
+        self.snapshot = snapshot
+        self.currency = currency
+        self.masked = masked
+        let initial = initialPopupDay.flatMap { id in
+            snapshot.days.first(where: { $0.id == id })
+        }
+        _activeDay = State(initialValue: initial)
+        _popupDay = State(initialValue: initial)
+    }
 
     private var title: String {
         snapshot.range.scope == .month
@@ -1025,19 +972,122 @@ private struct AnalyticsHeatCard: View {
             }
             .onChange(of: gridFocused) { _, focused in
                 if focused, activeDay == nil {
-                    activeDay = snapshot.todayDay ?? snapshot.days.last(where: { !$0.isFuture })?.id ?? 1
+                    activeDay = snapshot.days.first(where: { $0.id == snapshot.todayDay })
+                        ?? snapshot.days.last(where: { !$0.isFuture })
                 }
             }
             .accessibilityElement(children: .contain)
             .accessibilityLabel(String(localized: "analytics.heat_accessibility"))
             .onChange(of: snapshot.range) { _, _ in
                 activeDay = nil
+                popupDay = nil
+                hoverTask?.cancel()
             }
 
             readout
                 .padding(.horizontal, AppStyle.Row.cardHorizontalPadding)
                 .padding(.top, AppStyle.Spacing.xSmall)
                 .padding(.bottom, AppStyle.Row.cardHorizontalPadding)
+        }
+        .overlayPreferenceValue(AnalyticsHeatAnchorKey.self) { anchors in
+            GeometryReader { geometry in
+                if let popupDay,
+                   let anchor = anchors[popupDay.id],
+                   !popupDay.operations.isEmpty {
+                    let rect = geometry[anchor]
+                    let width: CGFloat = 260
+                    let estimatedHeight: CGFloat = 190
+                    let x = min(max(rect.midX - width / 2, 6), max(6, geometry.size.width - width - 6))
+                    let above = rect.minY > estimatedHeight + 8
+                    popup(popupDay)
+                        .frame(width: width)
+                        .frame(height: estimatedHeight, alignment: above ? .bottom : .top)
+                        .offset(
+                            x: x,
+                            y: above ? rect.minY - estimatedHeight - 6 : rect.maxY + 6
+                        )
+                        .allowsHitTesting(false)
+                        .transition(.opacity)
+                }
+            }
+        }
+        .onDisappear { hoverTask?.cancel() }
+    }
+
+    private func handleHover(_ hovering: Bool, on day: AnalyticsDay) {
+        if hovering {
+            activeDay = day
+            hoverTask?.cancel()
+            guard !day.operations.isEmpty else {
+                popupDay = nil
+                return
+            }
+            let id = day.id
+            hoverTask = Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 350_000_000)
+                guard !Task.isCancelled, activeDay?.id == id else { return }
+                popupDay = day
+            }
+        } else {
+            hoverTask?.cancel()
+            if popupDay?.id == day.id { popupDay = nil }
+        }
+    }
+
+    private func popup(_ day: AnalyticsDay) -> some View {
+        let shown = Array(day.operations.prefix(4))
+        return VStack(alignment: .leading, spacing: 0) {
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Text(figures: AppDate.short(day.date), style: AppStyle.Typography.headline)
+                Spacer(minLength: 4)
+                Text(money(day.amount))
+                    .font(AnalyticsStyle.amount)
+                    .monospacedDigit()
+            }
+            .padding(.horizontal, 10)
+            .padding(.top, 9)
+            .padding(.bottom, 7)
+
+            InsetCardDivider(horizontalInset: 10)
+
+            VStack(spacing: 0) {
+                ForEach(shown, id: \.id) { operation in
+                    HStack(spacing: 8) {
+                        ListRowIcon(
+                            symbol: operation.displayIcon,
+                            color: operation.displayColor,
+                            frameSize: 22
+                        )
+                        Text(figures: operation.displayTitle, style: AppStyle.Typography.callout)
+                            .lineLimit(1)
+                        Spacer(minLength: 6)
+                        Text(figures: operation.amountText(masked: masked),
+                             style: AppStyle.Typography.metadataEmphasis)
+                            .lineLimit(1)
+                    }
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                }
+
+                if day.operations.count > shown.count {
+                    Text(String(localized: "analytics.more_operations \(day.operations.count - shown.count)"))
+                        .font(AppStyle.Typography.metadata)
+                        .foregroundStyle(AppColors.textSecondary)
+                        .padding(.horizontal, 10)
+                        .padding(.top, 2)
+                        .padding(.bottom, 7)
+                }
+            }
+            .padding(.vertical, 4)
+        }
+        .frame(width: 260, alignment: .leading)
+        .background {
+            RoundedRectangle(cornerRadius: AppStyle.Radius.md, style: .continuous)
+                .fill(AppColors.surfaceRaised)
+        }
+        .overlay {
+            RoundedRectangle(cornerRadius: AppStyle.Radius.md, style: .continuous)
+                .strokeBorder(AppColors.borderStrong, lineWidth: 1)
         }
     }
 
@@ -1065,7 +1115,7 @@ private struct AnalyticsHeatCard: View {
     }
 
     private func cell(_ day: AnalyticsDay) -> some View {
-        let isActive = activeDay == day.id
+        let isActive = activeDay?.id == day.id
         let level = min(max(day.level, 0), AnalyticsEngine.heatOpacities.count - 1)
         let aboveAverage = day.amount > 0 && day.amount > snapshot.average
         let fill: Color
@@ -1122,8 +1172,9 @@ private struct AnalyticsHeatCard: View {
         }
         .opacity(day.isFuture ? 0.5 : 1)
         .contentShape(Rectangle())
+        .anchorPreference(key: AnalyticsHeatAnchorKey.self, value: .bounds) { [day.id: $0] }
         .onHover { hovering in
-            if hovering { activeDay = day.id }
+            handleHover(hovering, on: day)
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(accessibilityText(day))
@@ -1131,7 +1182,7 @@ private struct AnalyticsHeatCard: View {
 
     @ViewBuilder
     private var readout: some View {
-        if let activeDay, let day = snapshot.days.first(where: { $0.id == activeDay }) {
+        if let day = activeDay {
             let date = AppDate.short(day.date)
             if day.amount > 0 {
                 let above = day.amount > snapshot.average
@@ -1153,11 +1204,12 @@ private struct AnalyticsHeatCard: View {
     }
 
     private func moveHeat(by delta: Int) {
-        let current = activeDay
+        let current = activeDay?.id
             ?? snapshot.todayDay
             ?? snapshot.days.last(where: { !$0.isFuture })?.id
             ?? 1
-        activeDay = min(max(current + delta, 1), max(1, snapshot.range.totalDays))
+        let next = min(max(current + delta, 1), max(1, snapshot.range.totalDays))
+        activeDay = snapshot.days.first(where: { $0.id == next })
     }
 
     private func accessibilityText(_ day: AnalyticsDay) -> String {
@@ -1182,6 +1234,17 @@ private enum AnalyticsStyle {
     static let amount = AppStyle.TextStyle(family: .rounded, size: 15, weight: .semibold, tracking: 0)
     static let heatDay = AppStyle.TextStyle(family: .rounded, size: 10, weight: .semibold, tracking: 0)
     static let heatAmount = AppStyle.TextStyle(family: .rounded, size: 11, weight: .semibold, tracking: 0)
+}
+
+private struct AnalyticsHeatAnchorKey: PreferenceKey {
+    static var defaultValue: [Int: Anchor<CGRect>] = [:]
+
+    static func reduce(
+        value: inout [Int: Anchor<CGRect>],
+        nextValue: () -> [Int: Anchor<CGRect>]
+    ) {
+        value.merge(nextValue(), uniquingKeysWith: { $1 })
+    }
 }
 
 enum AnalyticsFormat {

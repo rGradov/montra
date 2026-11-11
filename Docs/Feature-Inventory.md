@@ -3,7 +3,7 @@
 As of **November 9, 2026**. The code in `Montra/` is the source of truth.
 Each area has IDs, checks, expected outcomes, and negative or edge cases.
 
-> Automated coverage includes **157 checks** in `-selftest` and full screen
+> Automated coverage includes **158 checks** in `-selftest` and full screen
 > rendering with `-snapshot`. See sections 4 and 5 for coverage and gaps.
 
 ## 0. How to use this inventory
@@ -269,7 +269,7 @@ Use a 980×700 window with a 240 pt sidebar and `hiddenTitleBar`.
 |---|---|---|---|
 | ABT-01 | About | Montra artwork, version, total across accounts in the primary currency, feature summary, and footer | ui/visual |
 | ABT-02 | Replay | Preview banner, no writes, X closes, and completion opens Overview | ui |
-| ABT-03 | Analytics | Period and month scopes, previous/current stepper, summary expenses/income/left, savings transfers shown separately, category or account split, essential/discretionary filters, expandable rows with latest operations and plain transaction-style icons, cumulative chart with previous/even pace, chart hover and keyboard, heat map with today marker, above-average amber palette and readout, empty state, light/dark, and month boundaries. Engine: totals, savings in/out, comparison windows, cumulative endpoint, heat levels, chart ceiling | unit/ui/visual |
+| ABT-03 | Analytics | Period and month scopes, previous/current stepper, summary expenses/income/left, savings transfers shown separately, category or account split, essential/discretionary filters, informational rows with plain transaction-style icons, cumulative chart with previous/even pace, chart hover and keyboard, heat map with today marker, above-average amber palette and readout, delayed day-operations popup on hover, non-clickable informational category/account rows, empty state, light/dark, and month boundaries. Engine: totals, savings in/out, comparison windows, cumulative endpoint, heat levels, chart ceiling | unit/ui/visual |
 
 ### 2.14 Formatting, accessibility, and animation
 
@@ -310,7 +310,7 @@ Use a 980×700 window with a 240 pt sidebar and `hiddenTitleBar`.
 10. **Accessibility.** All actions are keyboard-accessible. Reduce Motion
     leaves content available.
 
-## 4. Current automated coverage (`-selftest`, 157)
+## 4. Current automated coverage (`-selftest`, 158)
 
 - Period generation, continuity, February clamping, fixed length, manual edits,
   and neighboring boundaries.
@@ -326,7 +326,7 @@ Use a 980×700 window with a 240 pt sidebar and `hiddenTitleBar`.
   account, and launching an older store without onboarding.
 - Plans cover monthly clamping, weekly days, series, unchanged balance, linking,
   missed and upcoming filters, and series deletion.
-- Analytics totals, free/mandatory split, savings in/out (transfers excluded from expenses and income), category rollup, previous-period comparison, cumulative endpoint, daily heat levels, filter counts, average, chart ceiling, and month range.
+- Analytics totals, free/mandatory split, savings in/out (transfers excluded from expenses and income), category rollup, previous-period comparison, cumulative endpoint, daily heat levels and their operations, filter counts, average, chart ceiling, and month range.
 - Formatting and pluralization.
 - Spotlight ledger covers accounts, categories, subcategories, transfers,
   required received amounts, balances, Overview, missingCurrencies, and hideBalances.

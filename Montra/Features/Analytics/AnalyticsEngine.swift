@@ -109,6 +109,7 @@ struct AnalyticsDay: Identifiable {
     let date: Date
     let amount: Decimal
     let operationCount: Int
+    let operations: [Operation]
     let level: Int
     let isToday: Bool
     let isFuture: Bool
@@ -297,6 +298,7 @@ enum AnalyticsEngine {
         let calendarStart = calendar.startOfDay(for: range.start)
         var dailyAmounts = [Decimal](repeating: 0, count: range.totalDays)
         var dailyCounts = [Int](repeating: 0, count: range.totalDays)
+        var dailyOperations = [[Operation]](repeating: [], count: range.totalDays)
         for operation in expenseOps {
             let offset = calendar.dateComponents(
                 [.day],
@@ -307,6 +309,7 @@ enum AnalyticsEngine {
             let value = rates.convert(operation.amount, from: operation.currency, to: displayCurrency) ?? 0
             dailyAmounts[offset] += value
             dailyCounts[offset] += 1
+            dailyOperations[offset].append(operation)
         }
 
         let levels = heatLevels(dailyAmounts)
@@ -318,6 +321,10 @@ enum AnalyticsEngine {
                 date: date,
                 amount: dailyAmounts[index],
                 operationCount: dailyCounts[index],
+                operations: dailyOperations[index].sorted {
+                    if $0.date != $1.date { return $0.date > $1.date }
+                    return $0.createdAt > $1.createdAt
+                },
                 level: levels[index],
                 isToday: range.isCurrent && day == range.elapsedDays,
                 isFuture: range.isCurrent && day > range.elapsedDays

@@ -1231,22 +1231,32 @@ private struct AnalyticsHeatCard: View {
             readout
                 .padding(.horizontal, AppStyle.Row.cardHorizontalPadding)
                 .padding(.top, AppStyle.Spacing.xSmall)
-                .padding(.bottom, popupDay == nil ? AppStyle.Row.cardHorizontalPadding : AppStyle.Spacing.xxSmall)
-
-            if let popupDay, !popupDay.operations.isEmpty {
-                popup(popupDay)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, AppStyle.Row.cardHorizontalPadding)
-                    .padding(.bottom, AppStyle.Row.cardHorizontalPadding)
-                    .onHover { hovering in
-                        popupHovered = hovering
-                        if hovering {
-                            closeTask?.cancel()
-                        } else {
-                            scheduleClose()
+                .padding(.bottom, AppStyle.Row.cardHorizontalPadding)
+        }
+        .overlayPreferenceValue(AnalyticsHeatAnchorKey.self) { anchors in
+            GeometryReader { geometry in
+                if let popupDay,
+                   let anchor = anchors[popupDay.id],
+                   !popupDay.operations.isEmpty {
+                    let rect = geometry[anchor]
+                    let width: CGFloat = 300
+                    let height: CGFloat = 220
+                    let x = min(max(rect.midX - width / 2, 6), max(6, geometry.size.width - width - 6))
+                    let y = max(8, rect.minY - height - 8)
+                    let caretX = min(max(rect.midX - x, 20), width - 20)
+                    popup(popupDay, caretX: caretX, caretOnTop: false)
+                        .frame(width: width, height: height, alignment: .bottom)
+                        .offset(x: x, y: y)
+                        .onHover { hovering in
+                            popupHovered = hovering
+                            if hovering {
+                                closeTask?.cancel()
+                            } else {
+                                scheduleClose()
+                            }
                         }
-                    }
-                    .transition(.opacity)
+                        .transition(.opacity)
+                }
             }
         }
         .onDisappear {
@@ -1286,7 +1296,7 @@ private struct AnalyticsHeatCard: View {
         }
     }
 
-    private func popup(_ day: AnalyticsDay) -> some View {
+    private func popup(_ day: AnalyticsDay, caretX: CGFloat, caretOnTop: Bool) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 Text(figures: AppDate.short(day.date), style: AppStyle.Typography.headline)
@@ -1329,6 +1339,12 @@ private struct AnalyticsHeatCard: View {
         .background {
             RoundedRectangle(cornerRadius: AppStyle.Radius.lg, style: .continuous)
                 .fill(AppColors.surfaceRaised)
+        }
+        .overlay(alignment: caretOnTop ? .top : .bottom) {
+            AnalyticsCaret(pointsUp: caretOnTop)
+                .fill(AppColors.surfaceRaised)
+                .frame(width: 14, height: 7)
+                .offset(x: caretX - 150)
         }
         .overlay {
             RoundedRectangle(cornerRadius: AppStyle.Radius.lg, style: .continuous)
@@ -1417,6 +1433,7 @@ private struct AnalyticsHeatCard: View {
         }
         .opacity(day.isFuture ? 0.5 : 1)
         .contentShape(Rectangle())
+        .anchorPreference(key: AnalyticsHeatAnchorKey.self, value: .bounds) { [day.id: $0] }
         .onHover { hovering in
             handleHover(hovering, on: day)
         }
@@ -1584,6 +1601,36 @@ private struct AnalyticsYearMonthsCard: View {
 
     private func money(_ value: Decimal) -> String {
         MoneyFormat.string(value, currency: currency, masked: masked)
+    }
+}
+
+private struct AnalyticsCaret: Shape {
+    let pointsUp: Bool
+
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        if pointsUp {
+            path.move(to: CGPoint(x: rect.midX, y: rect.minY))
+            path.addLine(to: CGPoint(x: rect.minX, y: rect.maxY))
+            path.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY))
+        } else {
+            path.move(to: CGPoint(x: rect.midX, y: rect.maxY))
+            path.addLine(to: CGPoint(x: rect.minX, y: rect.minY))
+            path.addLine(to: CGPoint(x: rect.maxX, y: rect.minY))
+        }
+        path.closeSubpath()
+        return path
+    }
+}
+
+private struct AnalyticsHeatAnchorKey: PreferenceKey {
+    static var defaultValue: [Int: Anchor<CGRect>] = [:]
+
+    static func reduce(
+        value: inout [Int: Anchor<CGRect>],
+        nextValue: () -> [Int: Anchor<CGRect>]
+    ) {
+        value.merge(nextValue(), uniquingKeysWith: { $1 })
     }
 }
 

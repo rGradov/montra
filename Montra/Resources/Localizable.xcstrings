@@ -11422,6 +11422,23 @@
         }
       }
     },
+    "transaction.form.swap_accounts": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Swap accounts"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Поменять счета местами"
+          }
+        }
+      }
+    },
     "transaction.form.the_rate_is_approximate_enter": {
       "extractionState": "manual",
       "localizations": {

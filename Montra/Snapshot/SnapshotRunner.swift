@@ -505,6 +505,61 @@ enum SnapshotRunner {
         )
 
         render(
+            OperationSheet(
+                mode: .create(OperationSource(account: account, kind: .expense)),
+                initialAmount: "42,80"
+            )
+            .environmentObject(settings).environmentObject(previewRates)
+            .modelContainer(container),
+            size: CGSize(width: 470, height: 700),
+            colorScheme: .dark,
+            name: "10a-new-operation-filled",
+            in: directory
+        )
+
+        render(
+            OperationSheet(
+                mode: .create(OperationSource(account: account, kind: .expense)),
+                initialRepeats: true
+            )
+            .environmentObject(settings).environmentObject(previewRates)
+            .modelContainer(container),
+            size: CGSize(width: 470, height: 700),
+            colorScheme: .dark,
+            name: "10b-new-operation-repeat",
+            in: directory
+        )
+
+        render(
+            OperationSheet(
+                mode: .create(OperationSource(account: account, kind: .expense)),
+                initialTab: .transfer,
+                previewSent: "100"
+            )
+            .environmentObject(settings).environmentObject(previewRates)
+            .modelContainer(container),
+            size: CGSize(width: 470, height: 700),
+            colorScheme: .dark,
+            name: "10c-new-operation-transfer",
+            in: directory
+        )
+
+        settings.appearance = .light
+        render(
+            OperationSheet(
+                mode: .create(OperationSource(account: account, kind: .expense)),
+                initialAmount: "42,80"
+            )
+            .environmentObject(settings).environmentObject(previewRates)
+            .modelContainer(container),
+            size: CGSize(width: 470, height: 700),
+            colorScheme: .light,
+            name: "10d-new-operation-light",
+            in: directory
+        )
+        settings.appearance = .dark
+
+        render(
             PeriodsSheet().environmentObject(settings).environmentObject(previewRates).modelContainer(container),
             size: CGSize(width: 520, height: 660),
             colorScheme: .dark,

@@ -499,6 +499,8 @@ struct ChipGroup<Value: Hashable>: View {
     let label: (Value) -> String
     var icon: ((Value) -> String)?
     let onSelect: (Value) -> Void
+    /// Background for unselected options; the selected chip stays raised.
+    var chipBackground: Color? = nil
 
     var body: some View {
         HStack(spacing: AppStyle.Spacing.xSmall) {
@@ -507,7 +509,8 @@ struct ChipGroup<Value: Hashable>: View {
                     style: .tab,
                     label: label(option),
                     isSelected: option == selection,
-                    leadingSystemImage: icon?(option)
+                    leadingSystemImage: icon?(option),
+                    unselectedBackground: chipBackground
                 )
                 .onTapGesture { onSelect(option) }
                 .accessibilityAddTraits(.isButton)

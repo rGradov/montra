@@ -70,13 +70,13 @@ struct OperationSheet: View {
     @State private var planEnd: Date
     @StateObject private var location = LocationProvider()
 
-    init(mode: Mode, initialTab: FormTab? = nil, previewSent: String = "", initialRepeats: Bool = false) {
+    init(mode: Mode, initialTab: FormTab? = nil, previewSent: String = "", initialAmount: String = "", initialRepeats: Bool = false) {
         self.mode = mode
         switch mode {
         case .create(let source):
             if let planned = source.planned {
                 _kind = State(initialValue: planned.kind)
-                _amountText = State(initialValue: Self.editableAmount(planned.amount))
+                _amountText = State(initialValue: initialAmount.isEmpty ? Self.editableAmount(planned.amount) : initialAmount)
                 _accountID = State(initialValue: planned.account?.id)
                 _categoryID = State(initialValue: planned.category?.id)
                 _date = State(initialValue: .now)
@@ -87,7 +87,7 @@ struct OperationSheet: View {
                 _sourcePlan = State(initialValue: planned)
             } else {
                 _kind = State(initialValue: source.kind ?? .expense)
-                _amountText = State(initialValue: "")
+                _amountText = State(initialValue: initialAmount)
                 _accountID = State(initialValue: source.account?.id)
                 _categoryID = State(initialValue: nil)
                 _date = State(initialValue: .now)
@@ -187,40 +187,59 @@ struct OperationSheet: View {
                 onClose: { dismiss() }
             )
 
-            ScrollView {
-                VStack(alignment: .leading, spacing: AppStyle.Spacing.small) {
-                    kindRow
+            VStack(alignment: .leading, spacing: AppStyle.Spacing.small) {
+                kindRow
+                if !isTransfer {
+                    amountField
+                }
+            }
+            .padding(.horizontal, AppStyle.Spacing.large)
+            .padding(.bottom, AppStyle.Spacing.small)
+            .frame(maxWidth: .infinity, alignment: .leading)
 
-                    if isTransfer {
-                        transferFields
-                    } else {
-                        amountField
-                        accountField
-                        categoryField
+            ScrollViewReader { proxy in
+                ScrollView {
+                    VStack(alignment: .leading, spacing: AppStyle.Spacing.small) {
+                        if isTransfer {
+                            transferFields
+                            dateField
+                        } else {
+                            HStack(alignment: .top, spacing: AppStyle.Spacing.small) {
+                                accountField
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                dateField
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                            }
+
+                            categoryField
+
+                            if !isEditing && sourcePlan == nil {
+                                repeatSection
+                                    .id("repeat-section")
+                            }
+
+                            detailsDivider
+                            placeField
+                            noteField
+                        }
                     }
-
-                    dateField
-
-                    if !isTransfer && !isEditing && sourcePlan == nil {
-                        repeatSection
+                    .padding(.horizontal, AppStyle.Spacing.large)
+                    .padding(.bottom, AppStyle.Spacing.medium)
+                    .onChange(of: repeats) { _, isOn in
+                        guard isOn else { return }
+                        withAnimation(AppMotion.row) {
+                            proxy.scrollTo("repeat-section", anchor: .top)
+                        }
                     }
-
-                    if !isTransfer {
-                        placeField
-                        noteField
-                    }
-
-                    if let message = location.errorMessage {
-                        Text(message)
-                            .font(AppStyle.Typography.metadata)
-                            .foregroundStyle(AppColors.statusCheckText)
-                            .fixedSize(horizontal: false, vertical: true)
+                    .onAppear {
+                        guard repeats else { return }
+                        DispatchQueue.main.async {
+                            proxy.scrollTo("repeat-section", anchor: .top)
+                        }
                     }
                 }
-                .padding(.horizontal, AppStyle.Spacing.large)
-                .padding(.bottom, AppStyle.Spacing.medium)
+                .frame(height: isTransfer ? 494 : 413)
             }
-            .frame(height: 522)
 
             SheetFooter {
                 if isEditing {
@@ -282,6 +301,17 @@ struct OperationSheet: View {
             place = reading.name
             latitude = reading.latitude
             longitude = reading.longitude
+        }
+        .onChange(of: place) { _, newValue in
+            guard let reading = location.reading else {
+                latitude = nil
+                longitude = nil
+                return
+            }
+            if newValue != reading.name {
+                latitude = nil
+                longitude = nil
+            }
         }
         .alert(String(localized: "common.delete_transaction"), isPresented: $isConfirmingDelete) {
             Button(String(localized: "common.delete"), role: .destructive) { deleteOperation() }
@@ -362,22 +392,65 @@ struct OperationSheet: View {
         selected: Account?,
         onSelect: @escaping (UUID) -> Void
     ) -> some View {
-        FormField(title: title, trailing: selected.map { settings.money($0.balance, currency: $0.currency) }) {
+        VStack(alignment: .leading, spacing: AppStyle.Spacing.xxSmallPlus) {
+            HStack(alignment: .firstTextBaseline, spacing: AppStyle.Spacing.xSmall) {
+                Text(title)
+                    .font(AppStyle.Typography.callout.weight(.medium))
+                    .foregroundStyle(AppColors.textSecondary)
+                if let selected {
+                    Text(settings.money(selected.balance, currency: selected.currency))
+                        .font(AppStyle.Typography.metadata)
+                        .foregroundStyle(AppColors.textTertiary)
+                }
+                Spacer(minLength: 0)
+            }
+
             if accounts.isEmpty {
                 Text(String(localized: "transaction.form.create_an_account_first"))
                     .font(AppStyle.Typography.callout)
                     .foregroundStyle(AppColors.textSecondary)
             } else {
-                DropdownMenu(
+                PopoverMenu(
                     options: accounts.map(\.id),
                     selection: selected?.id ?? accounts[0].id,
-                    selectionLabel: selected.map { "\($0.name) · \($0.currency.code)" } ?? String(localized: "transaction.form.choose_an_account"),
                     optionLabel: { id in
                         guard let account = accounts.first(where: { $0.id == id }) else { return "" }
                         return "\(account.name) · \(account.currency.code)"
                     },
+                    minimumWidth: 204,
                     fillsWidth: true,
                     onSelect: onSelect
+                ) {
+                    HStack(spacing: AppStyle.Spacing.xSmall) {
+                        if let selected {
+                            IconTile(symbol: selected.iconName, color: selected.color.tileColor, size: 18)
+                        }
+                        Text(
+                            figures: selected.map { "\($0.name) · \($0.currency.code)" }
+                                ?? String(localized: "transaction.form.choose_an_account"),
+                            style: AppStyle.Typography.body
+                        )
+                        .lineLimit(1)
+                        Spacer(minLength: AppStyle.Spacing.xxSmall)
+                        Image(systemName: "chevron.up.chevron.down")
+                            .font(.system(size: 10, weight: .semibold))
+                            .foregroundStyle(AppColors.textSecondary)
+                    }
+                    .padding(.horizontal, AppStyle.Spacing.small)
+                    .frame(height: 32)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(
+                        AppColors.surfaceRaised,
+                        in: RoundedRectangle(cornerRadius: AppStyle.Radius.md, style: .continuous)
+                    )
+                    .overlay {
+                        RoundedRectangle(cornerRadius: AppStyle.Radius.md, style: .continuous)
+                            .strokeBorder(AppColors.borderSubtle, lineWidth: 0.5)
+                    }
+                    .contentShape(Rectangle())
+                }
+                .accessibilityLabel(
+                    "\(title), \(selected.map { "\($0.name) · \($0.currency.code)" } ?? String(localized: "transaction.form.choose_an_account"))"
                 )
             }
         }
@@ -391,8 +464,24 @@ struct OperationSheet: View {
                     .foregroundStyle(AppColors.textSecondary)
             }
 
-            accountPicker(title: String(localized: "common.from"), selected: fromAccount, onSelect: selectFrom)
-            accountPicker(title: String(localized: "common.to"), selected: toAccount, onSelect: selectTo)
+            HStack(alignment: .top, spacing: AppStyle.Spacing.xSmall) {
+                accountPicker(title: String(localized: "common.from"), selected: fromAccount, onSelect: selectFrom)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                Button {
+                    swapTransferAccounts()
+                } label: {
+                    Image(systemName: "arrow.left.arrow.right")
+                        .font(.system(size: 11, weight: .semibold))
+                }
+                .buttonStyle(.montra(.secondary, width: .square))
+                .padding(.top, 23)
+                .help(String(localized: "transaction.form.swap_accounts"))
+                .accessibilityLabel(String(localized: "transaction.form.swap_accounts"))
+
+                accountPicker(title: String(localized: "common.to"), selected: toAccount, onSelect: selectTo)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
 
             TransferAmountField(
                 title: String(localized: "transfer.amount_sent"),
@@ -410,19 +499,20 @@ struct OperationSheet: View {
                             receivedEdited = true
                         }
                     ),
-                    currency: toAccount?.currency
+                    currency: toAccount?.currency,
+                    trailing: transferRateText
                 )
 
-                HStack(spacing: AppStyle.Spacing.xSmall) {
-                    Text(transferRateHint)
-                        .font(AppStyle.Typography.metadata)
-                        .foregroundStyle(AppColors.textSecondary)
-                        .lineLimit(2)
-                        .fixedSize(horizontal: false, vertical: true)
+                if receivedEdited {
+                    HStack(spacing: AppStyle.Spacing.xSmall) {
+                        Text(transferRateHint)
+                            .font(AppStyle.Typography.metadata)
+                            .foregroundStyle(AppColors.textSecondary)
+                            .lineLimit(2)
+                            .fixedSize(horizontal: false, vertical: true)
 
-                    Spacer(minLength: AppStyle.Spacing.xSmall)
+                        Spacer(minLength: AppStyle.Spacing.xSmall)
 
-                    if receivedEdited {
                         Button(String(localized: "transaction.form.at_the_current_rate")) {
                             receivedEdited = false
                             updateTransferReceived()
@@ -433,7 +523,7 @@ struct OperationSheet: View {
 
                 Text(String(localized: "transaction.form.the_rate_is_approximate_enter"))
                     .font(AppStyle.Typography.metadata)
-                    .foregroundStyle(AppColors.textTertiary)
+                    .foregroundStyle(AppColors.textSecondary)
             }
         }
     }
@@ -452,6 +542,12 @@ struct OperationSheet: View {
             return String(localized: "transaction.form.the_rate_is_unavailable_enter")
         }
         return String(localized: "transfer.estimated_amount \(MoneyFormat.number(converted, fractionDigits: toAccount.currency.fractionDigits)) \(toAccount.currency.code)")
+    }
+
+    private var transferRateText: String? {
+        guard let fromAccount, let toAccount, fromAccount.currency != toAccount.currency else { return nil }
+        guard let rate = rates.convert(1, from: toAccount.currency, to: fromAccount.currency) else { return nil }
+        return "1 \(toAccount.currency.code) ≈ \(MoneyFormat.number(rate, fractionDigits: 2)) \(fromAccount.currency.code)"
     }
 
     private func updateTransferReceived() {
@@ -489,6 +585,18 @@ struct OperationSheet: View {
     private func selectTo(_ id: UUID) {
         if id == fromAccountID { fromAccountID = toAccountID }
         toAccountID = id
+    }
+
+    private func swapTransferAccounts() {
+        guard let fromAccount, let toAccount else { return }
+        let sent = sentText
+        let received = receivedText
+
+        selectFrom(toAccount.id)
+        sentText = received
+        receivedText = sent
+        receivedEdited = false
+        updateTransferReceived()
     }
 
     private var categoryUsage: [UUID: Int] {
@@ -625,23 +733,39 @@ struct OperationSheet: View {
 
     private var repeatSection: some View {
         VStack(alignment: .leading, spacing: AppStyle.Spacing.xSmall) {
-            HStack(alignment: .center) {
+            HStack(alignment: .top, spacing: AppStyle.Spacing.small) {
+                Image(systemName: "repeat")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(AppColors.textTertiary)
+                    .frame(width: 14, height: 14)
+                    .padding(.top, 2)
+                    .accessibilityHidden(true)
+
                 VStack(alignment: .leading, spacing: 2) {
                     Text(String(localized: "common.repeat"))
-                        .font(AppStyle.Typography.callout.weight(.medium))
+                        .font(AppStyle.Typography.body.weight(.medium))
                         .foregroundStyle(AppColors.textPrimary)
                     Text(String(localized: "transaction.form.schedule_future_payments_without_recording"))
                         .font(AppStyle.Typography.metadata)
-                        .foregroundStyle(AppColors.textTertiary)
+                        .foregroundStyle(AppColors.textSecondary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.92)
                 }
+
                 Spacer(minLength: AppStyle.Spacing.small)
+
                 Toggle("", isOn: $repeats)
                     .toggleStyle(.switch)
                     .tint(AppColors.actionPrimary)
                     .labelsHidden()
+                    .accessibilityLabel(String(localized: "common.repeat"))
             }
 
             if repeats {
+                Rectangle()
+                    .fill(AppColors.borderSubtle)
+                    .frame(height: 0.5)
+
                 ChipGroup(
                     options: PlanFrequency.allCases,
                     selection: planFrequency,
@@ -649,7 +773,8 @@ struct OperationSheet: View {
                     icon: nil,
                     onSelect: { frequency in
                         withAnimation(AppMotion.row) { planFrequency = frequency }
-                    }
+                    },
+                    chipBackground: AppColors.surfaceBase
                 )
 
                 if planFrequency == .week {
@@ -670,7 +795,7 @@ struct OperationSheet: View {
                                         .foregroundStyle(selected ? AppColors.textPrimary : AppColors.textSecondary)
                                         .frame(width: 34, height: 28)
                                         .background(
-                                            selected ? AppColors.fillSecondary : AppColors.surfaceRaised,
+                                            selected ? AppColors.surfaceRaised : AppColors.surfaceBase,
                                             in: RoundedRectangle(cornerRadius: AppStyle.Radius.sm, style: .continuous)
                                         )
                                         .overlay {
@@ -703,9 +828,10 @@ struct OperationSheet: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
-        .padding(AppStyle.Spacing.small)
+        .padding(.horizontal, AppStyle.Row.cardHorizontalPadding)
+        .padding(.vertical, AppStyle.Spacing.small)
         .background(
-            AppColors.surfaceRaised.opacity(0.55),
+            AppColors.fillSecondary,
             in: RoundedRectangle(cornerRadius: AppStyle.Radius.md, style: .continuous)
         )
         .overlay {
@@ -738,6 +864,14 @@ struct OperationSheet: View {
         return text
     }
 
+    private var detailsDivider: some View {
+        Rectangle()
+            .fill(AppColors.borderSubtle)
+            .frame(height: 0.5)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 4)
+    }
+
     private var dateField: some View {
         FormField(title: String(localized: "transaction.form.date_and_time")) {
             DatePickerField(date: $date)
@@ -746,26 +880,36 @@ struct OperationSheet: View {
 
     private var placeField: some View {
         FormField(title: String(localized: "common.payment_location")) {
-            HStack(spacing: AppStyle.Spacing.xSmall) {
-                MontraTextField(placeholder: String(localized: "transaction.form.for_example_green"), text: $place)
+            VStack(alignment: .leading, spacing: AppStyle.Spacing.xxSmallPlus) {
+                HStack(spacing: AppStyle.Spacing.xSmall) {
+                    MontraTextField(placeholder: String(localized: "transaction.form.for_example_green"), text: $place)
 
-                Button {
-                    location.requestLocation()
-                } label: {
-                    if location.isLocating {
-                        ProgressView()
-                            .controlSize(.small)
-                            .scaleEffect(0.7)
-                            .frame(width: 30, height: 30)
-                    } else {
-                        Image(systemName: "location.fill")
-                            .font(.system(size: 11, weight: .semibold))
+                    Button {
+                        location.requestLocation()
+                    } label: {
+                        if location.isLocating {
+                            ProgressView()
+                                .controlSize(.small)
+                                .scaleEffect(0.7)
+                                .frame(width: 30, height: 30)
+                        } else {
+                            Image(systemName: "location.fill")
+                                .font(.system(size: 11, weight: .semibold))
+                        }
                     }
+                    .buttonStyle(.montra(.secondary, width: .square))
+                    .frame(width: 32, height: 32)
+                    .help(String(localized: "transaction.form.use_my_location"))
+                    .disabled(location.isLocating)
+                    .accessibilityLabel(String(localized: "transaction.form.use_my_location"))
                 }
-                .buttonStyle(.montra(.secondary, width: .square))
-                .help(String(localized: "transaction.form.use_my_location"))
-                .disabled(location.isLocating)
-                .accessibilityLabel(String(localized: "transaction.form.use_my_location"))
+
+                if let message = location.errorMessage {
+                    Text(message)
+                        .font(AppStyle.Typography.metadata)
+                        .foregroundStyle(AppColors.statusCheckText)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
         }
     }

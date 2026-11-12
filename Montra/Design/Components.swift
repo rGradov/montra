@@ -415,6 +415,8 @@ struct FilterChip: View {
     var tier: FilterChipTier = .neutral
     var leadingSystemImage: String?
     var count: Int?
+    /// Fill for an unselected chip, for chips that live on a grouped card.
+    var unselectedBackground: Color?
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -454,7 +456,10 @@ struct FilterChip: View {
             Capsule(style: .continuous).fill(backgroundColor)
         }
         .overlay {
-            Capsule(style: .continuous).strokeBorder(AppColors.borderSubtle, lineWidth: 1)
+            Capsule(style: .continuous).strokeBorder(
+                style == .tab && isSelected ? AppColors.borderStrong : AppColors.borderSubtle,
+                lineWidth: 1
+            )
         }
         .contentShape(Capsule(style: .continuous))
         .accessibilityAddTraits(style == .tab && isSelected ? .isSelected : [])
@@ -483,7 +488,7 @@ struct FilterChip: View {
 
     private var backgroundColor: Color {
         if style == .tab, isSelected { return tier.selectedBackground }
-        return AppColors.fillSecondary
+        return unselectedBackground ?? AppColors.fillSecondary
     }
 
     private var foregroundColor: Color {

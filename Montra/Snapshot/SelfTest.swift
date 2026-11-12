@@ -1106,6 +1106,19 @@ enum SelfTest {
             check(restoredSettings.hasStartedOnboarding, "запущенное знакомство восстановлено")
             check(restoredSettings.spendMetric == .median,
                   "выбор среднего или медианы восстанавливается из копии")
+
+            // An archive written before the setting existed carries no value.
+            // Restoring it must leave the current choice alone rather than
+            // silently falling back to the default.
+            var legacyPayload = archive.payload
+            legacyPayload.settings.spendMetric = nil
+            var legacyArchive = try BackupCoding.seal(legacyPayload)
+            legacyArchive.formatVersion = 2
+            _ = try BackupService.restore(
+                legacyArchive, context: restoreContext, settings: restoredSettings
+            )
+            check(restoredSettings.spendMetric == .median,
+                  "старая копия без поля не сбрасывает выбранный темп")
             check(report.rates?.rate(for: .usd) == decimal("3.1234"), "курсы из копии доступны для установки")
             check(
                 report.integration?.enabled == true && report.integration?.allowDelete == false,

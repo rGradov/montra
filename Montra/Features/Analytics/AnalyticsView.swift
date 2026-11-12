@@ -1344,10 +1344,11 @@ private struct AnalyticsPaceCard: View {
 
     var body: some View {
         OverviewCard {
-            HStack {
+            HStack(spacing: AppStyle.Spacing.small) {
                 Text(String(localized: "analytics.pace"))
                     .font(AppStyle.Typography.headline)
                 Spacer(minLength: AppStyle.Spacing.small)
+                AnalyticsSpendMetricPicker(metric: $metric)
                 if snapshot.previousFullTotal > 0 {
                     AppBadge(
                         text: isFaster
@@ -1362,7 +1363,6 @@ private struct AnalyticsPaceCard: View {
             .padding(.bottom, AppStyle.Spacing.xxSmall)
 
             HStack(spacing: AppStyle.Spacing.small) {
-                AnalyticsSpendMetricPicker(metric: $metric)
                 HStack(alignment: .firstTextBaseline, spacing: 5) {
                     Text(money(metricValue))
                         .font(AnalyticsStyle.figure)

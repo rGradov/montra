@@ -560,9 +560,19 @@ struct OperationSheet: View {
             withAnimation(AppMotion.row) { categoryID = category.id }
         } label: {
             HStack(spacing: AppStyle.Spacing.xxSmallPlus) {
-                Image(systemName: AppIconSymbol.resolved(category.iconName))
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(isSelected ? AppColors.textPrimary : category.color.color)
+                // A category glyph is one string: an SF Symbol or an emoji,
+                // exactly like an account's. Draw the emoji as text so a
+                // category can use the same appearance picker as an account.
+                if AppIconGlyph.isEmoji(category.iconName) {
+                    Text(category.iconName)
+                        .font(.system(size: 12))
+                        .accessibilityHidden(true)
+                } else {
+                    Image(systemName: AppIconSymbol.resolved(category.iconName))
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(isSelected ? AppColors.textPrimary : category.color.color)
+                        .accessibilityHidden(true)
+                }
                 Text(category.displayName)
                     .font(AppStyle.Typography.body.weight(isSelected ? .semibold : .regular))
                 if category.isMandatory || (category.parent?.isMandatory ?? false) {

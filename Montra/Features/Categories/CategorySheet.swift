@@ -29,7 +29,7 @@ struct CategorySheet: View {
             _kind = State(initialValue: kind)
             _name = State(initialValue: "")
             _color = State(initialValue: kind == .expense ? .orange : .green)
-            _icon = State(initialValue: kind == .expense ? "fork.knife" : "banknote.fill")
+            _icon = State(initialValue: Self.defaultSymbol(for: kind))
             _isMandatory = State(initialValue: false)
             _parentID = State(initialValue: nil)
         case .edit(let category):
@@ -95,13 +95,12 @@ struct CategorySheet: View {
                     nameField
                     parentField
                     mandatoryField
-                    iconField
-                    colorField
+                    appearanceField
                 }
                 .padding(.horizontal, AppStyle.Spacing.large)
                 .padding(.bottom, AppStyle.Spacing.medium)
             }
-            .frame(maxHeight: 450)
+            .frame(maxHeight: 535)
 
             SheetFooter {
                 if isEditing, editingCategory?.isSystem == false {
@@ -119,9 +118,21 @@ struct CategorySheet: View {
         }
         .frame(width: 470)
         .background(AppColors.surfaceBase)
-        .onChange(of: kind) { _, newKind in
+        .onChange(of: kind) { oldKind, newKind in
             if newKind == .income { isMandatory = false }
             parentID = nil
+            // A fresh category starts on the kind's default glyph. When the
+            // kind flips, move that default with it so the one-tap row keeps a
+            // selected tile; a glyph the person picked deliberately stays.
+            guard !isEditing else { return }
+            let previous = CategoryIcons.catalog(for: oldKind)
+            let previousDefault = Self.defaultSymbol(for: oldKind)
+            guard icon == previousDefault || icon == previous.emoji(for: previousDefault) else { return }
+            let next = CategoryIcons.catalog(for: newKind)
+            let nextDefault = Self.defaultSymbol(for: newKind)
+            withAnimation(AppMotion.row) {
+                icon = AppIconGlyph.isEmoji(icon) ? next.emoji(for: nextDefault) : nextDefault
+            }
         }
         .alert(String(localized: "common.delete_category"), isPresented: $isConfirmingDelete) {
             Button(String(localized: "common.delete"), role: .destructive) { deleteCategory() }
@@ -264,16 +275,18 @@ struct CategorySheet: View {
         .opacity(kind == .income ? 0.55 : 1)
     }
 
-    private var iconField: some View {
-        FormField(title: String(localized: "common.icon")) {
-            IconPicker(selection: $icon, options: CategoryIcons.options)
-        }
+    /// Like the account sheet, the form ends with how the category looks. The
+    /// section is the same view accounts use, so both sheets read one way.
+    private var appearanceField: some View {
+        GlyphAppearanceSection(
+            icon: $icon,
+            color: $color,
+            catalog: CategoryIcons.catalog(for: kind)
+        )
     }
 
-    private var colorField: some View {
-        FormField(title: String(localized: "common.color")) {
-            ColorPickerRow(selection: $color)
-        }
+    private static func defaultSymbol(for kind: OperationKind) -> String {
+        kind == .expense ? "fork.knife" : "banknote.fill"
     }
 
     private func save() {

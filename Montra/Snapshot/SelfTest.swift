@@ -31,6 +31,30 @@ enum SelfTest {
         check(accountSymbols.allSatisfy {
             NSImage(systemSymbolName: $0, accessibilityDescription: nil) != nil
         }, "все иконки счетов доступны")
+        let categoryEmojis = CategoryIcons.options.map(\.emoji)
+        check(Set(categoryEmojis).count == categoryEmojis.count,
+              "у каждой иконки категории свой эмодзи")
+        check(CategoryIcons.options.allSatisfy {
+            AppIconGlyph.isEmoji($0.emoji)
+                && CategoryIcons.catalog(for: .expense).symbol(for: $0.emoji) == $0.symbol
+        }, "эмодзи категории возвращается к своей иконке")
+        check(CategoryIcons.favorites(for: .expense).count == 5
+              && CategoryIcons.favorites(for: .income).count == 5,
+              "быстрый ряд категорий показывает пять иконок")
+        let accountEmojis = AccountIconCatalog.options.map(\.emoji)
+        check(Set(accountEmojis).count == accountEmojis.count,
+              "у каждой иконки счёта свой эмодзи")
+
+        // The sheet saves the chosen glyph verbatim, so an emoji chosen for a
+        // category must come back from a fresh store unchanged.
+        let glyphContainer = ModelContainerFactory.make(inMemory: true)
+        let glyphContext = ModelContext(glyphContainer)
+        let petCategory = CategoryRepository(context: glyphContext).create(
+            name: "Питомцы", kind: .expense, color: .pink, iconName: "🐱", isMandatory: false
+        )
+        let storedPets = (try? glyphContext.fetch(FetchDescriptor<Category>()))?
+            .first { $0.id == petCategory.id }
+        check(storedPets?.iconName == "🐱", "эмодзи категории сохраняется и читается")
 
         let settings = SettingsStore(defaults: UserDefaults(suiteName: "montra.selftest") ?? .standard)
         settings.periodMode = .payday

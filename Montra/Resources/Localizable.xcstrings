@@ -239,40 +239,6 @@
         }
       }
     },
-    "account.all_emojis": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "All emoji"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Все emoji"
-          }
-        }
-      }
-    },
-    "account.all_icons": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "All icons"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Все иконки"
-          }
-        }
-      }
-    },
     "account.all_past_scheduled_payments_are": {
       "extractionState": "manual",
       "localizations": {
@@ -1822,6 +1788,40 @@
         }
       }
     },
+    "appearance.all_emojis": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "All emoji"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Все emoji"
+          }
+        }
+      }
+    },
+    "appearance.all_icons": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "All icons"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Все иконки"
+          }
+        }
+      }
+    },
     "backup.accounts": {
       "extractionState": "manual",
       "localizations": {
@@ -2693,6 +2693,23 @@
         }
       }
     },
+    "category.icon.bank": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bank"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Банк"
+          }
+        }
+      }
+    },
     "category.icon.bicycle": {
       "extractionState": "manual",
       "localizations": {
@@ -2761,6 +2778,40 @@
         }
       }
     },
+    "category.icon.car": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Car"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Машина"
+          }
+        }
+      }
+    },
+    "category.icon.card": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Card"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Карта"
+          }
+        }
+      }
+    },
     "category.icon.cat": {
       "extractionState": "manual",
       "localizations": {
@@ -2812,6 +2863,23 @@
         }
       }
     },
+    "category.icon.crypto": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Crypto"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Криптовалюта"
+          }
+        }
+      }
+    },
     "category.icon.dog": {
       "extractionState": "manual",
       "localizations": {
@@ -2825,6 +2893,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "Собака"
+          }
+        }
+      }
+    },
+    "category.icon.dollar": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dollar"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Доллар"
+          }
+        }
+      }
+    },
+    "category.icon.education": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Education"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Образование"
           }
         }
       }
@@ -2846,6 +2948,40 @@
         }
       }
     },
+    "category.icon.euro": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Euro"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Евро"
+          }
+        }
+      }
+    },
+    "category.icon.favorites": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Favorites"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Избранное"
+          }
+        }
+      }
+    },
     "category.icon.fitness": {
       "extractionState": "manual",
       "localizations": {
@@ -2859,6 +2995,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Фитнес"
+          }
+        }
+      }
+    },
+    "category.icon.fuel": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fuel"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Топливо"
           }
         }
       }
@@ -2910,6 +3063,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Парикмахерская"
+          }
+        }
+      }
+    },
+    "category.icon.insurance": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Insurance"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Страховка"
           }
         }
       }
@@ -2999,6 +3169,23 @@
         }
       }
     },
+    "category.icon.savings": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Savings"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сбережения"
+          }
+        }
+      }
+    },
     "category.icon.smoking": {
       "extractionState": "manual",
       "localizations": {
@@ -3084,6 +3271,40 @@
         }
       }
     },
+    "category.icon.travel": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Travel"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Путешествия"
+          }
+        }
+      }
+    },
+    "category.icon.wallet": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wallet"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Кошелёк"
+          }
+        }
+      }
+    },
     "category.icon.water": {
       "extractionState": "manual",
       "localizations": {
@@ -3097,6 +3318,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "Вода"
+          }
+        }
+      }
+    },
+    "category.icon.work": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Work"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Работа"
+          }
+        }
+      }
+    },
+    "category.icon.world": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "World"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Мир"
           }
         }
       }

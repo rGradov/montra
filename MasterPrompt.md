@@ -360,8 +360,11 @@ Delete All Data clears all records, including categories, and resets onboarding.
   and count. Indent children under their parents with a vertical line.
   Parent counts include children's transactions.
 - The sheet offers kind at creation, name, Parent Category, mandatory status,
-  icon, color, and deletion. Parents must be top-level and of the same kind.
-  Subcategories inherit mandatory status. Parents with children stay top-level.
+  deletion, and the same Appearance section as the account sheet: an
+  Icon/Emoji switch, five one-tap glyphs for the kind, the full catalog behind
+  "…", and the color dots below. Parents must be top-level and of the same
+  kind. Subcategories inherit mandatory status. Parents with children stay
+  top-level.
 - Deleting a parent moves its transactions to Other and promotes its children.
 
 ### Analytics
@@ -391,7 +394,9 @@ The placeholder uses no fictional figures.
 - The shared sheet is 470 pt wide and uses a custom header, close button,
   and hairline footer.
 - The account form shows a tile preview, name, currency (read-only when editing),
-  opening balance, Savings Account switch, icon grid, and palette. The savings
+  opening balance, Savings Account switch, and the Appearance section shared
+  with categories: an Icon/Emoji switch, five one-tap glyphs, the full catalog
+  behind "…", and the color dots. The savings
   flag leaves deposits and withdrawals available.
 - The transaction form opens on the active income or expense filter when
   applicable. It shows a large amount in the account currency and an account

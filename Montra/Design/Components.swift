@@ -217,7 +217,8 @@ enum AppIconSymbol {
 /// An account's glyph is one stored string: an SF Symbol name or an emoji. A
 /// symbol name is plain ASCII, so any non-ASCII scalar means the person picked
 /// an emoji and the UI draws it as text instead of looking it up as a symbol.
-/// Category icons share the field; they simply never offer emoji.
+/// Category icons share the field and, since the unified appearance picker, can
+/// be an emoji too.
 enum AppIconGlyph {
     static func isEmoji(_ value: String) -> Bool {
         !value.isEmpty && value.unicodeScalars.contains { $0.value > 0x7F }

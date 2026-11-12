@@ -91,7 +91,10 @@ checks, and edge cases.
   and date. Header counts and totals update with the results. The empty state
   offers Clear Search. Use ⌘F to focus search and Escape to clear it.
 - **Categories.** Start with 14 categories, including mandatory and optional
-  spending, or create your own with an icon and color. Categories support one
+  spending, or create your own with an icon or emoji and color. The category
+  sheet uses the same Appearance control as the account sheet: an Icon/Emoji
+  switch, five one-tap glyphs for the kind, the full catalog in a popover, and
+  the color dots below. Categories support one
   level of subcategories. Choose the parent at creation and its mandatory status
   is inherited. The transaction form shows the five most-used categories and a
   searchable hierarchy under More. In the list and the picker the icons show in

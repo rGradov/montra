@@ -3,7 +3,7 @@
 As of **November 9, 2026**. The code in `Montra/` is the source of truth.
 Each area has IDs, checks, expected outcomes, and negative or edge cases.
 
-> Automated coverage includes **177 checks** in `-selftest` and full screen
+> Automated coverage includes **182 checks** in `-selftest` and full screen
 > rendering with `-snapshot`. See sections 4 and 5 for coverage and gaps.
 
 ## 0. How to use this inventory
@@ -178,7 +178,8 @@ Use a 980×700 window with a 240 pt sidebar and `hiddenTitleBar`.
 | ID | Feature | Key checks | Type |
 |---|---|---|---|
 | CAT-01 | List | Expense and Income sections. Icons in the category color without a tile backing. Subcategories indented with a connector line. Parent count includes subcategory transactions. Mandatory categories are marked | ui/visual |
-| CAT-02 | Creation | Name, kind, color, icon, and mandatory status. Parent must be top-level and same kind. No Parent available. One nesting level | ui |
+| CAT-02 | Creation | Name, kind, color, icon or emoji, and mandatory status. Parent must be top-level and same kind. No Parent available. One nesting level | ui |
+| CAT-02a | Appearance picker | The account sheet's Appearance section: the Icon/Emoji switch keeps the meaning, five one-tap glyphs match the kind, the full catalog opens from "…", and the color dots sit on the line below. An emoji icon stays valid in lists, pickers, and the transaction form | ui/visual |
 | CAT-03 | Mandatory status | Applies to expenses and is inherited by subcategories. Reflected in the form and totals. Unavailable for income | unit/ui |
 | CAT-04 | Editing | Name, color, icon, mandatory status, and parent. Prevent choosing a child as parent and protect system categories | ui |
 | CAT-05 | Deletion | Protect system categories. Reassign transactions and plans to Other, promote children to top level, and update counts | unit/ui |

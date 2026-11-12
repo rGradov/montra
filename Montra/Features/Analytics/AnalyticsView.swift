@@ -220,7 +220,8 @@ struct AnalyticsView: View {
                             AnalyticsPaceCard(
                                 snapshot: snapshot,
                                 currency: displayCurrency,
-                                masked: masked
+                                masked: masked,
+                                metric: $settings.spendMetric
                             )
 
                             if scope == .year {
@@ -1301,10 +1302,45 @@ private struct AnalyticsBreakdownCard: View {
 
 // MARK: - Pace
 
+/// The pace card's mean/median switch. Built like the breakdown card's dimension
+/// picker (a quiet pair of pills, the active one on `surfaceRaised`) so the two
+/// view switches in Analytics read as one family.
+private struct AnalyticsSpendMetricPicker: View {
+    @Binding var metric: SettingsStore.SpendMetric
+
+    var body: some View {
+        HStack(spacing: AppStyle.Spacing.xxSmall) {
+            ForEach(SettingsStore.SpendMetric.allCases) { option in
+                Button {
+                    metric = option
+                } label: {
+                    Text(option.title)
+                        .font(AppStyle.Typography.metadataEmphasis)
+                        .foregroundStyle(option == metric ? AppColors.textPrimary : AppColors.textSecondary)
+                        .padding(.horizontal, AppStyle.Spacing.xSmall)
+                        .frame(height: 24)
+                        .background {
+                            RoundedRectangle(cornerRadius: AppStyle.Radius.md, style: .continuous)
+                                .fill(option == metric ? AppColors.surfaceRaised : .clear)
+                        }
+                        .overlay {
+                            RoundedRectangle(cornerRadius: AppStyle.Radius.md, style: .continuous)
+                                .strokeBorder(option == metric ? AppColors.borderSubtle : .clear, lineWidth: 0.5)
+                        }
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityAddTraits(option == metric ? .isSelected : [])
+            }
+        }
+    }
+}
+
 private struct AnalyticsPaceCard: View {
     let snapshot: AnalyticsSnapshot
     let currency: Currency
     let masked: Bool
+    @Binding var metric: SettingsStore.SpendMetric
 
     var body: some View {
         OverviewCard {
@@ -1325,21 +1361,18 @@ private struct AnalyticsPaceCard: View {
             .padding(.top, AppStyle.Row.cardHorizontalPadding)
             .padding(.bottom, AppStyle.Spacing.xxSmall)
 
-            HStack(alignment: .firstTextBaseline, spacing: 5) {
-                Text(String(localized: "analytics.average"))
-                    .font(AppStyle.Typography.callout)
-                    .foregroundStyle(AppColors.textSecondary)
-                Text(money(snapshot.average))
-                    .font(AnalyticsStyle.figure)
-                    .monospacedDigit()
-                Text(String(localized: "analytics.per_day"))
-                    .font(AppStyle.Typography.callout)
-                    .foregroundStyle(AppColors.textSecondary)
+            HStack(spacing: AppStyle.Spacing.small) {
+                AnalyticsSpendMetricPicker(metric: $metric)
+                HStack(alignment: .firstTextBaseline, spacing: 5) {
+                    Text(money(metricValue))
+                        .font(AnalyticsStyle.figure)
+                        .monospacedDigit()
+                    Text(metric.unitTitle)
+                        .font(AppStyle.Typography.callout)
+                        .foregroundStyle(AppColors.textSecondary)
+                }
                 Spacer(minLength: AppStyle.Spacing.small)
-                Text(figures: AnalyticsFormat.dayProgress(
-                    elapsed: snapshot.range.elapsedDays,
-                    total: snapshot.range.totalDays
-                ), style: AppStyle.Typography.metadata)
+                Text(figures: population, style: AppStyle.Typography.metadata)
                     .foregroundStyle(AppColors.textTertiary)
                     .monospacedDigit()
             }
@@ -1373,6 +1406,25 @@ private struct AnalyticsPaceCard: View {
         }
     }
 
+    /// The figure the card leads with, and therefore the one its verdict repeats.
+    private var metricValue: Decimal {
+        metric == .average ? snapshot.average : snapshot.medianSpendingDay
+    }
+
+    /// The median describes spending days, not every elapsed day, so the caption
+    /// names its own population instead of borrowing the range progress.
+    private var population: String {
+        switch metric {
+        case .average:
+            return AnalyticsFormat.dayProgress(
+                elapsed: snapshot.range.elapsedDays,
+                total: snapshot.range.totalDays
+            )
+        case .median:
+            return "\(Finance.daysText(snapshot.spendingDayCount)) \(String(localized: "analytics.with_spending"))"
+        }
+    }
+
     private var isFaster: Bool {
         guard snapshot.previousFullTotal > 0 else { return false }
         let pace = snapshot.previousFullTotal
@@ -1391,7 +1443,13 @@ private struct AnalyticsPaceCard: View {
 
     private var verdict: String? {
         guard snapshot.hasComparison else {
-            return String(localized: "analytics.verdict_no_comparison \(Finance.daysText(snapshot.range.elapsedDays)) \(money(snapshot.expenses)) \(money(snapshot.average))")
+            let spent = Finance.daysText(snapshot.range.elapsedDays)
+            let total = money(snapshot.expenses)
+            // The closing clause must repeat the figure the card shows, and for a
+            // median that figure is measured over spending days.
+            return metric == .average
+                ? String(localized: "analytics.verdict_no_comparison \(spent) \(total) \(money(snapshot.average))")
+                : String(localized: "analytics.verdict_no_comparison_median \(spent) \(total) \(money(snapshot.medianSpendingDay))")
         }
         let difference = abs(snapshot.expenses - snapshot.comparisonTotal)
         let daysLeft = snapshot.range.daysLeft

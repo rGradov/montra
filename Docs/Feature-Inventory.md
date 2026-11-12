@@ -3,7 +3,7 @@
 As of **November 9, 2026**. The code in `Montra/` is the source of truth.
 Each area has IDs, checks, expected outcomes, and negative or edge cases.
 
-> Automated coverage includes **169 checks** in `-selftest` and full screen
+> Automated coverage includes **176 checks** in `-selftest` and full screen
 > rendering with `-snapshot`. See sections 4 and 5 for coverage and gaps.
 
 ## 0. How to use this inventory
@@ -269,7 +269,7 @@ Use a 980×700 window with a 240 pt sidebar and `hiddenTitleBar`.
 |---|---|---|---|
 | ABT-01 | About | Montra artwork, version, total across accounts in the primary currency, feature summary, and footer | ui/visual |
 | ABT-02 | Replay | Preview banner, no writes, X closes, and completion opens Overview | ui |
-| ABT-03 | Analytics | Period, month, and year scopes, previous/current stepper, summary expenses/income/left, savings transfers shown separately, category or account split, essential/discretionary filters, informational rows with plain transaction-style icons, expandable "Other" group for categories below 1% of expenses, always pinned last with its children aligned to the same amount/share column, cumulative chart with previous/even pace and month labels on the year axis, chart hover and keyboard, heat map with today marker, above-average accent palette, hidden-category menu with show-all reset, hidden-state empty screen and readout, click-to-open day popup with one row per category (sum, repeat count, sample icon), content-sized card above or below the clicked cell so it never covers it, caret aimed at the day, and dismissal by the same cell, another cell, an outside click, Escape, a page scroll, or the window losing focus, non-clickable informational category/account rows, empty state, light/dark, and year boundaries. Engine: totals, savings in/out, comparison windows, cumulative endpoint, heat levels, chart ceiling, year day count | unit/ui/visual |
+| ABT-03 | Analytics | Period, month, and year scopes, previous/current stepper, summary expenses/income/left, savings transfers shown separately, category or account split, essential/discretionary filters, informational rows with plain transaction-style icons, expandable "Other" group for categories below 1% of expenses, always pinned last with its children aligned to the same amount/share column, pace card with a remembered mean/median switch (median measured over the elapsed days that had spending, and its verdict sentence repeats the chosen figure), cumulative chart with previous/even pace and month labels on the year axis, chart hover and keyboard, heat map with today marker, above-average accent palette, hidden-category menu with show-all reset, hidden-state empty screen and readout, click-to-open day popup with one row per category (sum, repeat count, sample icon), content-sized card above or below the clicked cell so it never covers it, caret aimed at the day, and dismissal by the same cell, another cell, an outside click, Escape, a page scroll, or the window losing focus, non-clickable informational category/account rows, empty state, light/dark, and year boundaries. Engine: totals, savings in/out, comparison windows, cumulative endpoint, heat levels, chart ceiling, year day count | unit/ui/visual |
 
 ### 2.14 Formatting, accessibility, and animation
 
@@ -326,7 +326,7 @@ Use a 980×700 window with a 240 pt sidebar and `hiddenTitleBar`.
   account, and launching an older store without onboarding.
 - Plans cover monthly clamping, weekly days, series, unchanged balance, linking,
   missed and upcoming filters, and series deletion.
-- Analytics totals, free/mandatory split, savings in/out (transfers excluded from expenses and income), category rollup, previous-period comparison, cumulative endpoint, daily heat levels and their operations, per-day category groups that add up to the day total and operation count, filter counts, average, chart ceiling, month range, and current-year range with elapsed days.
+- Analytics totals, free/mandatory split, savings in/out (transfers excluded from expenses and income), category rollup, previous-period comparison, cumulative endpoint, daily heat levels and their operations, per-day category groups that add up to the day total and operation count, filter counts, average, median of the spending days and their count, chart ceiling, month range, and current-year range with elapsed days.
 - Formatting and pluralization.
 - Spotlight ledger covers accounts, categories, subcategories, transfers,
   required received amounts, balances, Overview, missingCurrencies, and hideBalances.

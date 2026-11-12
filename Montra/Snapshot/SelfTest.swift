@@ -408,6 +408,13 @@ enum SelfTest {
         check(analytics.average > 35.7 && analytics.average < 35.8,
               "аналитика: средний расход в день")
         check(analytics.chartMax == 1_200, "аналитика: верхняя граница графика")
+        // The median is taken over the days that had spending, so a month with
+        // mostly empty days still answers "what does a typical day cost".
+        check(analytics.spendingDayCount == 2 && analytics.medianSpendingDay == 500,
+              "аналитика: медиана по двум дням с тратами (чётное число)")
+        check(groupingSnapshot.spendingDayCount == 1
+                && groupingSnapshot.medianSpendingDay == 71.49,
+              "аналитика: медиана одного дня с тратами (нулевые дни не в счёт)")
         let hiddenAnalytics = AnalyticsEngine.snapshot(
             range: analyticsRange,
             operations: analyticsOps,
@@ -441,6 +448,25 @@ enum SelfTest {
         check(analyticsYearSnapshot.expenses == 1_700
                 && analyticsYearSnapshot.income == 1_000,
               "аналитика: годовые расходы и доходы")
+        check(analyticsYearSnapshot.spendingDayCount == 4
+                && analyticsYearSnapshot.medianSpendingDay == 450,
+              "аналитика: медиана по четырём дням с тратами")
+
+        // The pace card's mean/median switch is remembered between launches.
+        let metricSuite = "montra.selftest.spendMetric"
+        if let metricDefaults = UserDefaults(suiteName: metricSuite) {
+            metricDefaults.removePersistentDomain(forName: metricSuite)
+            let firstLaunch = SettingsStore(defaults: metricDefaults)
+            check(firstLaunch.spendMetric == .average,
+                  "аналитика: темп трат по среднему по умолчанию")
+            firstLaunch.spendMetric = .median
+            let nextLaunch = SettingsStore(defaults: metricDefaults)
+            check(nextLaunch.spendMetric == .median,
+                  "аналитика: выбранный способ расчёта темпа сохраняется")
+            metricDefaults.removePersistentDomain(forName: metricSuite)
+        } else {
+            check(false, "доступны тестовые настройки способа расчёта")
+        }
 
         // 6. Deleting a custom category moves its operations to "Other".
         let fallback = Category(name: "Прочее", kind: .expense, color: .graphite, iconName: "ellipsis.circle.fill", isSystem: true)
@@ -817,6 +843,7 @@ enum SelfTest {
         backupSettings.didSeedDemo = true
         backupSettings.hasCompletedOnboarding = true
         backupSettings.hasStartedOnboarding = true
+        backupSettings.spendMetric = .median
 
         let backupContainer = ModelContainerFactory.make(inMemory: true)
         let backupContext = ModelContext(backupContainer)
@@ -972,11 +999,14 @@ enum SelfTest {
             // as corrupted.
             var oldPayload = decoded.payload
             oldPayload.settings.hasStartedOnboarding = nil
+            oldPayload.settings.spendMetric = nil
             var oldArchive = try BackupCoding.seal(oldPayload)
             oldArchive.formatVersion = 2
             let oldDecoded = try BackupCoding.decode(BackupCoding.encode(oldArchive))
             check(oldDecoded.payload.settings.hasStartedOnboarding == nil,
                   "старая копия без флага знакомства читается")
+            check(oldDecoded.payload.settings.spendMetric == nil,
+                  "старая копия без выбора темпа читается")
 
             let url = FileManager.default.temporaryDirectory
                 .appendingPathComponent("montra-selftest-\(UUID().uuidString).montra")
@@ -1074,6 +1104,8 @@ enum SelfTest {
             )
             check(restoredSettings.hasCompletedOnboarding, "знакомство отмечено пройденным")
             check(restoredSettings.hasStartedOnboarding, "запущенное знакомство восстановлено")
+            check(restoredSettings.spendMetric == .median,
+                  "выбор среднего или медианы восстанавливается из копии")
             check(report.rates?.rate(for: .usd) == decimal("3.1234"), "курсы из копии доступны для установки")
             check(
                 report.integration?.enabled == true && report.integration?.allowDelete == false,

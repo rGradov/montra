@@ -163,6 +163,11 @@ struct AnalyticsSnapshot {
     let comparisonTotal: Decimal
     let hasComparison: Bool
     let average: Decimal
+    /// The typical day that had spending: the median of the daily totals on the
+    /// elapsed days with expenses.
+    let medianSpendingDay: Decimal
+    /// How many elapsed days carried spending — the population of the median.
+    let spendingDayCount: Int
     let chartMax: Double
 
     var hasExpenses: Bool { expenses > 0 }
@@ -440,6 +445,25 @@ enum AnalyticsEngine {
             pace = []
         }
 
+        // Median of the days that had spending. Zero days are left out on
+        // purpose: including them would report a median of zero for anyone who
+        // does not spend every day, which says nothing about a typical day.
+        let spendingAmounts = days
+            .prefix(range.elapsedDays)
+            .map(\.amount)
+            .filter { $0 > 0 }
+            .sorted()
+        let medianSpendingDay: Decimal
+        if spendingAmounts.isEmpty {
+            medianSpendingDay = 0
+        } else if spendingAmounts.count.isMultiple(of: 2) {
+            let upper = spendingAmounts[spendingAmounts.count / 2]
+            let lower = spendingAmounts[spendingAmounts.count / 2 - 1]
+            medianSpendingDay = (lower + upper) / 2
+        } else {
+            medianSpendingDay = spendingAmounts[spendingAmounts.count / 2]
+        }
+
         var peak = expenses
         if previousFullTotal > peak { peak = previousFullTotal }
         for value in currentCumulative.compactMap({ $0 }) where value > peak { peak = value }
@@ -468,6 +492,8 @@ enum AnalyticsEngine {
             comparisonTotal: comparisonTotal,
             hasComparison: hasComparison,
             average: expenses / Decimal(max(1, range.elapsedDays)),
+            medianSpendingDay: medianSpendingDay,
+            spendingDayCount: spendingAmounts.count,
             chartMax: chartMax
         )
     }

@@ -676,7 +676,7 @@
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "В среднем"
+            "value": "Среднее"
           }
         }
       }
@@ -11707,6 +11707,74 @@
           "stringUnit": {
             "state": "translated",
             "value": "Перевод не найден."
+          }
+        }
+      }
+    },
+    "analytics.metric_median": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Median"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Медиана"
+          }
+        }
+      }
+    },
+    "analytics.per_spending_day": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "per spending day"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "в день с тратами"
+          }
+        }
+      }
+    },
+    "analytics.with_spending": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "with spending"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "с тратами"
+          }
+        }
+      }
+    },
+    "analytics.verdict_no_comparison_median %@ %@ %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spent %2$@ in %1$@ — the median spending day is %3$@."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "За %1$@ потрачено %2$@ — медиана дня с тратами %3$@."
           }
         }
       }

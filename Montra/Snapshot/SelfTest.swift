@@ -301,7 +301,7 @@ enum SelfTest {
                       account: groupingAccount, category: nil),
         ]
         let groupingSnapshot = AnalyticsEngine.snapshot(
-            range: AnalyticsEngine.monthRange(containing: analyticsNow),
+            range: AnalyticsEngine.monthRange(containing: analyticsNow, now: analyticsNow),
             operations: groupingOps,
             displayCurrency: .byn,
             rates: .fallback,
@@ -418,7 +418,9 @@ enum SelfTest {
         )
         check(hiddenAnalytics.expenses == 400,
               "аналитика: скрытая категория исключена из всех итогов")
-        let analyticsMonth = AnalyticsEngine.monthRange(containing: analyticsNow)
+        // `now` must be pinned as well: the default is the wall clock, so this
+        // check started failing on the day after the fixture's date.
+        let analyticsMonth = AnalyticsEngine.monthRange(containing: analyticsNow, now: analyticsNow)
         check(analyticsMonth.totalDays == 30
                 && analyticsMonth.elapsedDays == 11
                 && analyticsMonth.previousTotalDays == 31,

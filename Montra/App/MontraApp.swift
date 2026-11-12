@@ -6,6 +6,9 @@ import SwiftUI
 struct MontraApp: App {
     private let container: ModelContainer
     private let needsOnboarding: Bool
+    /// QA launches that screenshot the Analytics heat map open that screen
+    /// directly; a normal launch keeps the Overview.
+    private let launchRoute: Route
     @StateObject private var settings: SettingsStore
     @StateObject private var integration: LocalIntegration
     @StateObject private var rates: RateStore
@@ -37,6 +40,9 @@ struct MontraApp: App {
         } else {
             settings = SettingsStore()
         }
+        let analyticsLaunch = ProcessInfo.processInfo.environment["MONTRA_ANALYTICS_SHOT"] == "1"
+            || ProcessInfo.processInfo.environment["MONTRA_ANALYTICS_SCOPE"] != nil
+        launchRoute = analyticsLaunch ? .analytics : .overview
         _settings = StateObject(wrappedValue: settings)
         let rates = RateStore()
         _rates = StateObject(wrappedValue: rates)
@@ -65,7 +71,7 @@ struct MontraApp: App {
 
     var body: some Scene {
         WindowGroup {
-            AppRootView(needsOnboarding: needsOnboarding)
+            AppRootView(initialRoute: launchRoute, needsOnboarding: needsOnboarding)
                 .environmentObject(settings)
                 .environmentObject(rates)
                 .environmentObject(integration)
@@ -149,6 +155,10 @@ enum AppWindowLayout {
 /// Pins the window to the app's one width and clears the title bar, leaving the
 /// traffic lights floating over the sidebar exactly as the reference does.
 private struct WindowConfigurator: NSViewRepresentable {
+    /// `MONTRA_ANALYTICS_SHOT` keeps the window's top-left corner on the screen's
+    /// top-left corner so `screencapture -R 0,0,<w>,<h>` frames the window.
+    private static var didFocusShotWindow = false
+
     func makeNSView(context: Context) -> NSView {
         let view = NSView()
         DispatchQueue.main.async { configure(view.window) }
@@ -173,6 +183,28 @@ private struct WindowConfigurator: NSViewRepresentable {
             frame.size = NSSize(width: AppWindowLayout.width, height: height)
             window.setFrame(frame, display: true)
         }
+        if ProcessInfo.processInfo.environment["MONTRA_ANALYTICS_SHOT"] == "1" {
+            pinForShots(window)
+        }
+    }
+
+    private func pinForShots(_ window: NSWindow) {
+        guard let screen = window.screen ?? NSScreen.main else { return }
+        // The menu bar keeps a normal window out of the screen's very top strip, so
+        // the harness pins the window to the usable area's top-left corner and
+        // captures that exact rect. The telemetry reports it as `window`.
+        let visible = screen.visibleFrame
+        let target = NSPoint(
+            x: visible.minX,
+            y: visible.maxY - window.frame.height
+        )
+        if abs(window.frame.minX - target.x) > 0.5 || abs(window.frame.minY - target.y) > 0.5 {
+            window.setFrameOrigin(target)
+        }
+        guard !Self.didFocusShotWindow else { return }
+        Self.didFocusShotWindow = true
+        window.makeKeyAndOrderFront(nil)
+        NSRunningApplication.current.activate()
     }
 }
 

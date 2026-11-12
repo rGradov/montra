@@ -47,6 +47,31 @@ final class SettingsStore: ObservableObject {
         }
     }
 
+    /// How the Analytics pace card summarises a typical day.
+    enum SpendMetric: String, CaseIterable, Identifiable {
+        /// The period total spread over every elapsed day.
+        case average
+        /// The median of the elapsed days that had spending.
+        case median
+
+        var id: String { rawValue }
+
+        var title: String {
+            switch self {
+            case .average: String(localized: "analytics.average")
+            case .median: String(localized: "analytics.metric_median")
+            }
+        }
+
+        /// What the figure is measured over, printed after the amount.
+        var unitTitle: String {
+            switch self {
+            case .average: String(localized: "analytics.per_day")
+            case .median: String(localized: "analytics.per_spending_day")
+            }
+        }
+    }
+
     private enum Key {
         static let appearance = "montra.appearance"
         static let hideBalances = "montra.hideBalances"
@@ -59,6 +84,7 @@ final class SettingsStore: ObservableObject {
         static let onboardingCompleted = "montra.onboarding.completed"
         static let onboardingStarted = "montra.onboarding.started"
         static let lastBackup = "montra.backup.lastSavedAt"
+        static let spendMetric = "montra.analytics.spendMetric"
     }
 
     private let defaults: UserDefaults
@@ -118,6 +144,12 @@ final class SettingsStore: ObservableObject {
         didSet { defaults.set(hasStartedOnboarding, forKey: Key.onboardingStarted) }
     }
 
+    /// Mean or median on the Analytics pace card. Remembered because it is a way
+    /// of reading the same numbers, not a per-visit choice.
+    @Published var spendMetric: SpendMetric {
+        didSet { defaults.set(spendMetric.rawValue, forKey: Key.spendMetric) }
+    }
+
     /// When a backup was last written from this Mac. It describes the machine,
     /// not the money, so a restore leaves it alone.
     @Published var lastBackupAt: Date? {
@@ -143,6 +175,7 @@ final class SettingsStore: ObservableObject {
         hasCompletedOnboarding = defaults.bool(forKey: Key.onboardingCompleted)
         hasStartedOnboarding = defaults.bool(forKey: Key.onboardingStarted)
         lastBackupAt = defaults.object(forKey: Key.lastBackup) as? Date
+        spendMetric = SpendMetric(rawValue: defaults.string(forKey: Key.spendMetric) ?? "") ?? .average
         applyAppearance()
     }
 

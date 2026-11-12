@@ -444,7 +444,11 @@ struct AppRootView: View {
                     )
 
                 case .analytics:
-                    AnalyticsView()
+                    AnalyticsView(
+                        onNewOperation: {
+                            app.present(.newOperation(OperationSource(account: nil, kind: nil)))
+                        }
+                    )
 
                 case .settings:
                     SettingsView(

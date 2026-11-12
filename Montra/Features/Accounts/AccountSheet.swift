@@ -296,17 +296,10 @@ struct AccountSheet: View {
         }
     }
 
-    /// The sheet ends with how the account looks: glyph mode, the glyph itself
-    /// and the colour, under a hairline that separates "what the account is"
-    /// from "how it is drawn". Create and edit share it, so both read one way.
+    /// The sheet ends with how the account looks, using the same section the
+    /// category sheet draws under the same hairline.
     private var appearanceField: some View {
-        VStack(alignment: .leading, spacing: AppStyle.Spacing.small) {
-            Rectangle()
-                .fill(AppColors.borderSubtle)
-                .frame(height: 0.5)
-            AccountAppearancePicker(icon: $icon, color: $color)
-        }
-        .padding(.top, AppStyle.Spacing.xxSmall)
+        GlyphAppearanceSection(icon: $icon, color: $color, catalog: AccountIconCatalog.catalog)
     }
 
     private func save() {

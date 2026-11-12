@@ -137,6 +137,9 @@ struct SettingsBackup: Codable, Equatable {
     /// before the flag existed still restores; absent means the store predates
     /// onboarding, not that the flow is half-finished.
     var hasStartedOnboarding: Bool? = nil
+    /// The Analytics pace card's mean/median choice. Optional so a copy written
+    /// before the switch existed still restores; absent keeps the current choice.
+    var spendMetric: String? = nil
 }
 
 struct RatesBackup: Codable, Equatable {

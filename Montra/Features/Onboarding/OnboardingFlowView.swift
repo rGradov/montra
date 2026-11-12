@@ -950,9 +950,16 @@ private struct OnboardingCategoryChip: View {
     var body: some View {
         Button(action: action) {
             HStack(spacing: AppStyle.Spacing.xxSmallPlus) {
-                Image(systemName: icon)
-                    .font(.system(size: 10, weight: .semibold))
-                    .foregroundStyle(isSelected ? AppColors.textPrimary : color)
+                if AppIconGlyph.isEmoji(icon) {
+                    Text(icon)
+                        .font(.system(size: 11))
+                        .accessibilityHidden(true)
+                } else {
+                    Image(systemName: AppIconSymbol.resolved(icon))
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundStyle(isSelected ? AppColors.textPrimary : color)
+                        .accessibilityHidden(true)
+                }
                 Text(name)
                     .font(AppStyle.Typography.callout.weight(isSelected ? .semibold : .regular))
                     .lineLimit(1)

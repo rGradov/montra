@@ -31,6 +31,30 @@ enum SelfTest {
         check(accountSymbols.allSatisfy {
             NSImage(systemSymbolName: $0, accessibilityDescription: nil) != nil
         }, "все иконки счетов доступны")
+        let categoryEmojis = CategoryIcons.options.map(\.emoji)
+        check(Set(categoryEmojis).count == categoryEmojis.count,
+              "у каждой иконки категории свой эмодзи")
+        check(CategoryIcons.options.allSatisfy {
+            AppIconGlyph.isEmoji($0.emoji)
+                && CategoryIcons.catalog(for: .expense).symbol(for: $0.emoji) == $0.symbol
+        }, "эмодзи категории возвращается к своей иконке")
+        check(CategoryIcons.favorites(for: .expense).count == 5
+              && CategoryIcons.favorites(for: .income).count == 5,
+              "быстрый ряд категорий показывает пять иконок")
+        let accountEmojis = AccountIconCatalog.options.map(\.emoji)
+        check(Set(accountEmojis).count == accountEmojis.count,
+              "у каждой иконки счёта свой эмодзи")
+
+        // The sheet saves the chosen glyph verbatim, so an emoji chosen for a
+        // category must come back from a fresh store unchanged.
+        let glyphContainer = ModelContainerFactory.make(inMemory: true)
+        let glyphContext = ModelContext(glyphContainer)
+        let petCategory = CategoryRepository(context: glyphContext).create(
+            name: "Питомцы", kind: .expense, color: .pink, iconName: "🐱", isMandatory: false
+        )
+        let storedPets = (try? glyphContext.fetch(FetchDescriptor<Category>()))?
+            .first { $0.id == petCategory.id }
+        check(storedPets?.iconName == "🐱", "эмодзи категории сохраняется и читается")
 
         let settings = SettingsStore(defaults: UserDefaults(suiteName: "montra.selftest") ?? .standard)
         settings.periodMode = .payday
@@ -129,6 +153,344 @@ enum SelfTest {
         check(income.amountText() == (english ? "+50.00 Br" : "+50,00 Br"), "доход печатается со знаком плюс")
         check(Finance.mandatoryExpenses([income, expense], currency: .byn) == 20, "обязательные расходы посчитаны")
         check(Finance.shareText(0.5) == (english ? "50.0%" : "50,0%"), "доля печатается как процент")
+
+        // 5b. Analytics: period totals, previous comparison, cumulative chart
+        // and the heat grid all come from the same operations.
+        let analyticsNow = date(year: 2026, month: 11, day: 11)
+        let analyticsAccount = Account(
+            name: "Аналитика",
+            currency: .byn,
+            initialAmount: 0,
+            iconName: "creditcard.fill",
+            color: .blue
+        )
+        let analyticsHousing = Category(
+            name: "Жильё",
+            kind: .expense,
+            color: .blue,
+            iconName: "house.fill",
+            isMandatory: true
+        )
+        let analyticsFood = Category(
+            name: "Еда",
+            kind: .expense,
+            color: .green,
+            iconName: "cart.fill",
+            isMandatory: false
+        )
+        let analyticsSalary = Category(
+            name: "Доход",
+            kind: .income,
+            color: .green,
+            iconName: "banknote.fill"
+        )
+        var analyticsOps = [
+            Operation(kind: .expense, amount: 600, currency: .byn,
+                      date: date(year: 2026, month: 10, day: 20),
+                      account: analyticsAccount, category: analyticsHousing),
+            Operation(kind: .expense, amount: 400, currency: .byn,
+                      date: date(year: 2026, month: 11, day: 1),
+                      account: analyticsAccount, category: analyticsFood),
+            Operation(kind: .income, amount: 1_000, currency: .byn,
+                      date: date(year: 2026, month: 11, day: 2),
+                      account: analyticsAccount, category: analyticsSalary),
+            Operation(kind: .expense, amount: 500, currency: .byn,
+                      date: date(year: 2026, month: 9, day: 20),
+                      account: analyticsAccount, category: analyticsHousing),
+            Operation(kind: .expense, amount: 200, currency: .byn,
+                      date: date(year: 2026, month: 10, day: 1),
+                      account: analyticsAccount, category: analyticsFood),
+        ]
+        let analyticsSavings = Account(
+            name: "Копилка", currency: .byn, initialAmount: 0,
+            iconName: "banknote.fill", color: .green, isSavings: true
+        )
+        let savingsTransferID = UUID()
+        let savingsSourceLeg = Operation(
+            kind: .expense, amount: 100, currency: .byn,
+            date: date(year: 2026, month: 11, day: 3),
+            account: analyticsAccount, category: nil
+        )
+        savingsSourceLeg.transferID = savingsTransferID
+        let savingsDestinationLeg = Operation(
+            kind: .income, amount: 100, currency: .byn,
+            date: date(year: 2026, month: 11, day: 3),
+            account: analyticsSavings, category: nil
+        )
+        savingsDestinationLeg.transferID = savingsTransferID
+        let withdrawalID = UUID()
+        let withdrawalSourceLeg = Operation(
+            kind: .expense, amount: 50, currency: .byn,
+            date: date(year: 2026, month: 11, day: 4),
+            account: analyticsSavings, category: nil
+        )
+        withdrawalSourceLeg.transferID = withdrawalID
+        let withdrawalDestinationLeg = Operation(
+            kind: .income, amount: 50, currency: .byn,
+            date: date(year: 2026, month: 11, day: 4),
+            account: analyticsAccount, category: nil
+        )
+        withdrawalDestinationLeg.transferID = withdrawalID
+        analyticsOps.append(contentsOf: [
+            savingsSourceLeg, savingsDestinationLeg,
+            withdrawalSourceLeg, withdrawalDestinationLeg,
+        ])
+
+        let analyticsPeriod = Period(
+            start: date(year: 2026, month: 10, day: 15),
+            end: date(year: 2026, month: 11, day: 14)
+        )
+        let analyticsPrevious = Period(
+            start: date(year: 2026, month: 9, day: 15),
+            end: date(year: 2026, month: 10, day: 14)
+        )
+        let analyticsRange = AnalyticsEngine.periodRange(
+            period: analyticsPeriod,
+            previous: analyticsPrevious,
+            now: analyticsNow
+        )
+        let analytics = AnalyticsEngine.snapshot(
+            range: analyticsRange,
+            operations: analyticsOps,
+            displayCurrency: .byn,
+            rates: .fallback,
+            now: analyticsNow
+        )
+        check(analytics.range.totalDays == 31 && analytics.range.elapsedDays == 28,
+              "аналитика: период 31 день, прошло 28")
+        check(analytics.savingsIn == 100 && analytics.savingsOut == 50,
+              "аналитика: переводы в сбережения и обратно")
+        check(analytics.expenses == 1_000 && analytics.income == 1_000,
+              "аналитика: переводы не считаются расходом или доходом")
+        check(analytics.expenses == 1_000 && analytics.income == 1_000 && analytics.mandatory == 600,
+              "аналитика: расходы, доходы и обязательные")
+        check(analytics.freeExpenses == 400 && analytics.remaining == 0,
+              "аналитика: свободные расходы и остаток")
+        check(analytics.categories.count == 2
+                && analytics.categories.first?.amount == 600
+                && analytics.categories.last?.amount == 400,
+              "аналитика: категории сложены и отсортированы")
+        check(analytics.previousFullTotal == 700 && analytics.comparisonTotal == 700,
+              "аналитика: прошлый период для сравнения")
+        check(analytics.currentCumulative[27] == 1_000
+                && analytics.currentCumulative[28] == nil
+                && analytics.previousCumulative.last == 700,
+              "аналитика: накопительный график и прошлый итог")
+        check(analytics.days.first(where: { $0.id == 6 })?.amount == 600
+                && analytics.days.first(where: { $0.id == 18 })?.amount == 400,
+              "аналитика: расходы по дням")
+        check(analytics.days.first(where: { $0.id == 6 })?.operations.count == 1
+                && analytics.days.first(where: { $0.id == 18 })?.operations.count == 1,
+              "аналитика: операции привязаны к дням")
+        check(analytics.days.filter { $0.amount > 0 }.map(\.level).max() == 4,
+              "аналитика: верхний уровень тепловой карты")
+        check(analytics.days.allSatisfy { day in
+            day.groups.reduce(Decimal(0)) { $0 + $1.amount } == day.amount
+              && day.groups.reduce(0) { $0 + $1.count } == day.operationCount
+        }, "аналитика: группы дня сходятся с итогом и счётчиком")
+
+        // Day groups: the popup shows one row per category, largest first, and
+        // every row is the sum of its operations in the display currency.
+        let groupingAccount = Account(
+            name: "Группы",
+            currency: .byn,
+            initialAmount: 0,
+            iconName: "creditcard.fill",
+            color: .blue
+        )
+        let groupingFood = Category(
+            name: "Продукты",
+            kind: .expense,
+            color: .green,
+            iconName: "cart.fill"
+        )
+        let groupingTaxi = Category(
+            name: "Такси",
+            kind: .expense,
+            color: .amber,
+            iconName: "car.fill"
+        )
+        let groupingOps = [
+            Operation(kind: .expense, amount: 30, currency: .byn,
+                      date: date(year: 2026, month: 11, day: 5),
+                      account: groupingAccount, category: groupingFood),
+            Operation(kind: .expense, amount: 22.49, currency: .byn,
+                      date: date(year: 2026, month: 11, day: 5),
+                      account: groupingAccount, category: groupingFood),
+            Operation(kind: .expense, amount: 15, currency: .byn,
+                      date: date(year: 2026, month: 11, day: 5),
+                      account: groupingAccount, category: groupingTaxi),
+            Operation(kind: .expense, amount: 4, currency: .byn,
+                      date: date(year: 2026, month: 11, day: 5),
+                      account: groupingAccount, category: nil),
+        ]
+        let groupingSnapshot = AnalyticsEngine.snapshot(
+            range: AnalyticsEngine.monthRange(containing: analyticsNow, now: analyticsNow),
+            operations: groupingOps,
+            displayCurrency: .byn,
+            rates: .fallback,
+            now: analyticsNow
+        )
+        let groupingDay = groupingSnapshot.days.first(where: { $0.id == 5 })
+        check(groupingDay?.groups.count == 3,
+              "аналитика: группы дня собираются по категориям")
+        check(groupingDay?.groups.map(\.title) == [
+            "Продукты", "Такси", String(localized: "common.uncategorized"),
+        ], "аналитика: группы дня по убыванию суммы")
+        check(groupingDay?.groups.first?.amount == 52.49
+                && groupingDay?.groups.first?.count == 2
+                && groupingDay?.groups.first?.sample.displayIcon == "cart.fill",
+              "аналитика: сумма, счётчик и образец группы")
+        check(groupingDay?.groups.reduce(Decimal(0)) { $0 + $1.amount } == groupingDay?.amount,
+              "аналитика: группы дня равны итогу дня в копейку")
+
+        // 5c. Day popup geometry. The card is 340 wide, so it must still clamp
+        // inside the page on the edge columns, never cover its own cell, keep the
+        // 8 pt gap and put the caret on the cell centre.
+        let popupPage = CGSize(width: 980, height: 700)
+        // The real heat grid: columns at 95.5 pt pitch from x = 279, rows from 369.
+        let popupColumns: [CGFloat] = [24, 279, 374.5, 470, 565.5, 661.5, 757, 852.5, 890.5]
+        let popupRows: [CGFloat] = [20, 60, 110, 160, 210, 260, 310, 360, 410, 460, 510, 560, 620]
+        var placementIssues: [String] = []
+        for column in popupColumns {
+            for row in popupRows {
+                let cell = CGRect(x: column, y: row, width: 89.5, height: 44)
+                for height in [77.5, 141.5, 237.5, 309.5] {
+                    let layout = AnalyticsPopupLayout.make(
+                        cell: cell,
+                        popupHeight: height,
+                        pageSize: popupPage
+                    )
+                    let popup = CGRect(
+                        x: layout.x,
+                        y: layout.y,
+                        width: AnalyticsPopupLayout.width,
+                        height: height
+                    )
+                    if popup.minX < AnalyticsPopupLayout.pageInset - 0.01
+                        || popup.maxX > popupPage.width - AnalyticsPopupLayout.pageInset + 0.01
+                        || popup.minY < AnalyticsPopupLayout.pageInset - 0.01
+                        || popup.maxY > popupPage.height - AnalyticsPopupLayout.pageInset + 0.01 {
+                        placementIssues.append("page \(column),\(row) h\(height)")
+                    }
+                    if popup.intersects(cell) {
+                        placementIssues.append("covers \(column),\(row) h\(height)")
+                    }
+                    if !layout.isClamped {
+                        let gap = layout.side == .above
+                            ? cell.minY - popup.maxY
+                            : popup.minY - cell.maxY
+                        if gap < AnalyticsPopupLayout.gap - 0.01 {
+                            placementIssues.append("gap \(column),\(row) h\(height)")
+                        }
+                    }
+                    if abs(layout.x + layout.caretX - cell.midX) > 0.5 {
+                        placementIssues.append("caret \(column),\(row) h\(height)")
+                    }
+                }
+            }
+        }
+        check(placementIssues.isEmpty,
+              "аналитика: попап 340 влезает в страницу, не накрывает ячейку и смотрит в её центр \(placementIssues)")
+
+        // The longest category in the store must fit the title's budget, and the
+        // widest row (a ×N chip plus the biggest amount of the month) must fit the
+        // fixed trailing block, so a chip can never squeeze the title again.
+        AppFonts.register()
+        let onestFont = NSFont(name: "Onest", size: AppStyle.Typography.callout.size)
+        let longestTitle = "Покупки: одежда, техника"
+        let longestTitleWidth = onestFont.map { font in
+            (longestTitle as NSString).size(withAttributes: [
+                .font: font,
+                .kern: AppStyle.Typography.callout.tracking,
+            ]).width
+        } ?? .infinity
+        check(longestTitleWidth <= AnalyticsPopupLayout.titleWidth,
+              "аналитика: самый длинный заголовок попапа не обрезается "
+              + "(\(longestTitleWidth) ≤ \(AnalyticsPopupLayout.titleWidth))")
+
+        let widestAmount = MoneyFormat.string(-181.41, currency: .byn, sign: .always)
+        let widestAmountWidth = onestFont.map { font in
+            (widestAmount as NSString).size(withAttributes: [
+                .font: font,
+                .kern: AppStyle.Typography.metadataEmphasis.tracking,
+            ]).width
+        } ?? .infinity
+        let chipWidth = onestFont.map { font in
+            ("×2" as NSString).size(withAttributes: [
+                .font: font,
+                .kern: AppStyle.Typography.metadata.tracking,
+            ]).width
+        } ?? .infinity
+        check(chipWidth + 6 + widestAmountWidth <= AnalyticsPopupLayout.trailingWidth,
+              "аналитика: чип и самая широкая сумма влезают в правый блок "
+              + "(\(chipWidth + 6 + widestAmountWidth) ≤ \(AnalyticsPopupLayout.trailingWidth))")
+        check(analytics.filterCounts.all == 2
+                && analytics.filterCounts.mandatory == 1
+                && analytics.filterCounts.free == 1,
+              "аналитика: счётчики фильтра")
+        check(analytics.average > 35.7 && analytics.average < 35.8,
+              "аналитика: средний расход в день")
+        check(analytics.chartMax == 1_200, "аналитика: верхняя граница графика")
+        // The median is taken over the days that had spending, so a month with
+        // mostly empty days still answers "what does a typical day cost".
+        check(analytics.spendingDayCount == 2 && analytics.medianSpendingDay == 500,
+              "аналитика: медиана по двум дням с тратами (чётное число)")
+        check(groupingSnapshot.spendingDayCount == 1
+                && groupingSnapshot.medianSpendingDay == 71.49,
+              "аналитика: медиана одного дня с тратами (нулевые дни не в счёт)")
+        let hiddenAnalytics = AnalyticsEngine.snapshot(
+            range: analyticsRange,
+            operations: analyticsOps,
+            displayCurrency: .byn,
+            rates: .fallback,
+            hiddenCategoryIDs: [analyticsHousing.id],
+            now: analyticsNow
+        )
+        check(hiddenAnalytics.expenses == 400,
+              "аналитика: скрытая категория исключена из всех итогов")
+        // `now` must be pinned as well: the default is the wall clock, so this
+        // check started failing on the day after the fixture's date.
+        let analyticsMonth = AnalyticsEngine.monthRange(containing: analyticsNow, now: analyticsNow)
+        check(analyticsMonth.totalDays == 30
+                && analyticsMonth.elapsedDays == 11
+                && analyticsMonth.previousTotalDays == 31,
+              "аналитика: календарный месяц и его прошлый месяц")
+        let analyticsYear = AnalyticsEngine.yearRange(
+            containing: analyticsNow,
+            now: analyticsNow
+        )
+        let analyticsYearSnapshot = AnalyticsEngine.snapshot(
+            range: analyticsYear,
+            operations: analyticsOps,
+            displayCurrency: .byn,
+            rates: .fallback,
+            now: analyticsNow
+        )
+        check(analyticsYear.totalDays == 365 && analyticsYear.elapsedDays == 315,
+              "аналитика: годовой период и прошедшие дни")
+        check(analyticsYearSnapshot.expenses == 1_700
+                && analyticsYearSnapshot.income == 1_000,
+              "аналитика: годовые расходы и доходы")
+        check(analyticsYearSnapshot.spendingDayCount == 4
+                && analyticsYearSnapshot.medianSpendingDay == 450,
+              "аналитика: медиана по четырём дням с тратами")
+
+        // The pace card's mean/median switch is remembered between launches.
+        let metricSuite = "montra.selftest.spendMetric"
+        if let metricDefaults = UserDefaults(suiteName: metricSuite) {
+            metricDefaults.removePersistentDomain(forName: metricSuite)
+            let firstLaunch = SettingsStore(defaults: metricDefaults)
+            check(firstLaunch.spendMetric == .average,
+                  "аналитика: темп трат по среднему по умолчанию")
+            firstLaunch.spendMetric = .median
+            let nextLaunch = SettingsStore(defaults: metricDefaults)
+            check(nextLaunch.spendMetric == .median,
+                  "аналитика: выбранный способ расчёта темпа сохраняется")
+            metricDefaults.removePersistentDomain(forName: metricSuite)
+        } else {
+            check(false, "доступны тестовые настройки способа расчёта")
+        }
 
         // 6. Deleting a custom category moves its operations to "Other".
         let fallback = Category(name: "Прочее", kind: .expense, color: .graphite, iconName: "ellipsis.circle.fill", isSystem: true)
@@ -505,6 +867,7 @@ enum SelfTest {
         backupSettings.didSeedDemo = true
         backupSettings.hasCompletedOnboarding = true
         backupSettings.hasStartedOnboarding = true
+        backupSettings.spendMetric = .median
 
         let backupContainer = ModelContainerFactory.make(inMemory: true)
         let backupContext = ModelContext(backupContainer)
@@ -660,11 +1023,14 @@ enum SelfTest {
             // as corrupted.
             var oldPayload = decoded.payload
             oldPayload.settings.hasStartedOnboarding = nil
+            oldPayload.settings.spendMetric = nil
             var oldArchive = try BackupCoding.seal(oldPayload)
             oldArchive.formatVersion = 2
             let oldDecoded = try BackupCoding.decode(BackupCoding.encode(oldArchive))
             check(oldDecoded.payload.settings.hasStartedOnboarding == nil,
                   "старая копия без флага знакомства читается")
+            check(oldDecoded.payload.settings.spendMetric == nil,
+                  "старая копия без выбора темпа читается")
 
             let url = FileManager.default.temporaryDirectory
                 .appendingPathComponent("montra-selftest-\(UUID().uuidString).montra")
@@ -762,6 +1128,21 @@ enum SelfTest {
             )
             check(restoredSettings.hasCompletedOnboarding, "знакомство отмечено пройденным")
             check(restoredSettings.hasStartedOnboarding, "запущенное знакомство восстановлено")
+            check(restoredSettings.spendMetric == .median,
+                  "выбор среднего или медианы восстанавливается из копии")
+
+            // An archive written before the setting existed carries no value.
+            // Restoring it must leave the current choice alone rather than
+            // silently falling back to the default.
+            var legacyPayload = archive.payload
+            legacyPayload.settings.spendMetric = nil
+            var legacyArchive = try BackupCoding.seal(legacyPayload)
+            legacyArchive.formatVersion = 2
+            _ = try BackupService.restore(
+                legacyArchive, context: restoreContext, settings: restoredSettings
+            )
+            check(restoredSettings.spendMetric == .median,
+                  "старая копия без поля не сбрасывает выбранный темп")
             check(report.rates?.rate(for: .usd) == decimal("3.1234"), "курсы из копии доступны для установки")
             check(
                 report.integration?.enabled == true && report.integration?.allowDelete == false,

@@ -239,40 +239,6 @@
         }
       }
     },
-    "account.all_emojis": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "All emoji"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Все emoji"
-          }
-        }
-      }
-    },
-    "account.all_icons": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "All icons"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Все иконки"
-          }
-        }
-      }
-    },
     "account.all_past_scheduled_payments_are": {
       "extractionState": "manual",
       "localizations": {
@@ -647,36 +613,1058 @@
         }
       }
     },
-    "analytics.charts_are_coming": {
+    "analytics.above_average": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Charts are coming"
+            "value": "above average"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Здесь появятся графики"
+            "value": "выше среднего"
           }
         }
       }
     },
-    "analytics.this_space_is_reserved_for": {
+    "analytics.average": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "This space is reserved for spending by category, trends over time, and month-to-month comparisons."
+            "value": "Average"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Расходы по категориям, динамика по периодам и сравнение месяцев. Сейчас раздел только готовит место."
+            "value": "Среднее"
+          }
+        }
+      }
+    },
+    "analytics.by_months": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "By month"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "По месяцам года"
+          }
+        }
+      }
+    },
+    "analytics.chart_accessibility %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cumulative spending: %@."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Накопительные расходы: %@."
+          }
+        }
+      }
+    },
+    "analytics.chart_previous_accessibility %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Previous period: %@."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Прошлый период: %@."
+          }
+        }
+      }
+    },
+    "analytics.click_day": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Click a day"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Нажмите на день"
+          }
+        }
+      }
+    },
+    "analytics.day_genitive_many": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "days"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "дней"
+          }
+        }
+      }
+    },
+    "analytics.day_genitive_one": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "day"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "дня"
+          }
+        }
+      }
+    },
+    "analytics.discretionary": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Discretionary"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Свободные"
+          }
+        }
+      }
+    },
+    "analytics.empty_message": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add a transaction and categories, pace, and comparison will appear here."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Добавьте операцию — и здесь появятся категории, темп и сравнение."
+          }
+        }
+      }
+    },
+    "analytics.empty_month": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No spending this month yet"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "За этот месяц пока нет расходов"
+          }
+        }
+      }
+    },
+    "analytics.empty_period": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No spending this period yet"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "За этот период пока нет расходов"
+          }
+        }
+      }
+    },
+    "analytics.empty_year": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No spending this year"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "За год нет расходов"
+          }
+        }
+      }
+    },
+    "analytics.essential": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Essential"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Обязательные"
+          }
+        }
+      }
+    },
+    "analytics.faster": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Faster than previous"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Быстрее прошлого"
+          }
+        }
+      }
+    },
+    "analytics.heat_accessibility": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spending calendar. Use the arrow keys to choose a day."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Календарь расходов. Стрелки — выбрать день."
+          }
+        }
+      }
+    },
+    "analytics.heat_month": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "By day of month"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "По дням месяца"
+          }
+        }
+      }
+    },
+    "analytics.heat_period": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "By day of period"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "По дням периода"
+          }
+        }
+      }
+    },
+    "analytics.hidden_categories_empty": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "All categories are hidden"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Все категории скрыты"
+          }
+        }
+      }
+    },
+    "analytics.hidden_categories_empty_message": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Restore categories to see analytics again."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Верните категории, чтобы снова увидеть аналитику."
+          }
+        }
+      }
+    },
+    "analytics.hide_categories": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hide categories"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Скрыть категории"
+          }
+        }
+      }
+    },
+    "analytics.income_count %lld": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld income"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld incomes"
+                }
+              }
+            }
+          }
+        },
+        "ru": {
+          "variations": {
+            "plural": {
+              "few": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld поступления"
+                }
+              },
+              "many": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld поступлений"
+                }
+              },
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld поступление"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld поступления"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "analytics.less": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "less"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "меньше"
+          }
+        }
+      }
+    },
+    "analytics.more": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "more"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "больше"
+          }
+        }
+      }
+    },
+    "analytics.more_operations %lld": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld more"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ещё %lld"
+          }
+        }
+      }
+    },
+    "analytics.next": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Next"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Следующий"
+          }
+        }
+      }
+    },
+    "analytics.no_account": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No account"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Без счёта"
+          }
+        }
+      }
+    },
+    "analytics.no_data": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No data"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Нет данных"
+          }
+        }
+      }
+    },
+    "analytics.no_day_expenses": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "no spending"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "нет расходов"
+          }
+        }
+      }
+    },
+    "analytics.no_filter_expenses": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No spending in this group."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Нет расходов в этой группе."
+          }
+        }
+      }
+    },
+    "analytics.no_income": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "no income"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "доходов нет"
+          }
+        }
+      }
+    },
+    "analytics.no_previous_period": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "no previous period"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "нет прошлого периода"
+          }
+        }
+      }
+    },
+    "analytics.of": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "of"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "из"
+          }
+        }
+      }
+    },
+    "analytics.of_income %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ of income"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ от доходов"
+          }
+        }
+      }
+    },
+    "analytics.other": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Other"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Прочее"
+          }
+        }
+      }
+    },
+    "analytics.other_hint": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Show the categories below 1%"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Показать категории меньше 1%"
+          }
+        }
+      }
+    },
+    "analytics.pace": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spending pace"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Темп трат"
+          }
+        }
+      }
+    },
+    "analytics.per_day": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "per day"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "в день"
+          }
+        }
+      }
+    },
+    "analytics.previous": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Previous"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Предыдущий"
+          }
+        }
+      }
+    },
+    "analytics.previous_value %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "previous: %@"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "прошлый: %@"
+          }
+        }
+      }
+    },
+    "analytics.remaining": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Left"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Остаток"
+          }
+        }
+      }
+    },
+    "analytics.savings_in": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "To savings"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "В сбережения"
+          }
+        }
+      }
+    },
+    "analytics.savings_in_detail": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Transfer to a savings account"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Перевод на накопительный счёт"
+          }
+        }
+      }
+    },
+    "analytics.savings_out": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "From savings"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Из сбережений"
+          }
+        }
+      }
+    },
+    "analytics.savings_out_detail": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Withdrawal from a savings account"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Снятие с накопительного счёта"
+          }
+        }
+      }
+    },
+    "analytics.show_all_categories": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Show all"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Показать все"
+          }
+        }
+      }
+    },
+    "analytics.slower": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Slower than previous"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Медленнее прошлого"
+          }
+        }
+      }
+    },
+    "analytics.today_short": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "today"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "сегодня"
+          }
+        }
+      }
+    },
+    "analytics.uncategorized": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uncategorized"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Без категории"
+          }
+        }
+      }
+    },
+    "analytics.verdict_current_less %@ %@ %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The previous period ended at %1$@ — you’re %2$@ lower, with %3$@ to go."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Прошлый период закончился на %1$@ — сейчас на %2$@ меньше, и впереди ещё %3$@."
+          }
+        }
+      }
+    },
+    "analytics.verdict_current_more %@ %@ %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The previous period ended at %1$@ — you’re already %2$@ higher, with %3$@ to go."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Прошлый период закончился на %1$@ — сейчас уже на %2$@ больше, и впереди ещё %3$@."
+          }
+        }
+      }
+    },
+    "analytics.verdict_month_current_less %@ %@ %@ %@ %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "In the first %1$@ of last month, %2$@ — now %3$@, %4$@ lower, with %5$@ to go."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "За первые %1$@ прошлого месяца было %2$@ — сейчас %3$@, на %4$@ меньше, и впереди ещё %5$@."
+          }
+        }
+      }
+    },
+    "analytics.verdict_month_current_more %@ %@ %@ %@ %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "In the first %1$@ of last month, %2$@ — now %3$@, %4$@ higher, with %5$@ to go."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "За первые %1$@ прошлого месяца было %2$@ — сейчас %3$@, на %4$@ больше, и впереди ещё %5$@."
+          }
+        }
+      }
+    },
+    "analytics.verdict_month_past_less %@ %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Last month ended at %1$@ — this one is %2$@ lower."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Прошлый месяц закончился на %1$@ — этот на %2$@ меньше."
+          }
+        }
+      }
+    },
+    "analytics.verdict_month_past_more %@ %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Last month ended at %1$@ — this one is %2$@ higher."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Прошлый месяц закончился на %1$@ — этот на %2$@ больше."
+          }
+        }
+      }
+    },
+    "analytics.verdict_no_comparison %@ %@ %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spent %2$@ in %1$@ — that’s %3$@ per day."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "За %1$@ потрачено %2$@ — это %3$@ в день."
+          }
+        }
+      }
+    },
+    "analytics.verdict_past_less %@ %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The previous period ended at %1$@ — this one is %2$@ lower."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Прошлый период закончился на %1$@ — этот на %2$@ меньше."
+          }
+        }
+      }
+    },
+    "analytics.verdict_past_more %@ %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The previous period ended at %1$@ — this one is %2$@ higher."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Прошлый период закончился на %1$@ — этот на %2$@ больше."
+          }
+        }
+      }
+    },
+    "analytics.vs_previous %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ vs previous"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ к прошлому"
+          }
+        }
+      }
+    },
+    "analytics.where_money_went": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Where the money went"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Куда ушли деньги"
           }
         }
       }
@@ -796,6 +1784,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "Возможно, он был удалён."
+          }
+        }
+      }
+    },
+    "appearance.all_emojis": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "All emoji"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Все emoji"
+          }
+        }
+      }
+    },
+    "appearance.all_icons": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "All icons"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Все иконки"
           }
         }
       }
@@ -1671,6 +2693,23 @@
         }
       }
     },
+    "category.icon.bank": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bank"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Банк"
+          }
+        }
+      }
+    },
     "category.icon.bicycle": {
       "extractionState": "manual",
       "localizations": {
@@ -1739,6 +2778,40 @@
         }
       }
     },
+    "category.icon.car": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Car"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Машина"
+          }
+        }
+      }
+    },
+    "category.icon.card": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Card"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Карта"
+          }
+        }
+      }
+    },
     "category.icon.cat": {
       "extractionState": "manual",
       "localizations": {
@@ -1790,6 +2863,23 @@
         }
       }
     },
+    "category.icon.crypto": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Crypto"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Криптовалюта"
+          }
+        }
+      }
+    },
     "category.icon.dog": {
       "extractionState": "manual",
       "localizations": {
@@ -1803,6 +2893,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "Собака"
+          }
+        }
+      }
+    },
+    "category.icon.dollar": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dollar"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Доллар"
+          }
+        }
+      }
+    },
+    "category.icon.education": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Education"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Образование"
           }
         }
       }
@@ -1824,6 +2948,40 @@
         }
       }
     },
+    "category.icon.euro": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Euro"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Евро"
+          }
+        }
+      }
+    },
+    "category.icon.favorites": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Favorites"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Избранное"
+          }
+        }
+      }
+    },
     "category.icon.fitness": {
       "extractionState": "manual",
       "localizations": {
@@ -1837,6 +2995,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Фитнес"
+          }
+        }
+      }
+    },
+    "category.icon.fuel": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fuel"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Топливо"
           }
         }
       }
@@ -1888,6 +3063,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Парикмахерская"
+          }
+        }
+      }
+    },
+    "category.icon.insurance": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Insurance"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Страховка"
           }
         }
       }
@@ -1977,6 +3169,23 @@
         }
       }
     },
+    "category.icon.savings": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Savings"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сбережения"
+          }
+        }
+      }
+    },
     "category.icon.smoking": {
       "extractionState": "manual",
       "localizations": {
@@ -2062,6 +3271,40 @@
         }
       }
     },
+    "category.icon.travel": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Travel"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Путешествия"
+          }
+        }
+      }
+    },
+    "category.icon.wallet": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wallet"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Кошелёк"
+          }
+        }
+      }
+    },
     "category.icon.water": {
       "extractionState": "manual",
       "localizations": {
@@ -2075,6 +3318,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "Вода"
+          }
+        }
+      }
+    },
+    "category.icon.work": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Work"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Работа"
+          }
+        }
+      }
+    },
+    "category.icon.world": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "World"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Мир"
           }
         }
       }
@@ -2955,6 +4232,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Отмена"
+          }
+        }
+      }
+    },
+    "common.categories": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Categories"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Категории"
           }
         }
       }
@@ -4332,6 +5626,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Деньги"
+          }
+        }
+      }
+    },
+    "common.month": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Month"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Месяц"
           }
         }
       }
@@ -5930,6 +7241,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Что уже готово"
+          }
+        }
+      }
+    },
+    "common.year": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Year"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Год"
           }
         }
       }
@@ -10634,6 +11962,74 @@
           "stringUnit": {
             "state": "translated",
             "value": "Перевод не найден."
+          }
+        }
+      }
+    },
+    "analytics.metric_median": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Median"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Медиана"
+          }
+        }
+      }
+    },
+    "analytics.per_spending_day": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "per spending day"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "в день с тратами"
+          }
+        }
+      }
+    },
+    "analytics.with_spending": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "with spending"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "с тратами"
+          }
+        }
+      }
+    },
+    "analytics.verdict_no_comparison_median %@ %@ %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spent %2$@ in %1$@ — the median spending day is %3$@."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "За %1$@ потрачено %2$@ — медиана дня с тратами %3$@."
           }
         }
       }

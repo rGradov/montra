@@ -274,6 +274,11 @@ enum BackupService {
         // the flag existed must not make an interrupted run look like a legacy
         // install on the next launch.
         settings.hasStartedOnboarding = backup.hasStartedOnboarding ?? true
+        // Absent in older archives: keep whatever this Mac is set to instead of
+        // silently resetting a display preference the copy could not know about.
+        if let raw = backup.spendMetric, let metric = SettingsStore.SpendMetric(rawValue: raw) {
+            settings.spendMetric = metric
+        }
         settings.hasCompletedOnboarding = backup.hasCompletedOnboarding || hasAccounts
     }
 
@@ -475,7 +480,8 @@ private extension SettingsBackup {
             periodAnchor: settings.periodAnchor,
             didSeedDemo: settings.didSeedDemo,
             hasCompletedOnboarding: settings.hasCompletedOnboarding,
-            hasStartedOnboarding: settings.hasStartedOnboarding
+            hasStartedOnboarding: settings.hasStartedOnboarding,
+            spendMetric: settings.spendMetric.rawValue
         )
     }
 }

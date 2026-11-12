@@ -122,6 +122,18 @@ enum SnapshotRunner {
             )
         }
 
+        // A transfer into the savings account, so Analytics can show it as
+        // savings rather than spending.
+        if let cash = snapshotAccounts.first(where: { $0.currency == .byn && !$0.isSavings }),
+           let savings = snapshotAccounts.first(where: { $0.isSavings }) {
+            _ = TransferRepository(context: context).create(
+                from: cash,
+                to: savings,
+                sent: 100,
+                received: Decimal(100) / Decimal(227_358)
+            )
+        }
+
         render(
             AppRootView(initialRoute: .overview).environmentObject(settings).environmentObject(previewRates).modelContainer(container),
             size: CGSize(width: AppWindowLayout.width, height: AppWindowLayout.defaultHeight),
@@ -285,6 +297,15 @@ enum SnapshotRunner {
         )
 
         render(
+            AppRootView(initialRoute: .analytics).environmentObject(settings).environmentObject(previewRates).modelContainer(container),
+            size: CGSize(width: AppWindowLayout.width, height: 1600),
+            colorScheme: .dark,
+            name: "06b-analytics-tall",
+            chrome: true,
+            in: directory
+        )
+
+        render(
             AppRootView(initialRoute: .about).environmentObject(settings).environmentObject(previewRates).modelContainer(container),
             size: CGSize(width: AppWindowLayout.width, height: AppWindowLayout.defaultHeight),
             colorScheme: .dark,
@@ -299,6 +320,15 @@ enum SnapshotRunner {
             size: CGSize(width: AppWindowLayout.width, height: AppWindowLayout.defaultHeight),
             colorScheme: .light,
             name: "08-overview-light",
+            chrome: true,
+            in: directory
+        )
+
+        render(
+            AppRootView(initialRoute: .analytics).environmentObject(settings).environmentObject(previewRates).modelContainer(container),
+            size: CGSize(width: AppWindowLayout.width, height: 1600),
+            colorScheme: .light,
+            name: "08b-analytics-light",
             chrome: true,
             in: directory
         )
@@ -437,7 +467,13 @@ enum SnapshotRunner {
         // The full lists the sheet shows in a popover: the same grid view, so a
         // missing symbol or an empty emoji tile is visible in a snapshot.
         render(
-            AccountGlyphPickerPanel(mode: .icon, selection: "creditcard.fill", onSelect: { _ in }, onClose: {}),
+            GlyphPickerPanel(
+                mode: .icon,
+                catalog: AccountIconCatalog.catalog,
+                selection: "creditcard.fill",
+                onSelect: { _ in },
+                onClose: {}
+            ),
             size: CGSize(width: 310, height: 300),
             colorScheme: .dark,
             name: "09e-account-icon-grid",
@@ -445,7 +481,13 @@ enum SnapshotRunner {
         )
 
         render(
-            AccountGlyphPickerPanel(mode: .emoji, selection: "💰", onSelect: { _ in }, onClose: {}),
+            GlyphPickerPanel(
+                mode: .emoji,
+                catalog: AccountIconCatalog.catalog,
+                selection: "💰",
+                onSelect: { _ in },
+                onClose: {}
+            ),
             size: CGSize(width: 310, height: 300),
             colorScheme: .dark,
             name: "09f-account-emoji-grid",
@@ -503,17 +545,89 @@ enum SnapshotRunner {
             )
         }
 
+        // A category may store an emoji, so a picker row has to draw it as text
+        // instead of looking it up as an SF Symbol.
+        let emojiPickerCategory = Category(
+            name: "Питомцы", kind: .expense, color: .pink, iconName: "🐱"
+        )
+        render(
+            CategoryPickerPopover(
+                categories: pickerCategories + [emojiPickerCategory],
+                selection: .constant(emojiPickerCategory.id)
+            )
+            .environmentObject(settings)
+            .modelContainer(container),
+            size: CGSize(width: 300, height: 390),
+            colorScheme: .dark,
+            name: "22b-category-picker-emoji",
+            in: directory
+        )
+
         if let coffee = pickerCategories.first(where: { $0.name == coffeeName }) {
             render(
                 CategorySheet(mode: .edit(coffee))
                     .environmentObject(settings)
                     .modelContainer(container),
-                size: CGSize(width: 470, height: 640),
+                size: CGSize(width: 470, height: 660),
                 colorScheme: .dark,
                 name: "23-category-sub",
                 in: directory
             )
         }
+
+        // The unified appearance section: the same picker as the account sheet,
+        // now with the category catalog and the five one-tap glyphs per kind.
+        render(
+            CategorySheet(mode: .create(.expense))
+                .environmentObject(settings)
+                .modelContainer(container),
+            size: CGSize(width: 470, height: 660),
+            colorScheme: .dark,
+            name: "23b-category-create",
+            in: directory
+        )
+
+        render(
+            GlyphPickerPanel(
+                mode: .icon,
+                catalog: CategoryIcons.catalog(for: .expense),
+                selection: "cat.fill",
+                onSelect: { _ in },
+                onClose: {}
+            ),
+            size: CGSize(width: 310, height: 470),
+            colorScheme: .dark,
+            name: "23c-category-icon-grid",
+            in: directory
+        )
+
+        render(
+            GlyphPickerPanel(
+                mode: .emoji,
+                catalog: CategoryIcons.catalog(for: .expense),
+                selection: "🐱",
+                onSelect: { _ in },
+                onClose: {}
+            ),
+            size: CGSize(width: 310, height: 470),
+            colorScheme: .dark,
+            name: "23d-category-emoji-grid",
+            in: directory
+        )
+
+        // A category can store an emoji in the same field as a symbol, so the
+        // sheet opens in Emoji mode with the matching favourite selected.
+        render(
+            CategorySheet(mode: .edit(
+                Category(name: "Питомцы", kind: .expense, color: .pink, iconName: "🐱")
+            ))
+            .environmentObject(settings)
+            .modelContainer(container),
+            size: CGSize(width: 470, height: 660),
+            colorScheme: .dark,
+            name: "23e-category-emoji",
+            in: directory
+        )
 
         if let source = snapshotAccounts.first(where: { $0.currency == .byn }) {
             render(

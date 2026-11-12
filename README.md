@@ -27,6 +27,10 @@ uses Onest typography, SF Rounded numerals, warm graphite tones, and raised card
 |---|---|
 | ![Categories](Docs/screenshots/categories.png) | ![Category picker](Docs/screenshots/category-picker.png) |
 
+| Analytics | Analytics (light) |
+|---|---|
+| ![Analytics](Docs/screenshots/analytics.png) | ![Analytics light](Docs/screenshots/analytics-light.png) |
+
 ## Onboarding
 
 | Welcome | First account |
@@ -87,7 +91,10 @@ checks, and edge cases.
   and date. Header counts and totals update with the results. The empty state
   offers Clear Search. Use ⌘F to focus search and Escape to clear it.
 - **Categories.** Start with 14 categories, including mandatory and optional
-  spending, or create your own with an icon and color. Categories support one
+  spending, or create your own with an icon or emoji and color. The category
+  sheet uses the same Appearance control as the account sheet: an Icon/Emoji
+  switch, five one-tap glyphs for the kind, the full catalog in a popover, and
+  the color dots below. Categories support one
   level of subcategories. Choose the parent at creation and its mandatory status
   is inherited. The transaction form shows the five most-used categories and a
   searchable hierarchy under More. In the list and the picker the icons show in
@@ -106,6 +113,17 @@ checks, and edge cases.
   bar, mandatory expenses, remaining spendable balance for the period, and recent
   transactions. Hidden accounts stay out of the total and bar and are accessible
   through a row below the account list.
+- **Analytics.** See expenses, income, and what is left for the financial period
+  or a calendar month. Switch between category and account breakdowns, filter
+  essential or discretionary spending, expand a row for its latest operations,
+  compare the cumulative pace with the previous period, and scan the spending
+  calendar with a day readout and above-average days in the app accent. Click a day for a
+  popup with one row per category that sums the day; it opens on the side of the
+  cell that has room and stays clear of it. Switch
+  to Year for income, spending, a pace chart with month labels, and a 12-month
+  summary. Category rows are informational; categories below 1% of spending are
+  grouped into an expandable "Other". The full list lives in Operations.
+  Transfers into a savings account are shown separately, not as spending.
 - **Exchange rates.** USD and EUR use National Bank of Belarus rates, and crypto
   uses a public feed. Rates are cached for six hours, can be refreshed manually,
   and show their source. Hover over an account to see its original and converted

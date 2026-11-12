@@ -28,6 +28,13 @@ enum AppColors {
     static let borderSubtle = Color(light: 0xE6E3DF, dark: 0x302F2D)
     static let borderStrong = Color(light: 0xD5D2CD, dark: 0x3D3B38)
 
+    // Selection
+    /// The ring around the selected heat cell. Near-white on dark and near-black
+    /// on light, so it clears 3:1 against every blue above-average fill and stays
+    /// legible on the dark heat steps and on empty cells. Today keeps
+    /// `textPrimary`, so the selected and today rings never read as one state.
+    static let selectionRing = Color(light: 0x0F0E0D, dark: 0xFFFFFF)
+
     // Actions
     static let actionPrimary = Color(nsColor: actionPrimaryNSColor)
     static let actionPrimaryHover = Color(light: 0x42403D, dark: 0xF6F4F1)
@@ -143,6 +150,13 @@ enum AppStyle {
         static let listRowMinHeight: CGFloat = 52
         static let listIconFrameSize: CGFloat = 28
         static let cardHorizontalPadding: CGFloat = 14
+    }
+
+    /// Layers that float above the page rather than sitting in it.
+    enum Elevation {
+        static let floatingColor = Color.black.opacity(0.28)
+        static let floatingRadius: CGFloat = 18
+        static let floatingY: CGFloat = 8
     }
 
     /// One step of the type scale: family, size, weight and (for Onest) tracking.

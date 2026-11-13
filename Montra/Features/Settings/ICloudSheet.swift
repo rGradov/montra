@@ -18,34 +18,30 @@ struct ICloudSheet: View {
                 onClose: { dismiss() }
             )
 
-            ScrollView {
-                VStack(alignment: .leading, spacing: AppStyle.Spacing.medium) {
-                    InsetCard {
-                        statusRow(appearance)
+            VStack(alignment: .leading, spacing: AppStyle.Spacing.medium) {
+                InsetCard {
+                    statusRow(appearance)
+
+                    if case .failed(let message) = sync.state {
                         InsetCardDivider()
-                        valueRow(title: String(localized: "sync.state_label"), value: appearance.badge)
-
-                        if case .failed(let message) = sync.state {
-                            InsetCardDivider()
-                            valueRow(title: String(localized: "common.error"), value: message, wraps: true)
-                        }
+                        valueRow(title: String(localized: "common.error"), value: message, wraps: true)
                     }
-
-                    Text(String(localized: "sync.why_icloud"))
-                        .font(AppStyle.Typography.callout)
-                        .foregroundStyle(AppColors.textSecondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .padding(.horizontal, AppStyle.Spacing.xxSmall)
-
-                    Text(String(localized: "sync.transfers_are_automatic"))
-                        .font(AppStyle.Typography.metadata)
-                        .foregroundStyle(AppColors.textTertiary)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .padding(.horizontal, AppStyle.Spacing.xxSmall)
                 }
-                .padding(.horizontal, AppStyle.Spacing.large)
-                .padding(.bottom, AppStyle.Spacing.medium)
+
+                Text(String(localized: "sync.why_icloud"))
+                    .font(AppStyle.Typography.callout)
+                    .foregroundStyle(AppColors.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.horizontal, AppStyle.Spacing.xxSmall)
+
+                Text(String(localized: "sync.transfers_are_automatic"))
+                    .font(AppStyle.Typography.metadata)
+                    .foregroundStyle(AppColors.textTertiary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.horizontal, AppStyle.Spacing.xxSmall)
             }
+            .padding(.horizontal, AppStyle.Spacing.large)
+            .padding(.bottom, AppStyle.Spacing.medium)
 
             SheetFooter {
                 Spacer(minLength: AppStyle.Spacing.small)
@@ -68,7 +64,7 @@ struct ICloudSheet: View {
                     .keyboardShortcut(.defaultAction)
             }
         }
-        .frame(width: 470, height: 470)
+        .frame(width: 470)
         .background(AppColors.surfaceBase)
         .onAppear { sync.refresh() }
     }
@@ -81,14 +77,8 @@ struct ICloudSheet: View {
                     ? AppColors.statusCheckText
                     : AppColors.Chart.neutralTile
             )
-            VStack(alignment: .leading, spacing: AppStyle.Spacing.xxxSmall) {
-                Text(String(localized: "common.icloud"))
-                    .font(AppStyle.Typography.headline)
-                Text(appearance.sentence)
-                    .font(AppStyle.Typography.callout)
-                    .foregroundStyle(AppColors.textSecondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
+            Text(String(localized: "common.icloud"))
+                .font(AppStyle.Typography.headline)
             Spacer(minLength: AppStyle.Spacing.small)
             AppBadge(text: appearance.badge, tone: appearance.tone)
         }

@@ -11354,23 +11354,6 @@
         }
       }
     },
-    "sync.state_label": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "State"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Состояние"
-          }
-        }
-      }
-    },
     "sync.transfers_are_automatic": {
       "extractionState": "manual",
       "localizations": {

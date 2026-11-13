@@ -161,6 +161,7 @@ Use a 980×700 window with a 240 pt sidebar and `hiddenTitleBar`.
 | FRM-09 | Recurring payment | Only when creating expense or income. Toggle, day/week/month/year (month by default), weekly Mon–Sun with any/all/none, end date default +1 year and max +5 years, localized count and period summary, Create Plan leaves transactions unchanged | ui/unit |
 | FRM-10 | Record plan | Prefill amount, account, category, place, and note. Editable date defaults to today. No recurrence section. Save creates and links a transaction | ui |
 | FRM-11 | Transfer | See TRF. Hide recurrence on the transfer tab | ui |
+| FRM-12 | Sheet layout | 470×674 sheet: 48 pt amount hero, account and date side by side, category quick chips with More, grouped repeat card on the account sheet's card surface, hairline before place and note, footer switching between Add, Create Plan, and Transfer. Snapshots 10 and 10a–10d | ui |
 
 ### 2.6 Transfers
 

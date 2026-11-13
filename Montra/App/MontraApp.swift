@@ -148,7 +148,7 @@ enum AppWindowLayout {
     /// The reference app keeps one width and lets only the height change, so the
     /// sidebar and the page column always hold their proportions.
     static let width: CGFloat = 980
-    static let minHeight: CGFloat = 600
+    static let minHeight: CGFloat = 700
     static let defaultHeight: CGFloat = 700
 }
 

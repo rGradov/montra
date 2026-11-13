@@ -6,12 +6,13 @@ struct TransferAmountField: View {
     let title: String
     @Binding var text: String
     let currency: Currency?
+    var trailing: String? = nil
 
     @FocusState private var isFocused: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: AppStyle.Spacing.xxSmallPlus) {
-            FieldLabel(title: title)
+            FieldLabel(title: title, trailing: trailing)
 
             HStack(spacing: AppStyle.Spacing.small) {
                 TextField("0", text: $text)

@@ -18,6 +18,7 @@ final class LocationProvider: NSObject, ObservableObject {
 
     private let manager = CLLocationManager()
     private let geocoder = CLGeocoder()
+    private var timeoutTask: Task<Void, Never>?
 
     override init() {
         super.init()
@@ -26,6 +27,7 @@ final class LocationProvider: NSObject, ObservableObject {
     }
 
     func requestLocation() {
+        timeoutTask?.cancel()
         errorMessage = nil
         reading = nil
         isLocating = true
@@ -38,9 +40,18 @@ final class LocationProvider: NSObject, ObservableObject {
         default:
             manager.requestLocation()
         }
+
+        guard isLocating else { return }
+        timeoutTask = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(10))
+            guard !Task.isCancelled else { return }
+            self?.fail(String(localized: "location.couldnt_determine_your_location"))
+        }
     }
 
     fileprivate func finish(with location: CLLocation) {
+        timeoutTask?.cancel()
+        timeoutTask = nil
         geocoder.reverseGeocodeLocation(location) { [weak self] placemarks, _ in
             Task { @MainActor in
                 guard let self else { return }
@@ -58,6 +69,8 @@ final class LocationProvider: NSObject, ObservableObject {
     }
 
     fileprivate func fail(_ message: String) {
+        timeoutTask?.cancel()
+        timeoutTask = nil
         isLocating = false
         errorMessage = message
     }

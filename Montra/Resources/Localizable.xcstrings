@@ -5341,23 +5341,6 @@
         }
       }
     },
-    "common.icloud_connected": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "iCloud connected"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "iCloud подключён"
-          }
-        }
-      }
-    },
     "common.icloud_sync": {
       "extractionState": "manual",
       "localizations": {
@@ -6034,23 +6017,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Не подключено"
-          }
-        }
-      }
-    },
-    "common.not_connected_2": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Not connected"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Не подключена"
           }
         }
       }
@@ -7292,23 +7258,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Добро пожаловать в"
-          }
-        }
-      }
-    },
-    "common.whats_ready": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "What’s ready"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Что уже готово"
           }
         }
       }
@@ -10215,40 +10164,6 @@
         }
       }
     },
-    "sidebar.icloud_not_connected": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "iCloud not connected"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "iCloud не подключён"
-          }
-        }
-      }
-    },
-    "sidebar.icloud_not_connected_open_sync": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "iCloud not connected. Open sync settings"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "iCloud не подключён. Открыть настройки синхронизации"
-          }
-        }
-      }
-    },
     "sidebar.icloud_status_hint": {
       "extractionState": "manual",
       "localizations": {
@@ -10997,40 +10912,6 @@
         }
       }
     },
-    "sync.all_accounts_transactions_categories_and": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "All accounts, transactions, categories, and periods are stored in SwiftData and compatible with CloudKit."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Все счета, операции, категории и периоды хранятся в SwiftData и совместимы с CloudKit."
-          }
-        }
-      }
-    },
-    "sync.app_settings_are_stored_separately": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "App settings are stored separately and ready for NSUbiquitousKeyValueStore."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Настройки приложения лежат отдельно и готовы к NSUbiquitousKeyValueStore."
-          }
-        }
-      }
-    },
     "sync.badge_checking": {
       "extractionState": "manual",
       "localizations": {
@@ -11422,23 +11303,6 @@
         }
       }
     },
-    "sync.not_signed_in_hint": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Sign in to iCloud in System Settings to sync this ledger."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Войдите в iCloud в Системных настройках, чтобы синхронизировать книгу."
-          }
-        }
-      }
-    },
     "sync.open_icloud_settings": {
       "extractionState": "manual",
       "localizations": {
@@ -11452,23 +11316,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Открыть настройки iCloud"
-          }
-        }
-      }
-    },
-    "sync.ready_to_set_up": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ready to set up"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Подготовлено, но пока не включено"
           }
         }
       }
@@ -11507,23 +11354,6 @@
         }
       }
     },
-    "sync.setup_steps %@": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "1. Create the %1$@ container in the developer account.\n2. Add the entitlement from Docs/Montra.entitlements.\n3. Set cloudKitDatabase in ModelContainerFactory to .private(…)."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "1. Создать контейнер %1$@ в аккаунте разработчика.\n2. Добавить entitlement из Docs/Montra.entitlements.\n3. Переключить cloudKitDatabase в ModelContainerFactory на .private(…)."
-          }
-        }
-      }
-    },
     "sync.state_label": {
       "extractionState": "manual",
       "localizations": {
@@ -11537,23 +11367,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Состояние"
-          }
-        }
-      }
-    },
-    "sync.to_enable_sync": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "To enable sync:"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Чтобы включить, понадобится:"
           }
         }
       }
@@ -11639,40 +11452,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Данные лежат в вашем приватном iCloud — Montra их не видит."
-          }
-        }
-      }
-    },
-    "sync.writes_go_through_repositories_giving": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Writes go through repositories, giving the sync engine one integration point."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Записи идут через репозитории — движок синхронизации подключается в одном месте."
-          }
-        }
-      }
-    },
-    "sync.your_data_stays_on_this": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Your data stays on this Mac for now."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Данные пока остаются только на этом Mac."
           }
         }
       }

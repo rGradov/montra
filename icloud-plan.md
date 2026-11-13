@@ -47,16 +47,16 @@ about what syncs and what stays per-Mac.
 
 | # | Blocker | Current value | Needed |
 |---|---|---|---|
-| B1 | A *local* Developer ID signing identity | The team (Xcode's selected team `97S3QGCCV4`) has two `Developer ID Application Managed` certificates, but "Managed" means cloud-managed: they exist on Apple's side, the private key is not in any keychain, and `find-identity` never lists them. Xcode also refuses to create a normal one: "This operation can only be performed by the Account Holder", so the Apple ID signed into Xcode is not the Account Holder of that team | Sign Xcode in with the Account Holder Apple ID (the one that enrolled in the paid program), then Manage Certificates → `+` → Developer ID Application. That produces a cert **with** a local private key |
-| B2 | Real bundle identifier | Decided and **registered in the portal** as `app.finance.montra` ("montra finance app"). The project still says `com.example.montra` in `Montra.xcconfig` | Set `app.finance.montra` everywhere, and migrate the `UserDefaults` domain (below). Capability switches (iCloud/CloudKit, Push) still need visual confirmation |
+| B1 | A *local* Developer ID signing identity | **Root cause found.** The team `97S3QGCCV4` has two users: `mainrudenua@gmail.com` is `ACCOUNT_HOLDER` + `ADMIN`, `rudenua.dev@gmail.com` is only `APP_MANAGER`. Every attempt so far used the App Manager: Xcode's Manage Certificates and an App Store Connect API key both answer *"This operation can only be performed by the Account Holder"*. The two `Developer ID Application Managed` certificates are cloud-managed, carry no local private key, and `find-identity` never lists them | Sign the browser (and Xcode) in as `mainrudenua@gmail.com`, then Certificates → `+` → Developer ID Application with the CSR already generated at `~/Desktop/montra-csr/montra.certSigningRequest` |
+| B2 | Real bundle identifier | **Done.** App ID `app.finance.montra` exists as resource `GLZRJPQQU6`, name "montra finance app", platform `UNIVERSAL`, `seedId 97S3QGCCV4`. The project still says `com.example.montra` in `Montra.xcconfig` | Set `app.finance.montra` everywhere, and migrate the `UserDefaults` domain (below) |
 | B3 | Development team in the project | `DEVELOPMENT_TEAM` appears nowhere; signing is `Automatic` | The 10-character Team ID in the target build settings |
-| B4 | iCloud container | `iCloud.com.example.montra` is computed, never registered | Register `iCloud.app.finance.montra` in Certificates, Identifiers & Profiles |
+| B4 | iCloud container | The App ID did **not** have CloudKit enabled: `POST bundleIdCapabilities ICLOUD` returned "cannot have the CloudkitVersion 'null'". It is now enabled with `ICLOUD_VERSION = XCODE_6`. Which container the App ID is attached to is *not* readable through the App Store Connect API: Apple exposes no iCloud container resource there | Confirm in the portal, as the Account Holder, that `iCloud.app.finance.montra` exists and is ticked under the App ID's iCloud capability |
 | B5 | Entitlements file on the target | `CODE_SIGN_ENTITLEMENTS` is not set anywhere | Entitlement files with the iCloud keys, wired into the target per configuration |
 | B6 | Provisioning profile for the distributed build | `make-dmg.sh --distribute` signs with `Manual` + `Developer ID Application`, `CODE_SIGN_INJECT_BASE_ENTITLEMENTS=NO`, and no profile. Installed profiles are three iOS profiles for unrelated apps; none is a macOS Developer ID profile and none carries iCloud or push entitlements | A Developer ID provisioning profile containing iCloud and push, installed and selected; it is embedded in the app bundle |
 | B6b | Notarization credentials | `make-dmg.sh --distribute` runs `xcrun notarytool history --keychain-profile montra-notary` first, and no such profile exists in the keychain; there are no App Store Connect API keys either, so notarization would fail even after signing works | `xcrun notarytool store-credentials montra-notary --apple-id <id> --team-id 97S3QGCCV4 --password <app-specific password>` |
 | B7 | CloudKit schema deployed to production | No schema exists yet | Deploy the development schema to production in CloudKit Console **before** shipping the DMG, otherwise release builds see no records |
 | B8 | Container environment entitlement | Absent | `com.apple.developer.icloud-container-environment` (`Production` for the DMG build, `Development` for local builds) |
-| B9 | Push Notifications capability | Absent; no `aps-environment` anywhere | Add it: CloudKit uses silent pushes for timely cross-device updates. It also has to be in the provisioning profile |
+| B9 | Push Notifications capability | **Done for the App ID**: `bundleIdCapabilities` created `GLZRJPQQU6_PUSH_NOTIFICATIONS`. The app still has no `aps-environment` entitlement | Add the entitlement and the Background Modes capability; sync uses silent pushes |
 | B10 | CloudKit on Developer ID builds | Apple documents it as supported: for Developer ID software, "applications can also take advantage of advanced capabilities such as CloudKit and push notifications". Still never exercised in Montra, so one empirical check remains | Run the Phase 0 smoke test once; no architectural fallback is expected to be needed |
 
 B2 and B3 are the real gate: without a team, the iCloud entitlement cannot be
@@ -65,7 +65,6 @@ container switch. B1 and B10 are the gate for the whole plan: if a Developer ID
 build cannot reach a CloudKit container, nothing below matters.
 
 ### 2.1 About `app.finance.montra`
-
 Checked against Apple's `CFBundleIdentifier` documentation: the string may
 contain only alphanumerics, hyphens and periods, is case-insensitive, and
 Apple *"typically"* wants reverse-DNS. `app.finance.montra` satisfies the
@@ -83,6 +82,23 @@ character rules and has three components, so it is legal. Two things to know:
   onboarding flags, `didSeedDemo`, the API switches and `lastBackupAt` would all
   reset. Migrate them once by reading the old `com.example.montra` domain, or
   accept a settings reset before the first public release.
+
+### 2.2 Accounts and roles in team `97S3QGCCV4`
+
+Confirmed through the App Store Connect API on 2026-11-13: the team has exactly
+two users.
+
+| Apple ID | Role | What it can do |
+|---|---|---|
+| `mainrudenua@gmail.com` | `ACCOUNT_HOLDER`, `ADMIN` | Everything, including Developer ID certificates |
+| `rudenua.dev@gmail.com` | `APP_MANAGER` | App IDs, capabilities, App Store metadata; **not** Developer ID certificates |
+
+That is the whole explanation for the repeated *"This operation can only be
+performed by the Account Holder"*: Xcode and the API key were both operating as
+the App Manager. An API key is not a way around this either — key roles top out
+at Admin, while Apple gates Developer ID certificate creation to the human
+Account Holder. The browser session signed in as `mainrudenua@gmail.com` is the
+route.
 
 ## 3. Decision: do we need `Sign in with Apple`?
 

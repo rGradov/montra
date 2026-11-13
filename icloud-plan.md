@@ -11,6 +11,21 @@ signed in on the Mac, and an app cannot present an iCloud login prompt. The
 `Sign in with Apple` button only makes sense if Montra ever owns a server-side
 account system. Section 3 separates these into decisions.
 
+## 0. Decisions taken (owner input, 2026-11-13)
+
+| Decision | Value |
+|---|---|
+| Architecture | **Option A**: iCloud sync only, no sign-in UI, no `Sign in with Apple` |
+| Developer account | Paid Apple Developer Program membership confirmed by the owner |
+| Bundle id | **`app.finance.montra`**, so the container becomes `iCloud.app.finance.montra` |
+| Sync behaviour | **Automatic**: no manual sync button, the person never triggers sync by hand |
+| Backup | Manual `.montra` export/import stays as it is for now |
+| Distribution | Notarized Developer ID DMG |
+
+Consequences: B1 is half-resolved (paid membership, but no Developer ID
+certificate on this Mac), B2 and B4 are decided, and Option B/C in section 3 stay
+only as reference.
+
 ## 1. What exists today
 
 | Area | State | Where |
@@ -31,10 +46,10 @@ about what syncs and what stays per-Mac.
 
 | # | Blocker | Current value | Needed |
 |---|---|---|---|
-| B1 | Apple Developer Program membership **and** a Developer ID certificate | Membership is not verifiable from the repo. On this Mac `security find-identity -v -p codesigning` lists only `Apple Development` identities; there is no `Developer ID Application` identity, so `make-dmg.sh --distribute` exits 1 today | A paid team, plus a Developer ID Application certificate installed in the login keychain |
-| B2 | Real bundle identifier | `PRODUCT_BUNDLE_IDENTIFIER = com.example.montra` in `Montra.xcconfig` | A reverse-DNS id you own, e.g. `com.vladrudenua.montra` |
+| B1 | Developer ID certificate | Paid membership is confirmed, but on this Mac `security find-identity -v -p codesigning` lists only `Apple Development` identities; there is no `Developer ID Application` identity, so `make-dmg.sh --distribute` exits 1 today | A Developer ID Application certificate installed in the login keychain |
+| B2 | Real bundle identifier | Decided: `app.finance.montra`. The project still says `com.example.montra` in `Montra.xcconfig` | Set `app.finance.montra` everywhere, and migrate the `UserDefaults` domain (below) |
 | B3 | Development team in the project | `DEVELOPMENT_TEAM` appears nowhere; signing is `Automatic` | The 10-character Team ID in the target build settings |
-| B4 | iCloud container | `iCloud.com.example.montra` is computed, never registered | A container registered in Certificates, Identifiers & Profiles, e.g. `iCloud.com.vladrudenua.montra` |
+| B4 | iCloud container | `iCloud.com.example.montra` is computed, never registered | Register `iCloud.app.finance.montra` in Certificates, Identifiers & Profiles |
 | B5 | Entitlements file on the target | `CODE_SIGN_ENTITLEMENTS` is not set anywhere | Entitlement files with the iCloud keys, wired into the target per configuration |
 | B6 | Provisioning profile for the distributed build | `make-dmg.sh --distribute` signs with `Manual` + `Developer ID Application`, `CODE_SIGN_INJECT_BASE_ENTITLEMENTS=NO`, and no profile. Installed profiles are three iOS profiles for unrelated apps; none is a macOS Developer ID profile and none carries iCloud or push entitlements | A Developer ID provisioning profile containing iCloud and push, installed and selected; it is embedded in the app bundle |
 | B7 | CloudKit schema deployed to production | No schema exists yet | Deploy the development schema to production in CloudKit Console **before** shipping the DMG, otherwise release builds see no records |
@@ -47,12 +62,32 @@ signed at all, so the app will keep reporting "not connected" even after the
 container switch. B1 and B10 are the gate for the whole plan: if a Developer ID
 build cannot reach a CloudKit container, nothing below matters.
 
+### 2.1 About `app.finance.montra`
+
+Checked against Apple's `CFBundleIdentifier` documentation: the string may
+contain only alphanumerics, hyphens and periods, is case-insensitive, and
+Apple *"typically"* wants reverse-DNS. `app.finance.montra` satisfies the
+character rules and has three components, so it is legal. Two things to know:
+
+- It is not reverse-DNS of a domain, which is unusual but not enforced. What
+  Apple enforces is global uniqueness in your account, and that the identifier
+  matches App Store Connect. Once a build is uploaded the id **cannot be
+  changed** and the container **cannot be renamed**, so this is permanent.
+- Changing the bundle id today is not free but it is safe for data: the ledger
+  store is `~/Library/Application Support/Montra.store` and the Local API token
+  lives in `~/Library/Application Support/Montra/LocalAPI`, neither derived from
+  the bundle id, so both survive. `UserDefaults.standard` **is** scoped to the
+  bundle id, so appearance, hidden balances, primary currency, period rule,
+  onboarding flags, `didSeedDemo`, the API switches and `lastBackupAt` would all
+  reset. Migrate them once by reading the old `com.example.montra` domain, or
+  accept a settings reset before the first public release.
+
 ## 3. Decision: do we need `Sign in with Apple`?
 
-Three architectures are possible. Only the first is needed for "sync my ledger
-across my Macs".
+Three architectures are possible. **Option A is chosen** (section 0); B and C
+stay as reference so the question does not have to be re-researched.
 
-### Option A: iCloud only, no auth UI (recommended)
+### Option A: iCloud only, no auth UI (chosen)
 
 - Identity = the Apple Account signed in on this Mac. The app cannot and must
   not ask for iCloud credentials; it can only read `CKAccountStatus` and send
@@ -202,15 +237,17 @@ is signed in (for example "Using Sign in with Apple") in settings.
 
 ### Phase 0: Owner prerequisites (outside the repo)
 
-1. Confirm Apple Developer Program membership and the Team ID.
-2. Install a `Developer ID Application` certificate (none exists on this Mac).
-3. Pick and register the production bundle id.
-4. Register the iCloud container and enable CloudKit and Push Notifications on
-   the App ID.
-5. Create the Developer ID provisioning profile with iCloud and push, and
+1. ~~Confirm Apple Developer Program membership~~ done: paid membership confirmed.
+2. ~~Pick the production bundle id~~ done: `app.finance.montra`.
+3. Install a `Developer ID Application` certificate (none exists on this Mac) and
+   record the 10-character Team ID.
+4. Register the App ID `app.finance.montra` with iCloud (CloudKit) and Push
+   Notifications enabled.
+5. Register the container `iCloud.app.finance.montra` and check the box for it.
+6. Create the Developer ID provisioning profile with iCloud and push, and
    install it.
-6. Log in to CloudKit Console once so the container is visible.
-7. **Run the B10 smoke test now**, with a throwaway app, before any work on
+7. Log in to CloudKit Console once so the container is visible.
+8. **Run the B10 smoke test now**, with a throwaway app, before any work on
    Montra's signing.
 
 Exit criteria: Team ID, bundle id, container id and profile name are recorded in
@@ -219,20 +256,22 @@ yes or no**. A "no" stops the plan and sends it back to the owner.
 
 ### Phase 1: Signing and entitlements (no behavior change)
 
-1. Set `PRODUCT_BUNDLE_IDENTIFIER` in `Montra.xcconfig` and `DEVELOPMENT_TEAM` in
-   `Montra.local.xcconfig` (machine-specific, not committed; the include already
-   exists).
-2. Add two entitlement files, because `CODE_SIGN_ENTITLEMENTS` is one setting
+1. Set `PRODUCT_BUNDLE_IDENTIFIER = app.finance.montra` in `Montra.xcconfig` and
+   `DEVELOPMENT_TEAM` in `Montra.local.xcconfig` (machine-specific, not
+   committed; the include already exists).
+2. Migrate the `UserDefaults` domain once, or consciously accept the reset
+   described in 2.1. The ledger and the API token are unaffected.
+3. Add two entitlement files, because `CODE_SIGN_ENTITLEMENTS` is one setting
    shared by configurations: `Montra/Montra-Development.entitlements`
    (`Development` environment) and `Montra/Montra-DeveloperID.entitlements`
    (`Production`), selected per configuration. Drop the template's
    `com.apple.developer.ubiquity-kvstore-identifier` key: nothing here uses the
    key-value store (4.3), and the key would demand that capability on the App ID
    as well.
-3. Add the Push Notifications capability (`aps-environment`).
-4. Verify how the synchronized `Montra/` group treats `.entitlements` files:
+4. Add the Push Notifications capability (`aps-environment`).
+5. Verify how the synchronized `Montra/` group treats `.entitlements` files:
    they must be build inputs, not copied resources.
-5. Keep the current behavior: the container stays `.none`, so the app still
+6. Keep the current behavior: the container stays `.none`, so the app still
    works offline and stores nothing in iCloud.
 
 Exit criteria: `codesign -d --entitlements -` shows the iCloud and push keys in a
@@ -274,6 +313,10 @@ entitlement shows a live status, and two Macs on one Apple Account converge.
 1. Add a "Sync with iCloud" switch in Settings. Turning it on requires a
    container reload, so plan for a restart prompt or a container swap in
    `MontraApp`. It must be **off** for stores that predate this build.
+   Once on, sync is **automatic**: no "Sync now" button, no manual step, and the
+   only visible surface is the status row with `lastSyncedAt`. A manual trigger
+   would only teach people to press it and then distrust the app when the press
+   does nothing.
 2. Offer the same choice during first run, not only in Settings, so nobody has
    to find the setting to get sync.
 3. Gate the second Mac's onboarding and seeding. `hasCompletedOnboarding` and
@@ -418,27 +461,36 @@ change:
 
 ## 8. Open questions for the owner
 
-1. Do you want sync tied to iCloud only (Option A), or is an own account system
-   with `Sign in with Apple` on the roadmap (Option C)? Everything else depends
-   on this, including whether the "sign-in" you asked for becomes a status row
-   instead of a button.
-2. Do you already have a paid Apple Developer Program team that can create iCloud
-   containers, and who owns the Developer ID certificate? There is none on this
-   Mac today.
-3. Which bundle id is final? It is permanent, because the container name derives
-   from it and containers cannot be renamed.
-4. Should existing data upload automatically on first enable, or should the first
-   enable always go through a backup and restore?
-5. Is the household case ("my partner and I share the ledger") in scope? Private
+Answered on 2026-11-13: Option A, paid membership, bundle id
+`app.finance.montra`, automatic sync, manual backup unchanged.
+
+Remaining:
+
+1. Who installs the `Developer ID Application` certificate and where? It is not
+   on this Mac. Phase 0 stops without it.
+2. Does "automatic" mean the switch is on by default once iCloud is available, or
+   off by default and turned on once by the person? The plan currently says off
+   by default, because auto-uploading an existing local ledger is not reversible.
+3. On first enable with existing data, upload automatically, or require a
+   backup → enable → restore? This decides whether Phase 2b needs the backup gate.
+4. Should the period rule and primary currency sync (Phase 3), accepting the
+   extra work, or stay per-Mac with a documented divergence?
+5. Is Restore allowed while sync is on, or is it disabled in sync mode?
+6. Is the household case ("my partner and I share the ledger") in scope? Private
    CloudKit cannot do it; it would need CloudKit sharing.
-6. Is Restore allowed while sync is on, or is it disabled in sync mode?
-7. Is Montra staying Developer ID–only, or is a Mac App Store build planned? It
-   changes what is allowed (B10) and whether App Review 4.8 matters at all.
+7. Is a Mac App Store build planned? It changes the B10 fallback and whether App
+   Review 4.8 matters at all.
+8. Is a second Mac available for the two-Mac test? It is the only test that
+   proves the feature.
+9. Does "backup stays as it is" mean no automatic `.montra` backup is added in
+   this release, and the existing manual export/import must keep working
+   unchanged?
 
 ## 9. Checklist
 
-- [ ] Team ID, bundle id and container id decided and recorded
+- [ ] Team ID and container id recorded (bundle id `app.finance.montra` decided)
 - [ ] Developer ID Application certificate installed
+- [ ] `app.finance.montra` set in `Montra.xcconfig`; `UserDefaults` domain migrated or reset accepted
 - [ ] B10 answered: CloudKit works in a Developer ID Release build
 - [ ] iCloud container registered; CloudKit and Push enabled on the App ID
 - [ ] Developer ID provisioning profile with iCloud and push installed

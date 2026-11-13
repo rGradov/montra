@@ -1475,6 +1475,55 @@ enum SelfTest {
               "у полей нет уникальных атрибутов")
         check(syncEntities.count == 5, "в схеме пять моделей книги")
 
+        // A second Mac seeds its own starter rows before CloudKit delivers the
+        // ledger, so the same category arrives twice with different identities.
+        let reconcileContainer = ModelContainerFactory.make(inMemory: true)
+        let reconcileContext = reconcileContainer.mainContext
+        let firstCategory = Category(name: "food", kind: .expense, color: .green,
+                                      iconName: "cart.fill", isSystem: true)
+        let secondCategory = Category(name: "food", kind: .expense, color: .green,
+                                      iconName: "cart.fill", isSystem: true)
+        reconcileContext.insert(firstCategory)
+        secondCategory.createdAt = firstCategory.createdAt.addingTimeInterval(60)
+        reconcileContext.insert(secondCategory)
+
+        let userCategoryA = Category(name: "food", kind: .expense, color: .red,
+                                      iconName: "tag.fill", isSystem: false)
+        let userCategoryB = Category(name: "food", kind: .expense, color: .red,
+                                      iconName: "tag.fill", isSystem: false)
+        reconcileContext.insert(userCategoryA)
+        reconcileContext.insert(userCategoryB)
+
+        let reconcileAccount = Account(name: "Cash", currency: .byn, initialAmount: 0,
+                                        iconName: "creditcard.fill", color: .blue)
+        reconcileContext.insert(reconcileAccount)
+        let movedOperation = Operation(kind: .expense, amount: 10, currency: .byn, date: .now,
+                                       account: reconcileAccount, category: secondCategory)
+        reconcileContext.insert(movedOperation)
+
+        let periodStart = date(year: 2026, month: 11, day: 1)
+        let periodEnd = date(year: 2026, month: 11, day: 30)
+        reconcileContext.insert(Period(start: periodStart, end: periodEnd))
+        reconcileContext.insert(Period(start: periodStart, end: periodEnd, isManual: true))
+
+        let reconcileResult = LedgerReconcile.run(context: reconcileContext)
+        check(reconcileResult.categories == 1, "reconcile сливает дубли системных категорий")
+        check(reconcileResult.periods == 1, "reconcile сливает дубли периодов")
+        check(movedOperation.category?.id == firstCategory.id,
+              "операция переезжает на оставшуюся категорию")
+
+        let remainingCategories = (try? reconcileContext.fetch(FetchDescriptor<Category>())) ?? []
+        check(remainingCategories.filter { $0.isSystem }.count == 1,
+              "системная категория осталась одна")
+        check(remainingCategories.filter { !$0.isSystem }.count == 2,
+              "пользовательские категории с тем же именем не тронуты")
+
+        let remainingPeriods = (try? reconcileContext.fetch(FetchDescriptor<Period>())) ?? []
+        check(remainingPeriods.count == 1 && remainingPeriods[0].isManual,
+              "из дублей периодов остаётся ручной")
+        check(LedgerReconcile.run(context: reconcileContext).isEmpty,
+              "повторный reconcile ничего не меняет")
+
         print(failures == 0 ? "ALL CHECKS PASSED" : "\(failures) CHECK(S) FAILED")
         exit(failures == 0 ? 0 : 1)
     }

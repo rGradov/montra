@@ -368,6 +368,9 @@ struct AppRootView: View {
     /// app to that first run, mirroring the launch rules.
     private func showAfterRestore() {
         didBootstrap = true
+        // Restoring writes the backup on top of a store CloudKit is mirroring, so
+        // the same starter rows can exist twice until the next merge.
+        LedgerReconcile.run(context: context)
         if settings.hasCompletedOnboarding {
             periodRevision += 1
             app.open(.overview)
@@ -383,6 +386,7 @@ struct AppRootView: View {
         // Periods (and categories, if a preview skipped the step) are ensured
         // once the real data is in place.
         SeedData.bootstrap(context: context, settings: settings)
+        LedgerReconcile.run(context: context)
         didBootstrap = true
         beginAccountHeroIfPossible()
         withAnimation(.easeInOut(duration: 0.45)) {
@@ -533,6 +537,9 @@ struct AppRootView: View {
         guard !didBootstrap else { return }
         didBootstrap = true
         SeedData.bootstrap(context: context, settings: settings)
+        // A Mac that launched on an empty store may have seeded its own starter
+        // rows just before CloudKit delivered the real ones.
+        LedgerReconcile.run(context: context)
     }
 }
 

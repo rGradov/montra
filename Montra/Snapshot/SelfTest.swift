@@ -1310,41 +1310,44 @@ enum SelfTest {
         check(!bar.defaultItemIdentifiers.contains(MontraTouchBarController.accountsIdentifier),
               "без счетов полоса тачбара не занимает место")
 
-        // 13. iCloud sync reports an honest state and never wakes the network.
-        let syncStates: [(CloudSyncState, String)] = [
-            (.notConfigured, "common.not_connected"),
-            (.noAccount, "sync.no_icloud_account"),
-            (.restricted, "sync.icloud_restricted"),
-            (.unknown, "sync.icloud_unknown"),
-            (.active(lastChange: nil), "sync.active"),
-            (.active(lastChange: date(year: 2026, month: 11, day: 13)), "sync.updated %@"),
-            (.failed("boom"), "common.error"),
+        // 13. iCloud presents one honest state and never wakes the network.
+        // Every case, plus the `nil` state that means "the first check is still
+        // running", goes through the same presentation, so the sidebar, the
+        // Settings row and the sheet cannot invent their own words.
+        let syncCases: [(name: String, state: CloudSyncState?, connected: Bool, attention: Bool)] = [
+            ("nil", nil, false, false),
+            ("notConfigured", .notConfigured, false, true),
+            ("noAccount", .noAccount, false, true),
+            ("restricted", .restricted, false, true),
+            ("unknown", .unknown, false, false),
+            ("active", .active(lastChange: nil), true, false),
+            ("active+date", .active(lastChange: date(year: 2026, month: 11, day: 13)), true, false),
+            ("failed", .failed("boom"), false, true),
         ]
-        check(syncStates.allSatisfy { !$0.0.title.isEmpty && $0.0.title != $0.1 },
-              "у каждого состояния iCloud есть локализованный заголовок")
-        check(syncStates.map(\.0.title).allSatisfy { !$0.isEmpty },
-              "заголовок состояния iCloud не пустой в текущем языке")
+        let syncAppearances = syncCases.map { ($0.name, SyncService.appearance(for: $0.state)) }
+        check(syncAppearances.allSatisfy {
+            !$0.1.symbol.isEmpty && !$0.1.badge.isEmpty
+                && !$0.1.sentence.isEmpty && !$0.1.compact.isEmpty
+        }, "у каждого состояния iCloud есть символ, бейдж и два текста")
+        check(syncAppearances.allSatisfy {
+            NSImage(systemSymbolName: $0.1.symbol, accessibilityDescription: nil) != nil
+        }, "иконки состояний iCloud доступны")
+        check(syncAppearances.allSatisfy { $0.1.action == nil || $0.1.action?.isEmpty == false },
+              "действие состояния либо есть, либо его нет")
+        check(syncAppearances.filter { $0.1.action != nil }.map(\.0)
+                == ["noAccount", "restricted", "unknown", "failed"],
+              "действие предлагается только для исправимых состояний")
 
-        // Both catalogs must resolve every key the title switch uses, so a
-        // machine whose language differs from the launch language still reads it.
-        func localizedInBothLanguages(_ key: String) -> Bool {
-            ["en", "ru"].allSatisfy { language in
-                guard let path = Bundle.main.path(forResource: language, ofType: "lproj"),
-                      let bundle = Bundle(path: path) else { return false }
-                let value = bundle.localizedString(forKey: key, value: "\u{0}missing", table: "Localizable")
-                return !value.isEmpty && value != key && value != "\u{0}missing"
-            }
-        }
-        let syncKeys = Set(syncStates.map(\.1))
-        check(syncKeys.allSatisfy(localizedInBothLanguages),
-              "все ключи состояния iCloud переведены на en и ru")
-
-        let oneOfEachState: [CloudSyncState] = [
-            .notConfigured, .noAccount, .restricted, .unknown,
-            .active(lastChange: nil), .failed("boom"),
-        ]
-        check(oneOfEachState.filter(\.isConnected) == [.active(lastChange: nil)],
-              "подключённым считается только состояние active")
+        check(syncCases.map { $0.state?.isConnected ?? false } == syncCases.map(\.connected),
+              "isConnected верен в каждом состоянии iCloud")
+        check(syncCases.filter { $0.state?.isConnected ?? false }.map(\.name)
+                == ["active", "active+date"],
+              "подключённым считается только active")
+        check(syncCases.map { SyncService.appearance(for: $0.state).needsAttention }
+                == syncCases.map(\.attention),
+              "needsAttention верен в каждом состоянии iCloud")
+        check(syncAppearances.allSatisfy { ($0.1.tone == .safe) == ($0.0 == "active" || $0.0 == "active+date") },
+              "зелёный тон бывает только у подключённого iCloud")
         check(!CloudSyncState.notConfigured.isConnected
               && !CloudSyncState.noAccount.isConnected
               && !CloudSyncState.restricted.isConnected
@@ -1352,12 +1355,40 @@ enum SelfTest {
               && !CloudSyncState.failed("boom").isConnected,
               "остальные состояния не выдают себя за подключённые")
 
-        let relative = SyncService.relativeText(for: Date().addingTimeInterval(-180))
-        check(!relative.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-              "«обновлено» возвращает непустой текст")
-        check(!SyncService.relativeText(for: .now).isEmpty
-              && !SyncService.relativeText(for: date(year: 2026, month: 1, day: 1)).isEmpty,
-              "«обновлено» работает и для текущего, и для прошлого момента")
+        // The compact form is the row under the sidebar list, so it must stay
+        // one short line; the label it replaced is the measured budget.
+        let sidebarLabelBudget = max(String(localized: "sidebar.icloud_not_connected").count, 12)
+        check(syncAppearances.allSatisfy {
+            $0.1.compact.count < 30 && !$0.1.compact.contains("\n") && $0.1.compact.count <= sidebarLabelBudget
+        }, "короткая подпись iCloud влезает в строку сайдбара")
+        check(SyncService.appearance(for: .active(lastChange: nil)).compact
+                != SyncService.appearance(for: .active(lastChange: .now)).compact,
+              "подпись со временем отличается от подписи без него")
+
+        // Both shipped catalogs must carry every iCloud string, and the English
+        // one must actually be English: the source language is Russian.
+        func catalog(_ language: String) -> [String: String]? {
+            guard let path = Bundle.main.path(forResource: language, ofType: "lproj"),
+                  let bundle = Bundle(path: path),
+                  let url = bundle.url(forResource: "Localizable", withExtension: "strings"),
+                  let data = try? Data(contentsOf: url),
+                  let plist = try? PropertyListSerialization.propertyList(from: data, format: nil)
+            else { return nil }
+            return plist as? [String: String]
+        }
+        func hasCyrillic(_ text: String) -> Bool {
+            text.unicodeScalars.contains { (0x0400...0x04FF).contains($0.value) }
+        }
+        let englishCatalog = catalog("en")
+        let russianCatalog = catalog("ru")
+        check(englishCatalog != nil && russianCatalog != nil, "каталоги en и ru читаются")
+        let iCloudKeys = (englishCatalog ?? [:]).keys.filter { $0.hasPrefix("sync.") }
+        check(!iCloudKeys.isEmpty && iCloudKeys.allSatisfy { russianCatalog?[$0]?.isEmpty == false },
+              "каждый ключ sync.* переведён на ru")
+        check(iCloudKeys.allSatisfy { (englishCatalog?[$0] ?? "").count > 0 },
+              "каждый ключ sync.* переведён на en")
+        check(iCloudKeys.allSatisfy { !hasCyrillic(englishCatalog?[$0] ?? "") },
+              "английские строки iCloud не содержат русского текста")
 
         // The signature is the heartbeat's only input: it must move on inserts
         // and stay put when nothing happens, or the timer would lie every 2 min.
@@ -1399,11 +1430,11 @@ enum SelfTest {
               "вторая операция снова меняет подпись")
 
         // Known limitation, asserted on purpose: an edit does not change counts
-        // or `createdAt`, so "updated N ago" stays silent until a new row lands.
+        // or `createdAt`, so the printed time stays silent until a row lands.
         older.amount = 999
         try? syncContext.save()
         check(StoreSignature(context: syncContext) == signatureNewer,
-              "правка строки не меняет подпись — известное ограничение «обновлено»")
+              "правка строки не меняет подпись — известное ограничение подписи")
 
         // An in-memory store must keep the whole service dormant: no timer, no
         // CKContainer request, no status claim.
@@ -1411,11 +1442,16 @@ enum SelfTest {
         offlineSync.start(container: syncContainer, inMemory: true)
         check(offlineSync.state == .notConfigured && !offlineSync.isConnected,
               "в памяти iCloud выключен")
+        check(SyncService.appearance(for: offlineSync.state).needsAttention,
+              "выключенный в памяти iCloud не выглядит подключённым")
         offlineSync.refresh()
         check(offlineSync.state == .notConfigured,
               "refresh в памяти не трогает сеть и не меняет состояние")
         offlineSync.flush()
         check(offlineSync.state == .notConfigured, "flush в памяти ничего не включает")
+        offlineSync.stop()
+        check(offlineSync.state == .notConfigured && !offlineSync.isConnected,
+              "stop переводит iCloud в честное «выключено»")
 
         let inMemoryConfiguration = ModelContainerFactory.make(inMemory: true).configurations
         check(inMemoryConfiguration.allSatisfy { $0.isStoredInMemoryOnly },

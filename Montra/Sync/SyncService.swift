@@ -43,6 +43,10 @@ struct CloudSyncAppearance {
     let tone: AppBadge.Tone
     /// One or two words for a badge.
     let badge: String
+    /// True when the state needs the person's attention. Fed from
+    /// `CloudSyncState.needsAttention` so the icon and the badge can never
+    /// disagree about it.
+    let needsAttention: Bool
     /// A full sentence for a sheet subtitle or a Settings value.
     let sentence: String
     /// Short form that fits the 240 pt sidebar.
@@ -70,6 +74,9 @@ final class SyncService: ObservableObject {
     private var lastSignature: StoreSignature?
     private var timer: Timer?
     private var container: ModelContainer?
+    /// One in-flight check at a time. Launch, window activation and the sheet can
+    /// all ask at once, and a late stale answer must not overwrite a fresh one.
+    private var refreshTask: Task<Void, Never>?
 
     private init() {}
 
@@ -85,6 +92,7 @@ final class SyncService: ObservableObject {
                 symbol: "icloud",
                 tone: .neutral,
                 badge: String(localized: "sync.badge_checking"),
+                needsAttention: false,
                 sentence: String(localized: "sync.checking"),
                 compact: String(localized: "sync.compact_checking"),
                 action: nil
@@ -96,6 +104,7 @@ final class SyncService: ObservableObject {
                 symbol: "checkmark.icloud",
                 tone: .safe,
                 badge: String(localized: "sync.badge_on"),
+                needsAttention: false,
                 sentence: lastChangeText(lastChange),
                 compact: compactText(lastChange),
                 action: nil
@@ -105,6 +114,7 @@ final class SyncService: ObservableObject {
                 symbol: "icloud.slash",
                 tone: .warning,
                 badge: String(localized: "sync.badge_off"),
+                needsAttention: true,
                 sentence: String(localized: "sync.no_account_sentence"),
                 compact: String(localized: "sync.compact_no_account"),
                 action: String(localized: "sync.open_icloud_settings")
@@ -114,6 +124,7 @@ final class SyncService: ObservableObject {
                 symbol: "lock.icloud",
                 tone: .warning,
                 badge: String(localized: "sync.badge_off"),
+                needsAttention: true,
                 sentence: String(localized: "sync.restricted_sentence"),
                 compact: String(localized: "sync.compact_restricted"),
                 action: String(localized: "sync.open_icloud_settings")
@@ -123,6 +134,7 @@ final class SyncService: ObservableObject {
                 symbol: "icloud",
                 tone: .neutral,
                 badge: String(localized: "sync.badge_unknown"),
+                needsAttention: false,
                 sentence: String(localized: "sync.unknown_sentence"),
                 compact: String(localized: "sync.compact_unknown"),
                 action: String(localized: "sync.try_again")
@@ -132,6 +144,7 @@ final class SyncService: ObservableObject {
                 symbol: "exclamationmark.icloud",
                 tone: .danger,
                 badge: String(localized: "sync.badge_failed"),
+                needsAttention: true,
                 sentence: String(localized: "sync.failed_sentence"),
                 compact: String(localized: "sync.compact_failed"),
                 action: String(localized: "sync.try_again")
@@ -141,6 +154,7 @@ final class SyncService: ObservableObject {
                 symbol: "icloud.slash",
                 tone: .neutral,
                 badge: String(localized: "sync.badge_off"),
+                needsAttention: true,
                 sentence: String(localized: "sync.not_configured_sentence"),
                 compact: String(localized: "sync.compact_off"),
                 action: nil
@@ -153,16 +167,16 @@ final class SyncService: ObservableObject {
     private static func lastChangeText(_ date: Date?) -> String {
         guard let date else { return String(localized: "sync.no_changes_yet") }
         let calendar = Calendar.current
-        let time = date.formatted(date: .omitted, time: .shortened)
+        let time = date.formatted(Date.FormatStyle(date: .omitted, time: .shortened).locale(AppLocalization.locale))
         if calendar.isDateInToday(date) {
             return String(localized: "sync.last_change_today \(time)")
         }
-        return String(localized: "sync.last_change \(date.formatted(date: .abbreviated, time: .shortened))")
+        return String(localized: "sync.last_change \(date.formatted(Date.FormatStyle(date: .abbreviated, time: .shortened).locale(AppLocalization.locale)))")
     }
 
     private static func compactText(_ date: Date?) -> String {
         guard let date else { return String(localized: "sync.compact_on") }
-        let time = date.formatted(date: .omitted, time: .shortened)
+        let time = date.formatted(Date.FormatStyle(date: .omitted, time: .shortened).locale(AppLocalization.locale))
         return String(localized: "sync.compact_on_at \(time)")
     }
 
@@ -184,18 +198,21 @@ final class SyncService: ObservableObject {
         }
     }
 
+    /// Turns the heartbeat off. Used by teardown and by tests; the state becomes
+    /// an honest "off" rather than a permanent "checking".
     func stop() {
         timer?.invalidate()
         timer = nil
         isEnabled = false
-        state = nil
+        state = .notConfigured
     }
 
     /// Re-reads the account state and notices ledger changes. Called at launch,
     /// on a timer, when the window becomes active, and from the sheet.
     func refresh() {
-        guard isEnabled else { return }
-        Task { @MainActor in
+        guard isEnabled, refreshTask == nil else { return }
+        refreshTask = Task { @MainActor in
+            defer { refreshTask = nil }
             await refreshStatus()
             updateLastChange()
         }
@@ -248,7 +265,7 @@ final class SyncService: ObservableObject {
 /// Counts rows and remembers the newest `createdAt`. Enough to notice that the
 /// store gained or lost rows, without loading them. Edits to an existing row are
 /// not detected, which is why the UI says "last change" and not "last sync".
-private struct StoreSignature: Equatable {
+struct StoreSignature: Equatable {
     let operations: Int
     let accounts: Int
     let categories: Int

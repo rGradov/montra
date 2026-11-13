@@ -11020,7 +11020,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Проверка…"
+            "value": "Checking…"
           }
         },
         "ru": {
@@ -11037,7 +11037,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ошибка подключения"
+            "value": "Connection failed"
           }
         },
         "ru": {
@@ -11054,7 +11054,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Вход в iCloud"
+            "value": "Sign in to iCloud"
           }
         },
         "ru": {
@@ -11071,7 +11071,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Выключено"
+            "value": "Off"
           }
         },
         "ru": {
@@ -11088,7 +11088,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Включено"
+            "value": "On"
           }
         },
         "ru": {
@@ -11122,7 +11122,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Доступ ограничен"
+            "value": "Restricted"
           }
         },
         "ru": {
@@ -11139,7 +11139,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Не удалось проверить"
+            "value": "Couldn't check"
           }
         },
         "ru": {
@@ -12421,6 +12421,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Перевод не найден."
+          }
+        }
+      }
+    },
+    "settings.storage_not_saving": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not saving to disk"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не сохраняется на диск"
           }
         }
       }

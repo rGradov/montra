@@ -22,9 +22,9 @@ struct SidebarView: View {
     @Binding var route: Route
     let accounts: [Account]
     let categoryCount: Int
-    let iCloudConnected: Bool
-    /// "iCloud · updated 3 min ago", already localized by `SyncService`.
-    let iCloudStatusText: String
+    /// Everything the row shows comes from one place, so the icon can never
+    /// contradict the text.
+    let iCloud: CloudSyncAppearance
     /// Hidden while the onboarding hero account is still flying into place; the
     /// row keeps its space so the flight can land on its exact frame.
     var hiddenAccountID: UUID? = nil
@@ -190,15 +190,21 @@ struct SidebarView: View {
         }
     }
 
+    private var iCloudTint: Color {
+        if iCloud.tone == .safe { return AppColors.statusSafeText }
+        if iCloud.needsAttention { return AppColors.statusCheckText }
+        return AppColors.textSecondary
+    }
+
     private var syncStatusCard: some View {
         Button(action: onOpenICloud) {
             HStack(spacing: AppStyle.Spacing.xSmall) {
-                Image(systemName: iCloudConnected ? "checkmark.icloud" : "icloud.slash")
+                Image(systemName: iCloud.symbol)
                     .font(AppStyle.Typography.callout.weight(.medium))
-                    .foregroundStyle(iCloudConnected ? AppColors.statusSafeText : AppColors.textSecondary)
+                    .foregroundStyle(iCloudTint)
                     .accessibilityHidden(true)
 
-                Text(iCloudStatusText)
+                Text(iCloud.compact)
                     .lineLimit(1)
                     .truncationMode(.tail)
                     .font(AppStyle.Typography.callout.weight(.medium))
@@ -219,7 +225,7 @@ struct SidebarView: View {
         .focusEffectDisabled()
         .pointingHandOnHover()
         .accessibilityLabel(
-            Text("\(String(localized: "common.icloud")), \(iCloudStatusText)")
+            Text("\(String(localized: "common.icloud")), \(iCloud.compact)")
         )
         .accessibilityHint(Text(String(localized: "sidebar.icloud_status_hint")))
     }

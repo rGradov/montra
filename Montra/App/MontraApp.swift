@@ -223,6 +223,10 @@ private struct WindowConfigurator: NSViewRepresentable {
 }
 
 enum ModelContainerFactory {
+    /// Set when the real store could not be opened and the app fell back to
+    /// memory. Settings shows it, because writes to an in-memory store vanish.
+    private(set) static var openFailure: String?
+
     static let schema = Schema([Account.self, Category.self, Operation.self, Period.self, PlannedOperation.self])
 
     static func make(inMemory: Bool = false) -> ModelContainer {
@@ -238,9 +242,10 @@ enum ModelContainerFactory {
         do {
             return try ModelContainer(for: schema, configurations: [configuration])
         } catch {
-            // A corrupt store should not keep the app closed; fall back to memory and
-            // let the user reset from Settings.
-            assertionFailure(String(localized: "storage.open_error \(error.localizedDescription)"))
+            // A corrupt store should not keep the app closed, but falling back to
+            // memory silently would lose every write, so the failure is recorded
+            // and Settings reports it.
+            openFailure = error.localizedDescription
             return try! ModelContainer(for: schema, configurations: [ModelConfiguration(isStoredInMemoryOnly: true)])
         }
     }

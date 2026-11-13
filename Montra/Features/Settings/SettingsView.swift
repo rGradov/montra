@@ -381,7 +381,12 @@ struct SettingsView: View {
         group(String(localized: "common.about_2")) {
             plainRow(title: String(localized: "common.version"), value: "1.0")
             divider
-            plainRow(title: String(localized: "common.storage"), value: String(localized: "settings.swiftdata_on_this_mac"))
+            plainRow(
+                title: String(localized: "common.storage"),
+                value: ModelContainerFactory.openFailure == nil
+                    ? String(localized: "settings.swiftdata_on_this_mac")
+                    : String(localized: "settings.storage_not_saving")
+            )
         }
     }
 

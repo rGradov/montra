@@ -1,4 +1,5 @@
 import AppIntents
+import AppKit
 import SwiftData
 import SwiftUI
 
@@ -12,6 +13,9 @@ struct MontraApp: App {
     @StateObject private var settings: SettingsStore
     @StateObject private var integration: LocalIntegration
     @StateObject private var rates: RateStore
+    @StateObject private var sync = SyncService.shared
+    @Environment(\.scenePhase) private var scenePhase
+    @NSApplicationDelegateAdaptor(MontraAppDelegate.self) private var appDelegate
 
     @MainActor
     init() {
@@ -31,6 +35,10 @@ struct MontraApp: App {
             ? ModelContainerFactory.make(inMemory: true)
             : ModelContainerFactory.make()
         self.container = container
+        SyncService.shared.start(
+            container: container,
+            inMemory: container.configurations.contains { $0.isStoredInMemoryOnly }
+        )
 
         let settings: SettingsStore
         if previewOnboarding {
@@ -75,7 +83,13 @@ struct MontraApp: App {
                 .environmentObject(settings)
                 .environmentObject(rates)
                 .environmentObject(integration)
+                .environmentObject(sync)
                 .modelContainer(container)
+                .onChange(of: scenePhase) { _, phase in
+                    // Coming back to the app is the best moment to notice what
+                    // CloudKit delivered while it was in the background.
+                    if phase == .active { sync.refresh() }
+                }
                 .onChange(of: settings.hasCompletedOnboarding, initial: true) { _, completed in
                     integration.startIfEnabled(onboardingComplete: completed)
                 }
@@ -209,25 +223,40 @@ private struct WindowConfigurator: NSViewRepresentable {
 }
 
 enum ModelContainerFactory {
+    /// Set when the real store could not be opened and the app fell back to
+    /// memory. Settings shows it, because writes to an in-memory store vanish.
+    private(set) static var openFailure: String?
+
     static let schema = Schema([Account.self, Category.self, Operation.self, Period.self, PlannedOperation.self])
 
     static func make(inMemory: Bool = false) -> ModelContainer {
-        // iCloud: switch `cloudKitDatabase` to `.private(SyncService.containerIdentifier)`
-        // once the container exists in the developer account and the entitlement is
-        // added. See Docs/iCloud-Setup.md. The models already satisfy CloudKit's rules.
+        // CloudKit mirroring needs an SQLite-backed store, so the in-memory
+        // containers used by `-selftest`, snapshots and the onboarding preview
+        // keep `.none` and stay offline and deterministic.
         let configuration = ModelConfiguration(
             "Montra",
             schema: schema,
             isStoredInMemoryOnly: inMemory,
-            cloudKitDatabase: .none
+            cloudKitDatabase: inMemory ? .none : .private(SyncService.containerIdentifier)
         )
         do {
             return try ModelContainer(for: schema, configurations: [configuration])
         } catch {
-            // A corrupt store should not keep the app closed; fall back to memory and
-            // let the user reset from Settings.
-            assertionFailure(String(localized: "storage.open_error \(error.localizedDescription)"))
+            // A corrupt store should not keep the app closed, but falling back to
+            // memory silently would lose every write, so the failure is recorded
+            // and Settings reports it.
+            openFailure = error.localizedDescription
             return try! ModelContainer(for: schema, configurations: [ModelConfiguration(isStoredInMemoryOnly: true)])
         }
+    }
+}
+
+
+/// Commits any pending edits before the app quits. The upload itself happens on
+/// CloudKit's own schedule; nothing in the public API can push it.
+final class MontraAppDelegate: NSObject, NSApplicationDelegate {
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        MainActor.assumeIsolated { SyncService.shared.flush() }
+        return .terminateNow
     }
 }

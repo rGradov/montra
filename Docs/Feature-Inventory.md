@@ -226,7 +226,7 @@ Use a 980×700 window with a 240 pt sidebar and `hiddenTitleBar`.
 | SET-04 | Financial period | Mode, payday, length, Periods link, regeneration, and persistence | ui/unit |
 | SET-05 | Rates | National Bank of Belarus or fallback source, table, Refresh, updated state, error, six-hour cache, and disabled control during refresh | ui/unit |
 | SET-06 | Local API | On and off, unavailable before onboarding, 127.0.0.1 and port, copy token, allowDelete, and persistence | ui/integration |
-| SET-07 | iCloud | Disconnected status and instructions sheet. Data stays local and sync is inactive | ui/manual |
+| SET-07 | iCloud | CloudKit mirroring of the whole ledger. Sidebar row and Settings show the live account state and when the ledger last changed; the sheet explains that transfers follow the system schedule and offers a route to the Apple Account pane when signed out. In-memory modes stay offline | ui/manual |
 | SET-08 | CSV | Export all recorded transactions. Header, `;` delimiter, BOM, CRLF, escaping, date sort, cancellation and error, and plans excluded | unit/ui |
 | SET-09 | Delete All Data | See ONB-07. Check alert text, immediate onboarding, and resulting category, period, plan, account, and transaction state | ui/persistence |
 | SET-10 | About in Settings | Static version and storage rows | ui |
@@ -244,7 +244,7 @@ Use a 980×700 window with a 240 pt sidebar and `hiddenTitleBar`.
 | DEL-04 | Delete category | See CAT-05. Reassign to fallback and promote children | unit |
 | DEL-05 | Delete plan | Occurrence or series, retain linked transactions, and confirm | unit/ui |
 | DEL-06 | Delete all | See ONB-07 | persistence |
-| DAT-01 | SwiftData schema | Account, Category, Operation, Period, and PlannedOperation. CloudKit-compatible defaults, optionals, inverses, and no unique constraints | unit |
+| DAT-01 | SwiftData schema | Account, Category, Operation, Period, and PlannedOperation. CloudKit-compatible defaults, optional relationships, an inverse on every relationship including `PlannedOperation.account`/`.category`, no unique constraints, no `.deny` rule | unit |
 | DAT-02 | Migration | Upgrade older store to PlannedOperation schema without losing data. Check counts and backup | persistence |
 | DAT-03 | Repositories | Single write path, save and rollback, cascades, and fallbacks | unit |
 | DAT-04 | Relaunch | Accounts, transactions, plans, settings, and periods persist. Deleted records stay deleted | persistence |

@@ -1310,6 +1310,220 @@ enum SelfTest {
         check(!bar.defaultItemIdentifiers.contains(MontraTouchBarController.accountsIdentifier),
               "без счетов полоса тачбара не занимает место")
 
+        // 13. iCloud presents one honest state and never wakes the network.
+        // Every case, plus the `nil` state that means "the first check is still
+        // running", goes through the same presentation, so the sidebar, the
+        // Settings row and the sheet cannot invent their own words.
+        let syncCases: [(name: String, state: CloudSyncState?, connected: Bool, attention: Bool)] = [
+            ("nil", nil, false, false),
+            ("notConfigured", .notConfigured, false, true),
+            ("noAccount", .noAccount, false, true),
+            ("restricted", .restricted, false, true),
+            ("unknown", .unknown, false, false),
+            ("active", .active(lastChange: nil), true, false),
+            ("active+date", .active(lastChange: date(year: 2026, month: 11, day: 13)), true, false),
+            ("failed", .failed("boom"), false, true),
+        ]
+        let syncAppearances = syncCases.map { ($0.name, SyncService.appearance(for: $0.state)) }
+        check(syncAppearances.allSatisfy {
+            !$0.1.symbol.isEmpty && !$0.1.badge.isEmpty
+                && !$0.1.sentence.isEmpty && !$0.1.compact.isEmpty
+        }, "у каждого состояния iCloud есть символ, бейдж и два текста")
+        check(syncAppearances.allSatisfy {
+            NSImage(systemSymbolName: $0.1.symbol, accessibilityDescription: nil) != nil
+        }, "иконки состояний iCloud доступны")
+        check(syncAppearances.allSatisfy { $0.1.action == nil || $0.1.action?.isEmpty == false },
+              "действие состояния либо есть, либо его нет")
+        check(syncAppearances.filter { $0.1.action != nil }.map(\.0)
+                == ["noAccount", "restricted", "unknown", "failed"],
+              "действие предлагается только для исправимых состояний")
+
+        check(syncCases.map { $0.state?.isConnected ?? false } == syncCases.map(\.connected),
+              "isConnected верен в каждом состоянии iCloud")
+        check(syncCases.filter { $0.state?.isConnected ?? false }.map(\.name)
+                == ["active", "active+date"],
+              "подключённым считается только active")
+        check(syncCases.map { SyncService.appearance(for: $0.state).needsAttention }
+                == syncCases.map(\.attention),
+              "needsAttention верен в каждом состоянии iCloud")
+        check(syncAppearances.allSatisfy { ($0.1.tone == .safe) == ($0.0 == "active" || $0.0 == "active+date") },
+              "зелёный тон бывает только у подключённого iCloud")
+        check(!CloudSyncState.notConfigured.isConnected
+              && !CloudSyncState.noAccount.isConnected
+              && !CloudSyncState.restricted.isConnected
+              && !CloudSyncState.unknown.isConnected
+              && !CloudSyncState.failed("boom").isConnected,
+              "остальные состояния не выдают себя за подключённые")
+
+        // The compact form is the row under the sidebar list, so it must stay
+        // one short line. 20 characters is what the 172 pt card fits at 12 pt
+        // Onest before it wraps; measured when the row was introduced.
+        let sidebarLabelBudget = 20
+        check(syncAppearances.allSatisfy {
+            $0.1.compact.count < 30 && !$0.1.compact.contains("\n") && $0.1.compact.count <= sidebarLabelBudget
+        }, "короткая подпись iCloud влезает в строку сайдбара")
+        check(SyncService.appearance(for: .active(lastChange: nil)).compact
+                != SyncService.appearance(for: .active(lastChange: .now)).compact,
+              "подпись со временем отличается от подписи без него")
+
+        // Both shipped catalogs must carry every iCloud string, and the English
+        // one must actually be English: the source language is Russian.
+        func catalog(_ language: String) -> [String: String]? {
+            guard let path = Bundle.main.path(forResource: language, ofType: "lproj"),
+                  let bundle = Bundle(path: path),
+                  let url = bundle.url(forResource: "Localizable", withExtension: "strings"),
+                  let data = try? Data(contentsOf: url),
+                  let plist = try? PropertyListSerialization.propertyList(from: data, format: nil)
+            else { return nil }
+            return plist as? [String: String]
+        }
+        func hasCyrillic(_ text: String) -> Bool {
+            text.unicodeScalars.contains { (0x0400...0x04FF).contains($0.value) }
+        }
+        let englishCatalog = catalog("en")
+        let russianCatalog = catalog("ru")
+        check(englishCatalog != nil && russianCatalog != nil, "каталоги en и ru читаются")
+        let iCloudKeys = (englishCatalog ?? [:]).keys.filter { $0.hasPrefix("sync.") }
+        check(!iCloudKeys.isEmpty && iCloudKeys.allSatisfy { russianCatalog?[$0]?.isEmpty == false },
+              "каждый ключ sync.* переведён на ru")
+        check(iCloudKeys.allSatisfy { (englishCatalog?[$0] ?? "").count > 0 },
+              "каждый ключ sync.* переведён на en")
+        check(iCloudKeys.allSatisfy { !hasCyrillic(englishCatalog?[$0] ?? "") },
+              "английские строки iCloud не содержат русского текста")
+
+        // The signature is the heartbeat's only input: it must move on inserts
+        // and stay put when nothing happens, or the timer would lie every 2 min.
+        let syncContainer = ModelContainerFactory.make(inMemory: true)
+        let syncContext = ModelContext(syncContainer)
+        let signatureBase = StoreSignature(context: syncContext)
+        check(signatureBase == StoreSignature(context: syncContext),
+              "подпись книги стабильна, пока ничего не меняется")
+        check(signatureBase.operations == 0 && signatureBase.newestCreatedAt == nil,
+              "пустая книга даёт пустую подпись")
+
+        let syncAccount = Account(name: "Синхро", currency: .byn, initialAmount: 0,
+                                  iconName: "creditcard.fill", color: .blue)
+        syncContext.insert(syncAccount)
+        let earlier = Date().addingTimeInterval(-3600)
+        let older = Operation(kind: .expense, amount: 5, currency: .byn, date: earlier,
+                              account: syncAccount, category: nil)
+        older.createdAt = earlier
+        syncContext.insert(older)
+        try? syncContext.save()
+
+        let signatureInserted = StoreSignature(context: syncContext)
+        check(signatureInserted != signatureBase, "подпись меняется после вставки операции")
+        check(signatureInserted.operations == 1 && signatureInserted.accounts == 1,
+              "подпись считает операции и счета")
+        check(signatureInserted.newestCreatedAt != nil
+              && StoreSignature(context: syncContext) == signatureInserted,
+              "подпись стабильна после сохранения")
+
+        let newer = Operation(kind: .income, amount: 7, currency: .byn, date: .now,
+                              account: syncAccount, category: nil)
+        syncContext.insert(newer)
+        try? syncContext.save()
+        let signatureNewer = StoreSignature(context: syncContext)
+        check(signatureNewer.newestCreatedAt == newer.createdAt
+              && signatureNewer.date == newer.createdAt,
+              "подпись запоминает самую новую операцию")
+        check(signatureNewer.operations == 2 && signatureNewer != signatureInserted,
+              "вторая операция снова меняет подпись")
+
+        // Known limitation, asserted on purpose: an edit does not change counts
+        // or `createdAt`, so the printed time stays silent until a row lands.
+        older.amount = 999
+        try? syncContext.save()
+        check(StoreSignature(context: syncContext) == signatureNewer,
+              "правка строки не меняет подпись — известное ограничение подписи")
+
+        // An in-memory store must keep the whole service dormant: no timer, no
+        // CKContainer request, no status claim.
+        let offlineSync = SyncService.shared
+        offlineSync.start(container: syncContainer, inMemory: true)
+        check(offlineSync.state == .notConfigured && !offlineSync.isConnected,
+              "в памяти iCloud выключен")
+        check(SyncService.appearance(for: offlineSync.state).needsAttention,
+              "выключенный в памяти iCloud не выглядит подключённым")
+        offlineSync.refresh()
+        check(offlineSync.state == .notConfigured,
+              "refresh в памяти не трогает сеть и не меняет состояние")
+        offlineSync.flush()
+        check(offlineSync.state == .notConfigured, "flush в памяти ничего не включает")
+        offlineSync.stop()
+        check(offlineSync.state == .notConfigured && !offlineSync.isConnected,
+              "stop переводит iCloud в честное «выключено»")
+
+        let inMemoryConfiguration = ModelContainerFactory.make(inMemory: true).configurations
+        check(inMemoryConfiguration.allSatisfy { $0.isStoredInMemoryOnly },
+              "контейнер самотеста целиком в памяти")
+        check(inMemoryConfiguration.allSatisfy { $0.cloudKitContainerIdentifier == nil },
+              "у контейнера в памяти нет идентификатора CloudKit")
+
+        // CloudKit refuses a schema with a missing inverse, a `.deny` rule or a
+        // unique constraint, so the mirroring build would fail to open at all.
+        let syncEntities = ModelContainerFactory.schema.entities
+        let syncRelationships = syncEntities.flatMap { $0.relationships }
+        check(syncRelationships.count >= 8, "схема объявляет связи всех моделей")
+        check(syncRelationships.allSatisfy { $0.inverseName != nil },
+              "у каждой связи есть обратная")
+        check(syncRelationships.allSatisfy { $0.deleteRule != .deny },
+              "ни одна связь не запрещает удаление")
+        check(syncEntities.allSatisfy { $0.uniquenessConstraints.isEmpty },
+              "в схеме нет уникальных ограничений")
+        check(syncEntities.allSatisfy { entity in entity.attributes.allSatisfy { !$0.isUnique } },
+              "у полей нет уникальных атрибутов")
+        check(syncEntities.count == 5, "в схеме пять моделей книги")
+
+        // A second Mac seeds its own starter rows before CloudKit delivers the
+        // ledger, so the same category arrives twice with different identities.
+        let reconcileContainer = ModelContainerFactory.make(inMemory: true)
+        let reconcileContext = reconcileContainer.mainContext
+        let firstCategory = Category(name: "food", kind: .expense, color: .green,
+                                      iconName: "cart.fill", isSystem: true)
+        let secondCategory = Category(name: "food", kind: .expense, color: .green,
+                                      iconName: "cart.fill", isSystem: true)
+        reconcileContext.insert(firstCategory)
+        secondCategory.createdAt = firstCategory.createdAt.addingTimeInterval(60)
+        reconcileContext.insert(secondCategory)
+
+        let userCategoryA = Category(name: "food", kind: .expense, color: .red,
+                                      iconName: "tag.fill", isSystem: false)
+        let userCategoryB = Category(name: "food", kind: .expense, color: .red,
+                                      iconName: "tag.fill", isSystem: false)
+        reconcileContext.insert(userCategoryA)
+        reconcileContext.insert(userCategoryB)
+
+        let reconcileAccount = Account(name: "Cash", currency: .byn, initialAmount: 0,
+                                        iconName: "creditcard.fill", color: .blue)
+        reconcileContext.insert(reconcileAccount)
+        let movedOperation = Operation(kind: .expense, amount: 10, currency: .byn, date: .now,
+                                       account: reconcileAccount, category: secondCategory)
+        reconcileContext.insert(movedOperation)
+
+        let periodStart = date(year: 2026, month: 11, day: 1)
+        let periodEnd = date(year: 2026, month: 11, day: 30)
+        reconcileContext.insert(Period(start: periodStart, end: periodEnd))
+        reconcileContext.insert(Period(start: periodStart, end: periodEnd, isManual: true))
+
+        let reconcileResult = LedgerReconcile.run(context: reconcileContext)
+        check(reconcileResult.categories == 1, "reconcile сливает дубли системных категорий")
+        check(reconcileResult.periods == 1, "reconcile сливает дубли периодов")
+        check(movedOperation.category?.id == firstCategory.id,
+              "операция переезжает на оставшуюся категорию")
+
+        let remainingCategories = (try? reconcileContext.fetch(FetchDescriptor<Category>())) ?? []
+        check(remainingCategories.filter { $0.isSystem }.count == 1,
+              "системная категория осталась одна")
+        check(remainingCategories.filter { !$0.isSystem }.count == 2,
+              "пользовательские категории с тем же именем не тронуты")
+
+        let remainingPeriods = (try? reconcileContext.fetch(FetchDescriptor<Period>())) ?? []
+        check(remainingPeriods.count == 1 && remainingPeriods[0].isManual,
+              "из дублей периодов остаётся ручной")
+        check(LedgerReconcile.run(context: reconcileContext).isEmpty,
+              "повторный reconcile ничего не меняет")
+
         print(failures == 0 ? "ALL CHECKS PASSED" : "\(failures) CHECK(S) FAILED")
         exit(failures == 0 ? 0 : 1)
     }

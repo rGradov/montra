@@ -33,6 +33,10 @@ enum SnapshotRunner {
         settings.appearance = .dark
         settings.primaryCurrency = .byn
 
+        // Snapshots are offline: the service starts in in-memory mode, which
+        // resolves to an honest "not configured" instead of querying CloudKit.
+        SyncService.shared.stop()
+
         let previewRates = RateStore(preview: ExchangeRates(
             bynPerUnit: [
                 .byn: 1,
@@ -135,7 +139,7 @@ enum SnapshotRunner {
         }
 
         render(
-            AppRootView(initialRoute: .overview).environmentObject(settings).environmentObject(previewRates).modelContainer(container),
+            AppRootView(initialRoute: .overview).environmentObject(settings).environmentObject(previewRates).environmentObject(SyncService.shared).modelContainer(container),
             size: CGSize(width: AppWindowLayout.width, height: AppWindowLayout.defaultHeight),
             colorScheme: .dark,
             name: "01-overview-dark",
@@ -144,7 +148,7 @@ enum SnapshotRunner {
         )
 
         render(
-            AppRootView(initialRoute: .overview).environmentObject(settings).environmentObject(previewRates).modelContainer(container),
+            AppRootView(initialRoute: .overview).environmentObject(settings).environmentObject(previewRates).environmentObject(SyncService.shared).modelContainer(container),
             size: CGSize(width: AppWindowLayout.width, height: 1320),
             colorScheme: .dark,
             name: "01b-overview-tall",
@@ -164,7 +168,7 @@ enum SnapshotRunner {
             savingsAccount.isHiddenFromOverview = true
 
             render(
-                AppRootView(initialRoute: .overview).environmentObject(settings).environmentObject(previewRates).modelContainer(container),
+                AppRootView(initialRoute: .overview).environmentObject(settings).environmentObject(previewRates).environmentObject(SyncService.shared).modelContainer(container),
                 size: CGSize(width: AppWindowLayout.width, height: AppWindowLayout.defaultHeight),
                 colorScheme: .dark,
                 name: "01c-overview-hidden",
@@ -176,7 +180,7 @@ enum SnapshotRunner {
         }
 
         render(
-            AppRootView(initialRoute: .operations).environmentObject(settings).environmentObject(previewRates).modelContainer(container),
+            AppRootView(initialRoute: .operations).environmentObject(settings).environmentObject(previewRates).environmentObject(SyncService.shared).modelContainer(container),
             size: CGSize(width: AppWindowLayout.width, height: AppWindowLayout.defaultHeight),
             colorScheme: .dark,
             name: "02-operations-dark",
@@ -186,7 +190,7 @@ enum SnapshotRunner {
 
         if let account {
             render(
-                AppRootView(initialRoute: .account(account.id)).environmentObject(settings).environmentObject(previewRates).modelContainer(container),
+                AppRootView(initialRoute: .account(account.id)).environmentObject(settings).environmentObject(previewRates).environmentObject(SyncService.shared).modelContainer(container),
                 size: CGSize(width: AppWindowLayout.width, height: AppWindowLayout.defaultHeight),
                 colorScheme: .dark,
                 name: "03-account-dark",
@@ -197,7 +201,7 @@ enum SnapshotRunner {
         if let eurAccount = (try? context.fetch(FetchDescriptor<Account>(sortBy: [SortDescriptor(\.sortIndex)])))?
             .first(where: { $0.currency == .eur }) {
             render(
-                AppRootView(initialRoute: .account(eurAccount.id)).environmentObject(settings).environmentObject(previewRates).modelContainer(container),
+                AppRootView(initialRoute: .account(eurAccount.id)).environmentObject(settings).environmentObject(previewRates).environmentObject(SyncService.shared).modelContainer(container),
                 size: CGSize(width: AppWindowLayout.width, height: AppWindowLayout.defaultHeight),
                 colorScheme: .dark,
                 name: "03b-account-eur-dark",
@@ -208,7 +212,7 @@ enum SnapshotRunner {
 
         if let savingsAccount = snapshotAccounts.first(where: { $0.isSavings }) {
             render(
-                AppRootView(initialRoute: .account(savingsAccount.id)).environmentObject(settings).environmentObject(previewRates).modelContainer(container),
+                AppRootView(initialRoute: .account(savingsAccount.id)).environmentObject(settings).environmentObject(previewRates).environmentObject(SyncService.shared).modelContainer(container),
                 size: CGSize(width: AppWindowLayout.width, height: AppWindowLayout.defaultHeight),
                 colorScheme: .dark,
                 name: "03c-account-savings-dark",
@@ -218,7 +222,7 @@ enum SnapshotRunner {
         }
 
         render(
-            AppRootView(initialRoute: .categories).environmentObject(settings).environmentObject(previewRates).modelContainer(container),
+            AppRootView(initialRoute: .categories).environmentObject(settings).environmentObject(previewRates).environmentObject(SyncService.shared).modelContainer(container),
             size: CGSize(width: AppWindowLayout.width, height: AppWindowLayout.defaultHeight),
             colorScheme: .dark,
             name: "04-categories-dark",
@@ -231,7 +235,7 @@ enum SnapshotRunner {
         render(
             AppRootView(initialRoute: .settings)
                 .environmentObject(settings)
-                .environmentObject(previewRates)
+                .environmentObject(previewRates).environmentObject(SyncService.shared)
                 .environmentObject(integration)
                 .modelContainer(container),
             size: CGSize(width: AppWindowLayout.width, height: AppWindowLayout.defaultHeight),
@@ -244,7 +248,7 @@ enum SnapshotRunner {
         render(
             AppRootView(initialRoute: .settings)
                 .environmentObject(settings)
-                .environmentObject(previewRates)
+                .environmentObject(previewRates).environmentObject(SyncService.shared)
                 .environmentObject(integration)
                 .modelContainer(container),
             size: CGSize(width: AppWindowLayout.width, height: 1500),
@@ -269,7 +273,7 @@ enum SnapshotRunner {
                     onRestored: {}
                 )
                 .environmentObject(settings)
-                .environmentObject(previewRates)
+                .environmentObject(previewRates).environmentObject(SyncService.shared)
                 .environmentObject(integration),
                 size: CGSize(width: 520, height: 640),
                 colorScheme: .dark,
@@ -279,7 +283,7 @@ enum SnapshotRunner {
         }
 
         render(
-            AppRootView(initialRoute: .about).environmentObject(settings).environmentObject(previewRates).modelContainer(container),
+            AppRootView(initialRoute: .about).environmentObject(settings).environmentObject(previewRates).environmentObject(SyncService.shared).modelContainer(container),
             size: CGSize(width: AppWindowLayout.width, height: 1180),
             colorScheme: .dark,
             name: "07b-about-tall",
@@ -288,7 +292,7 @@ enum SnapshotRunner {
         )
 
         render(
-            AppRootView(initialRoute: .analytics).environmentObject(settings).environmentObject(previewRates).modelContainer(container),
+            AppRootView(initialRoute: .analytics).environmentObject(settings).environmentObject(previewRates).environmentObject(SyncService.shared).modelContainer(container),
             size: CGSize(width: AppWindowLayout.width, height: AppWindowLayout.defaultHeight),
             colorScheme: .dark,
             name: "06-analytics-dark",
@@ -297,7 +301,7 @@ enum SnapshotRunner {
         )
 
         render(
-            AppRootView(initialRoute: .analytics).environmentObject(settings).environmentObject(previewRates).modelContainer(container),
+            AppRootView(initialRoute: .analytics).environmentObject(settings).environmentObject(previewRates).environmentObject(SyncService.shared).modelContainer(container),
             size: CGSize(width: AppWindowLayout.width, height: 1600),
             colorScheme: .dark,
             name: "06b-analytics-tall",
@@ -306,7 +310,7 @@ enum SnapshotRunner {
         )
 
         render(
-            AppRootView(initialRoute: .about).environmentObject(settings).environmentObject(previewRates).modelContainer(container),
+            AppRootView(initialRoute: .about).environmentObject(settings).environmentObject(previewRates).environmentObject(SyncService.shared).modelContainer(container),
             size: CGSize(width: AppWindowLayout.width, height: AppWindowLayout.defaultHeight),
             colorScheme: .dark,
             name: "07-about-dark",
@@ -316,7 +320,7 @@ enum SnapshotRunner {
 
         settings.appearance = .light
         render(
-            AppRootView(initialRoute: .overview).environmentObject(settings).environmentObject(previewRates).modelContainer(container),
+            AppRootView(initialRoute: .overview).environmentObject(settings).environmentObject(previewRates).environmentObject(SyncService.shared).modelContainer(container),
             size: CGSize(width: AppWindowLayout.width, height: AppWindowLayout.defaultHeight),
             colorScheme: .light,
             name: "08-overview-light",
@@ -325,7 +329,7 @@ enum SnapshotRunner {
         )
 
         render(
-            AppRootView(initialRoute: .analytics).environmentObject(settings).environmentObject(previewRates).modelContainer(container),
+            AppRootView(initialRoute: .analytics).environmentObject(settings).environmentObject(previewRates).environmentObject(SyncService.shared).modelContainer(container),
             size: CGSize(width: AppWindowLayout.width, height: 1600),
             colorScheme: .light,
             name: "08b-analytics-light",
@@ -352,7 +356,7 @@ enum SnapshotRunner {
         )
         render(
             OnboardingFlowView(initialStep: .welcome, onFinish: {})
-                .environmentObject(settings).environmentObject(previewRates).modelContainer(onboardingContainer),
+                .environmentObject(settings).environmentObject(previewRates).environmentObject(SyncService.shared).modelContainer(onboardingContainer),
             size: CGSize(width: AppWindowLayout.width, height: AppWindowLayout.defaultHeight),
             colorScheme: .dark,
             name: "13-onboarding-welcome",
@@ -362,7 +366,7 @@ enum SnapshotRunner {
 
         render(
             OnboardingFlowView(initialStep: .categories, onFinish: {})
-                .environmentObject(settings).environmentObject(previewRates).modelContainer(onboardingContainer),
+                .environmentObject(settings).environmentObject(previewRates).environmentObject(SyncService.shared).modelContainer(onboardingContainer),
             size: CGSize(width: AppWindowLayout.width, height: AppWindowLayout.defaultHeight),
             colorScheme: .dark,
             name: "13b-onboarding-categories",
@@ -372,7 +376,7 @@ enum SnapshotRunner {
 
         render(
             OnboardingFlowView(initialStep: .account, onFinish: {})
-                .environmentObject(settings).environmentObject(previewRates).modelContainer(onboardingContainer),
+                .environmentObject(settings).environmentObject(previewRates).environmentObject(SyncService.shared).modelContainer(onboardingContainer),
             size: CGSize(width: AppWindowLayout.width, height: AppWindowLayout.defaultHeight),
             colorScheme: .dark,
             name: "14-onboarding-account",
@@ -382,7 +386,7 @@ enum SnapshotRunner {
 
         render(
             OnboardingFlowView(initialStep: .expense, previewAccount: firstAccount, onFinish: {})
-                .environmentObject(settings).environmentObject(previewRates).modelContainer(onboardingContainer),
+                .environmentObject(settings).environmentObject(previewRates).environmentObject(SyncService.shared).modelContainer(onboardingContainer),
             size: CGSize(width: AppWindowLayout.width, height: AppWindowLayout.defaultHeight),
             colorScheme: .dark,
             name: "15-onboarding-expense",
@@ -410,7 +414,7 @@ enum SnapshotRunner {
                 isPreview: true,
                 onFinish: {}
             )
-            .environmentObject(settings).environmentObject(previewRates).modelContainer(onboardingContainer),
+            .environmentObject(settings).environmentObject(previewRates).environmentObject(SyncService.shared).modelContainer(onboardingContainer),
             size: CGSize(width: AppWindowLayout.width, height: AppWindowLayout.defaultHeight),
             colorScheme: .dark,
             name: "16-onboarding-done",
@@ -419,7 +423,7 @@ enum SnapshotRunner {
         )
 
         render(
-            AccountSheet(mode: .create).environmentObject(settings).environmentObject(previewRates).modelContainer(container),
+            AccountSheet(mode: .create).environmentObject(settings).environmentObject(previewRates).environmentObject(SyncService.shared).modelContainer(container),
             size: CGSize(width: 470, height: 650),
             colorScheme: .dark,
             name: "09-new-account",
@@ -428,7 +432,7 @@ enum SnapshotRunner {
 
         render(
             AccountSheet(mode: .create, startsAsSavings: true)
-                .environmentObject(settings).environmentObject(previewRates).modelContainer(container),
+                .environmentObject(settings).environmentObject(previewRates).environmentObject(SyncService.shared).modelContainer(container),
             size: CGSize(width: 470, height: 650),
             colorScheme: .dark,
             name: "09c-new-savings-account",
@@ -441,7 +445,7 @@ enum SnapshotRunner {
             savingsAccount.isHiddenFromOverview = true
 
             render(
-                AccountSheet(mode: .edit(savingsAccount)).environmentObject(settings).environmentObject(previewRates).modelContainer(container),
+                AccountSheet(mode: .edit(savingsAccount)).environmentObject(settings).environmentObject(previewRates).environmentObject(SyncService.shared).modelContainer(container),
                 size: CGSize(width: 470, height: 650),
                 colorScheme: .dark,
                 name: "09b-account-hidden",
@@ -457,7 +461,7 @@ enum SnapshotRunner {
             AccountSheet(mode: .edit(
                 Account(name: "Копилка", currency: .byn, initialAmount: 0, iconName: "💰", color: .amber)
             ))
-            .environmentObject(settings).environmentObject(previewRates).modelContainer(container),
+            .environmentObject(settings).environmentObject(previewRates).environmentObject(SyncService.shared).modelContainer(container),
             size: CGSize(width: 470, height: 650),
             colorScheme: .dark,
             name: "09d-account-emoji",
@@ -496,7 +500,7 @@ enum SnapshotRunner {
 
         render(
             OperationSheet(mode: .create(OperationSource(account: account, kind: .expense)))
-                .environmentObject(settings).environmentObject(previewRates)
+                .environmentObject(settings).environmentObject(previewRates).environmentObject(SyncService.shared)
                 .modelContainer(container),
             size: CGSize(width: 470, height: 700),
             colorScheme: .dark,
@@ -509,7 +513,7 @@ enum SnapshotRunner {
                 mode: .create(OperationSource(account: account, kind: .expense)),
                 initialAmount: "42,80"
             )
-            .environmentObject(settings).environmentObject(previewRates)
+            .environmentObject(settings).environmentObject(previewRates).environmentObject(SyncService.shared)
             .modelContainer(container),
             size: CGSize(width: 470, height: 700),
             colorScheme: .dark,
@@ -522,7 +526,7 @@ enum SnapshotRunner {
                 mode: .create(OperationSource(account: account, kind: .expense)),
                 initialRepeats: true
             )
-            .environmentObject(settings).environmentObject(previewRates)
+            .environmentObject(settings).environmentObject(previewRates).environmentObject(SyncService.shared)
             .modelContainer(container),
             size: CGSize(width: 470, height: 700),
             colorScheme: .dark,
@@ -536,7 +540,7 @@ enum SnapshotRunner {
                 initialTab: .transfer,
                 previewSent: "100"
             )
-            .environmentObject(settings).environmentObject(previewRates)
+            .environmentObject(settings).environmentObject(previewRates).environmentObject(SyncService.shared)
             .modelContainer(container),
             size: CGSize(width: 470, height: 700),
             colorScheme: .dark,
@@ -550,7 +554,7 @@ enum SnapshotRunner {
                 mode: .create(OperationSource(account: account, kind: .expense)),
                 initialAmount: "42,80"
             )
-            .environmentObject(settings).environmentObject(previewRates)
+            .environmentObject(settings).environmentObject(previewRates).environmentObject(SyncService.shared)
             .modelContainer(container),
             size: CGSize(width: 470, height: 700),
             colorScheme: .light,
@@ -560,7 +564,7 @@ enum SnapshotRunner {
         settings.appearance = .dark
 
         render(
-            PeriodsSheet().environmentObject(settings).environmentObject(previewRates).modelContainer(container),
+            PeriodsSheet().environmentObject(settings).environmentObject(previewRates).environmentObject(SyncService.shared).modelContainer(container),
             size: CGSize(width: 520, height: 660),
             colorScheme: .dark,
             name: "11-periods",
@@ -568,8 +572,8 @@ enum SnapshotRunner {
         )
 
         render(
-            ICloudSheet().environmentObject(settings).environmentObject(previewRates).modelContainer(container),
-            size: CGSize(width: 470, height: 560),
+            ICloudSheet().environmentObject(settings).environmentObject(previewRates).environmentObject(SyncService.shared).modelContainer(container),
+            size: CGSize(width: 470, height: 360),
             colorScheme: .dark,
             name: "12-icloud",
             in: directory
@@ -692,7 +696,7 @@ enum SnapshotRunner {
                     previewSent: "100"
                 )
                 .environmentObject(settings)
-                .environmentObject(previewRates)
+                .environmentObject(previewRates).environmentObject(SyncService.shared)
                 .modelContainer(container),
                 size: CGSize(width: 470, height: 700),
                 colorScheme: .dark,
@@ -708,7 +712,7 @@ enum SnapshotRunner {
                     initialRepeats: true
                 )
                 .environmentObject(settings)
-                .environmentObject(previewRates)
+                .environmentObject(previewRates).environmentObject(SyncService.shared)
                 .modelContainer(container),
                 size: CGSize(width: 470, height: 720),
                 colorScheme: .dark,
@@ -721,7 +725,7 @@ enum SnapshotRunner {
             render(
                 PlanActionSheet(planID: demoPlan.id) { _ in }
                     .environmentObject(settings)
-                    .environmentObject(previewRates)
+                    .environmentObject(previewRates).environmentObject(SyncService.shared)
                     .modelContainer(container),
                 size: CGSize(width: 470, height: 660),
                 colorScheme: .dark,
@@ -734,7 +738,7 @@ enum SnapshotRunner {
             render(
                 TransferDetailSheet(transferID: transferID)
                     .environmentObject(settings)
-                    .environmentObject(previewRates)
+                    .environmentObject(previewRates).environmentObject(SyncService.shared)
                     .modelContainer(container),
                 size: CGSize(width: 470, height: 380),
                 colorScheme: .dark,
@@ -794,7 +798,7 @@ enum SnapshotRunner {
             .frame(width: size.width, height: size.height, alignment: .topLeading)
             .environment(\.colorScheme, .dark)
             .environmentObject(settings)
-            .environmentObject(previewRates)
+            .environmentObject(previewRates).environmentObject(SyncService.shared)
             .modelContainer(container)
         let hosting = NSHostingView(rootView: content)
         hosting.frame = CGRect(origin: .zero, size: size)

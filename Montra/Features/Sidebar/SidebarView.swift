@@ -22,7 +22,9 @@ struct SidebarView: View {
     @Binding var route: Route
     let accounts: [Account]
     let categoryCount: Int
-    let iCloudConnected: Bool
+    /// Everything the row shows comes from one place, so the icon can never
+    /// contradict the text.
+    let iCloud: CloudSyncAppearance
     /// Hidden while the onboarding hero account is still flying into place; the
     /// row keeps its space so the flight can land on its exact frame.
     var hiddenAccountID: UUID? = nil
@@ -188,15 +190,23 @@ struct SidebarView: View {
         }
     }
 
+    private var iCloudTint: Color {
+        if iCloud.tone == .safe { return AppColors.statusSafeText }
+        if iCloud.needsAttention { return AppColors.statusCheckText }
+        return AppColors.textSecondary
+    }
+
     private var syncStatusCard: some View {
         Button(action: onOpenICloud) {
             HStack(spacing: AppStyle.Spacing.xSmall) {
-                Image(systemName: iCloudConnected ? "checkmark.icloud" : "icloud.slash")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(iCloudConnected ? AppColors.statusSafeText : AppColors.textSecondary)
+                Image(systemName: iCloud.symbol)
+                    .font(AppStyle.Typography.callout.weight(.medium))
+                    .foregroundStyle(iCloudTint)
                     .accessibilityHidden(true)
 
-                Text(iCloudConnected ? String(localized: "common.icloud_connected") : String(localized: "sidebar.icloud_not_connected"))
+                Text(iCloud.compact)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
                     .font(AppStyle.Typography.callout.weight(.medium))
                     .foregroundStyle(AppColors.textSecondary)
 
@@ -214,7 +224,10 @@ struct SidebarView: View {
         .buttonStyle(.plain)
         .focusEffectDisabled()
         .pointingHandOnHover()
-        .accessibilityLabel(iCloudConnected ? String(localized: "common.icloud_connected") : String(localized: "sidebar.icloud_not_connected_open_sync"))
+        .accessibilityLabel(
+            Text("\(String(localized: "common.icloud")), \(iCloud.compact)")
+        )
+        .accessibilityHint(Text(String(localized: "sidebar.icloud_status_hint")))
     }
 }
 

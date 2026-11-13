@@ -134,8 +134,10 @@ checks, and edge cases.
   All, Expenses, Income, Missed, and Upcoming filters.
 - **Animated lists.** New transactions slide into place with a brief highlight.
   Amounts and counts animate digit changes.
-- **iCloud groundwork.** Montra includes CloudKit-compatible models, repositories,
-  `SyncService`, and setup instructions. Sync is currently disabled.
+- **iCloud sync.** The ledger mirrors through CloudKit into the person's private
+  database, so the same Apple Account sees the same books on every Mac. The
+  sidebar and Settings report the account state and when the ledger last changed.
+  Transfers follow the system's own schedule; there is no "sync now" button.
 
 ## Backups
 
@@ -248,7 +250,9 @@ sync engine a single integration point. [Product and design specification](Maste
 
 ## iCloud
 
-Sync is currently disabled. [iCloud setup](Docs/iCloud-Setup.md)
+Sync is enabled: SwiftData mirrors the store through CloudKit, with no sign-in
+screen — the Apple Account already signed in on the Mac is the identity.
+[Operator runbook](Docs/iCloud-Setup.md)
 
 ## License
 

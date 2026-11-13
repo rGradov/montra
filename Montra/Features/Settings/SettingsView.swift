@@ -3,6 +3,7 @@ import SwiftUI
 
 struct SettingsView: View {
     @EnvironmentObject private var settings: SettingsStore
+    @EnvironmentObject private var sync: SyncService
     @EnvironmentObject private var headerHost: DetailHeaderHost
     @EnvironmentObject private var rates: RateStore
     @EnvironmentObject private var integration: LocalIntegration
@@ -347,8 +348,8 @@ struct SettingsView: View {
 
             linkRow(
                 title: String(localized: "common.icloud_sync"),
-                caption: String(localized: "settings.the_app_is_ready_the"),
-                value: String(localized: "common.not_connected_2")
+                caption: String(localized: "sync.settings_caption"),
+                value: sync.appearance.compact
             ) {
                 onOpenICloud()
             }
@@ -380,7 +381,12 @@ struct SettingsView: View {
         group(String(localized: "common.about_2")) {
             plainRow(title: String(localized: "common.version"), value: "1.0")
             divider
-            plainRow(title: String(localized: "common.storage"), value: String(localized: "settings.swiftdata_on_this_mac"))
+            plainRow(
+                title: String(localized: "common.storage"),
+                value: ModelContainerFactory.openFailure == nil
+                    ? String(localized: "settings.swiftdata_on_this_mac")
+                    : String(localized: "settings.storage_not_saving")
+            )
         }
     }
 

@@ -178,6 +178,7 @@ were designed for Montra.
 1. Analytics for spending by category and period trends. Data is already grouped.
 2. Transfers between accounts with rates and history.
 3. Recurring transactions for rent and subscriptions with prefilled fields.
-4. Enable iCloud using `Docs/iCloud-Setup.md`.
+4. ~~Enable iCloud.~~ Done: SwiftData mirrors the ledger through CloudKit into
+   the private database. See `Docs/iCloud-Setup.md`.
 5. Custom account icon assets. `IconTile` already renders a matching named asset.
 6. An iOS target using shared models.

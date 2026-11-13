@@ -91,11 +91,15 @@ if [[ "$distribute" == "1" ]]; then
     staging="$distribution_dir/staging"
     dmg="${dmg%.dmg}-notarized.dmg"
     image="$distribution_dir/${dmg##*/}"
+    # iCloud and push entitlement can only be signed together with a Developer
+    # ID provisioning profile, so the script has to name it explicitly.
+    developer_id_profile="${MONTRA_DEVELOPER_ID_PROFILE:-Montra Developer ID}"
     build_flags+=(
         "CODE_SIGN_STYLE=Manual"
         "CODE_SIGN_IDENTITY=Developer ID Application"
         "CODE_SIGN_INJECT_BASE_ENTITLEMENTS=NO"
         "OTHER_CODE_SIGN_FLAGS=--timestamp"
+        "PROVISIONING_PROFILE_SPECIFIER=$developer_id_profile"
     )
 fi
 app="$derived/Build/Products/Release/Montra.app"

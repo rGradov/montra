@@ -1,0 +1,467 @@
+# iCloud sync and optional Apple sign-in: implementation plan
+
+Montra already carries most of the iCloud groundwork. This plan lists what is
+actually missing, what can be shipped without Apple accounts, and what a
+"conditional Apple sign-in" entry would mean for a single-user, local-first
+ledger.
+
+The short version: **iCloud sync needs no sign-in screen and no
+`Sign in with Apple` button.** The identity is the Apple Account that is already
+signed in on the Mac, and an app cannot present an iCloud login prompt. The
+`Sign in with Apple` button only makes sense if Montra ever owns a server-side
+account system. Section 3 separates these into decisions.
+
+## 1. What exists today
+
+| Area | State | Where |
+|---|---|---|
+| Models | Defaults on every attribute, optional relationships, no unique constraints. One exception: `PlannedOperation.account` and `PlannedOperation.category` declare no inverse, and CloudKit mirroring requires one on every relationship | `Montra/Models/Models.swift`, `Montra/Models/Plan.swift` |
+| Container factory | One factory, pinned to `cloudKitDatabase: .none` | `ModelContainerFactory` in `Montra/App/MontraApp.swift:211` |
+| Sync seam | `CloudSyncState`, `SyncProvider` protocol, `SyncService.shared`, `containerIdentifier`. The service is never instantiated or observed: only `containerIdentifier` is read, by `ICloudSheet` | `Montra/Sync/SyncService.swift` |
+| Status surfaces | Three places show iCloud state: the sidebar (hard-coded `iCloudConnected: false`), `ICloudSheet`, and the Settings row that prints `common.not_connected_2` | `AppRootView.swift:185`, `ICloudSheet.swift`, `SettingsView.swift:349` |
+| Entitlements | Template only, not referenced by the target; it still carries the key-value-store key | `Docs/Montra.entitlements` |
+| Integrations | App Intents/Spotlight and the Local API already read the one shared container, both gated on the store being persistent | `MontraApp.swift:61`, `LocalIntegration.swift:30` |
+| Documentation | Enabling steps, limitations | `Docs/iCloud-Setup.md` |
+
+So the data layer is nearly ready; the app is missing a signed entitlement, a
+real container, a live status provider, one relationship inverse, and a decision
+about what syncs and what stays per-Mac.
+
+## 2. Hard blockers (cannot be worked around in code)
+
+| # | Blocker | Current value | Needed |
+|---|---|---|---|
+| B1 | Apple Developer Program membership **and** a Developer ID certificate | Membership is not verifiable from the repo. On this Mac `security find-identity -v -p codesigning` lists only `Apple Development` identities; there is no `Developer ID Application` identity, so `make-dmg.sh --distribute` exits 1 today | A paid team, plus a Developer ID Application certificate installed in the login keychain |
+| B2 | Real bundle identifier | `PRODUCT_BUNDLE_IDENTIFIER = com.example.montra` in `Montra.xcconfig` | A reverse-DNS id you own, e.g. `com.vladrudenua.montra` |
+| B3 | Development team in the project | `DEVELOPMENT_TEAM` appears nowhere; signing is `Automatic` | The 10-character Team ID in the target build settings |
+| B4 | iCloud container | `iCloud.com.example.montra` is computed, never registered | A container registered in Certificates, Identifiers & Profiles, e.g. `iCloud.com.vladrudenua.montra` |
+| B5 | Entitlements file on the target | `CODE_SIGN_ENTITLEMENTS` is not set anywhere | Entitlement files with the iCloud keys, wired into the target per configuration |
+| B6 | Provisioning profile for the distributed build | `make-dmg.sh --distribute` signs with `Manual` + `Developer ID Application`, `CODE_SIGN_INJECT_BASE_ENTITLEMENTS=NO`, and no profile. Installed profiles are three iOS profiles for unrelated apps; none is a macOS Developer ID profile and none carries iCloud or push entitlements | A Developer ID provisioning profile containing iCloud and push, installed and selected; it is embedded in the app bundle |
+| B7 | CloudKit schema deployed to production | No schema exists yet | Deploy the development schema to production in CloudKit Console **before** shipping the DMG, otherwise release builds see no records |
+| B8 | Container environment entitlement | Absent | `com.apple.developer.icloud-container-environment` (`Production` for the DMG build, `Development` for local builds) |
+| B9 | Push Notifications capability | Absent; no `aps-environment` anywhere | Add it: CloudKit uses silent pushes for timely cross-device updates. It also has to be in the provisioning profile |
+| B10 | CloudKit on Developer ID builds | Never tested | **Test before any entitlement work** (Phase 0 exit criterion). Apple documents App Store distribution for the iCloud key-value store and says nothing either way about CloudKit with Developer ID. A Debug build proves nothing about the DMG |
+
+B2 and B3 are the real gate: without a team, the iCloud entitlement cannot be
+signed at all, so the app will keep reporting "not connected" even after the
+container switch. B1 and B10 are the gate for the whole plan: if a Developer ID
+build cannot reach a CloudKit container, nothing below matters.
+
+## 3. Decision: do we need `Sign in with Apple`?
+
+Three architectures are possible. Only the first is needed for "sync my ledger
+across my Macs".
+
+### Option A: iCloud only, no auth UI (recommended)
+
+- Identity = the Apple Account signed in on this Mac. The app cannot and must
+  not ask for iCloud credentials; it can only read `CKAccountStatus` and send
+  the person to System Settings when no account is present.
+- No `Sign in with Apple`, no tokens, no server, no account model, no privacy
+  policy change for an identity provider.
+- Same Apple Account on both Macs → same private CloudKit database → the ledger
+  appears on both.
+- Cost: sync is tied to iCloud. No web app, no Android, no shared household
+  ledger.
+
+### Option B: `Sign in with Apple` as an optional identity layer
+
+- Adds `AuthenticationServices`, `SignInWithAppleButton`, the
+  `com.apple.developer.applesignin` entitlement, and a stored credential
+  (`userIdentifier`, optional name/email) that can gate features or label an
+  export.
+- **It still does not sign anyone into iCloud.** Data would keep syncing through
+  the private CloudKit database, so the button changes nothing about sync. It
+  is only meaningful as the first step towards Option C.
+- Verdict: do not build it now. It is UI debt with no user-visible benefit for
+  a local-first ledger.
+
+### Option C: Montra account system with `Sign in with Apple` + server sync
+
+- Requires a backend, an account entity, migrations on the server, session
+  handling, account deletion, privacy and data-processing disclosures, and a
+  completely different conflict model. This is a product decision, not an
+  iCloud task.
+- If this is ever built, App Review's login-services rule applies (section 4.1):
+  offering any third-party login then obliges you to offer an equivalent option
+  that limits data collection to name and email, allows a private email address,
+  and does not collect ad interactions. `Sign in with Apple` is the practical
+  way to satisfy that, so it stops being optional.
+
+### What "conditional entry" should mean in the UI
+
+Replace "sign in" with **iCloud availability states**. A single entry in
+Settings → iCloud that adapts:
+
+| `CKAccountStatus` | Entry | Action |
+|---|---|---|
+| `.available` | "Sync with iCloud" toggle + last sync time | Flip the container on, restart it |
+| `.noAccount` | "Sign in to iCloud" | Open System Settings → Apple Account (a URL; the exact identifier is not verified here and must be checked on the target macOS version) |
+| `.restricted` | Explain that iCloud is restricted (MDM) | No action |
+| `.couldNotDetermine` / `.temporarilyUnavailable` | "Try again" | Retry the status check |
+
+That is the honest, HIG-compatible "conditional Apple entry" for this app: a
+state-driven row, not an Apple ID button. **This deliberately replaces the
+literal sign-in screen the request implies.** That substitution is a product
+decision, so it needs the owner's explicit agreement (question 1) before Phase 2
+starts.
+
+## 4. Apple requirements (verified sources)
+
+This section exists only to answer the question definitively. If Option A is
+chosen it is reference material, not working steps.
+
+Sources: [Human Interface Guidelines — Sign in with Apple](https://developer.apple.com/design/human-interface-guidelines/sign-in-with-apple),
+[App Review Guidelines](https://developer.apple.com/app-store/review/guidelines/),
+[Enabling CloudKit in Your App](https://developer.apple.com/documentation/cloudkit/enabling-cloudkit-in-your-app),
+[CloudKit](https://developer.apple.com/documentation/cloudkit),
+[CKContainer](https://developer.apple.com/documentation/cloudkit/ckcontainer),
+[NSUbiquitousKeyValueStore](https://developer.apple.com/documentation/foundation/nsubiquitouskeyvaluestore).
+
+### 4.1 Can Sign in with Apple be the only sign-in method?
+
+Yes. App Review 4.8 only obliges an equivalent option when the app uses a
+**third-party or social** login (Facebook, Google, X, LinkedIn, Amazon,
+WeChat) for the user's primary account. Verbatim: *"Apps that use a third-party
+or social login service … to set up or authenticate the user's primary account
+with the app must also offer as an equivalent option another login service"*
+that limits data collection to name and email, allows a private email address,
+and does not track ad interactions.
+
+The rule is not triggered when the app *"exclusively uses your company's own
+account setup and sign-in systems"*. Two consequences for Montra:
+
+- If Montra never adds a third-party login, `Sign in with Apple` is **not
+  required** at all. Shipping only Apple sign-in is also compliant, because the
+  obligation is to add a privacy-respecting option, never to add a third-party
+  one.
+- Montra currently ships as a notarized **Developer ID** app, so App Review does
+  not apply to the current DMG distribution channel. Keep the rule in mind only
+  if a Mac App Store build is planned.
+
+For iCloud sync specifically, no sign-in method is involved: see section 3.
+Apple's CloudKit guidance is to *"design your app to run gracefully with or
+without an active iCloud account"*, to explain why iCloud is needed, and to
+offer a button that takes the person to Settings to enable it.
+
+### 4.2 Button titles, styles and sizes (HIG)
+
+- **Titles** are fixed. On iOS, macOS, tvOS and the web only these are allowed:
+  `Sign in with Apple`, `Sign up with Apple`, `Continue with Apple`. watchOS
+  provides a single title, the Apple logo plus `Sign in`.
+- **Styles**: white (all platforms and web, for dark backgrounds), white with
+  outline (iOS, macOS, web, for light backgrounds), black (all platforms, for
+  light backgrounds; never on dark).
+- **Minimum size**: 140 × 30 pt. Minimum margin around the button: 1/10 of the
+  button's height.
+- **Corner radius** is adjustable on iOS, macOS and the web to match the app's
+  other buttons; the default is rounded.
+- Use the **system-provided button** so the appearance is approved, proportions
+  hold at any size, the title is translated automatically, the corner radius can
+  match the UI, and VoiceOver gets a correct label. That means SwiftUI's
+  `SignInWithAppleButton` or `ASAuthorizationAppleIDButton` with
+  `cornerRadius`, not a hand-built view.
+- **Platform differences for this app: none.** The HIG states "No additional
+  considerations for iOS, iPadOS, macOS, tvOS, visionOS, or watchOS".
+
+Behaviour the HIG asks for, which should shape the UI if Option B is ever built:
+ask for sign-in only in exchange for value, delay it as long as possible, never
+ask for a password, respect the private relay address, and show that the person
+is signed in (for example "Using Sign in with Apple") in settings.
+
+### 4.3 iCloud and CloudKit facts that change this plan
+
+- **Private database requires an active iCloud account.** The public database is
+  always reachable without one, though saving records to it also needs an
+  account. So Montra must keep working with no iCloud account, which it already
+  does.
+- **Enabling the iCloud capability with CloudKit also adds the Push
+  Notifications capability.** Montra has no `aps-environment` entitlement today,
+  and CloudKit uses silent pushes to tell other devices about changes. Without
+  it, sync still happens on launch and whenever CloudKit next syncs (the timing
+  is not verified here), but cross-device updates are late.
+- **The container name is the bundle id prefixed with `iCloud.`**, and Apple
+  says a container *"can't be deleted or renamed"* once created. The bundle id
+  decision in section 2 is therefore permanent.
+- **`NSUbiquitousKeyValueStore` is documented as requiring App Store or Mac App
+  Store distribution**: *"To use this object, you must distribute your app
+  through the App Store or Mac App Store"*. Montra ships a notarized DMG, so the
+  key-value store is **not** a safe way to sync settings here (see Phase 3).
+  Limits if it is ever used: 1024 keys, 1 MB total, 1 MB per value, 128 UTF-16
+  characters per key, stored unencrypted (never put the Local API token there).
+- **UNVERIFIED, and the one thing to test before anything else:** Apple's docs
+  do not state whether CloudKit itself is supported for Developer ID–distributed
+  macOS apps, while the key-value store doc explicitly requires App Store
+  distribution. Build a throwaway app with the entitlement, confirm
+  `CKContainer.accountStatus` reaches `.available`, then repeat with a Developer
+  ID signed Release build on a second Mac. If the signed distribution build is
+  refused, the fallbacks are Mac App Store distribution, or a non-iCloud sync
+  backend.
+
+## 5. Work plan
+
+### Phase 0: Owner prerequisites (outside the repo)
+
+1. Confirm Apple Developer Program membership and the Team ID.
+2. Install a `Developer ID Application` certificate (none exists on this Mac).
+3. Pick and register the production bundle id.
+4. Register the iCloud container and enable CloudKit and Push Notifications on
+   the App ID.
+5. Create the Developer ID provisioning profile with iCloud and push, and
+   install it.
+6. Log in to CloudKit Console once so the container is visible.
+7. **Run the B10 smoke test now**, with a throwaway app, before any work on
+   Montra's signing.
+
+Exit criteria: Team ID, bundle id, container id and profile name are recorded in
+a short "environment" note in `Docs/iCloud-Setup.md`, and **B10 has a recorded
+yes or no**. A "no" stops the plan and sends it back to the owner.
+
+### Phase 1: Signing and entitlements (no behavior change)
+
+1. Set `PRODUCT_BUNDLE_IDENTIFIER` in `Montra.xcconfig` and `DEVELOPMENT_TEAM` in
+   `Montra.local.xcconfig` (machine-specific, not committed; the include already
+   exists).
+2. Add two entitlement files, because `CODE_SIGN_ENTITLEMENTS` is one setting
+   shared by configurations: `Montra/Montra-Development.entitlements`
+   (`Development` environment) and `Montra/Montra-DeveloperID.entitlements`
+   (`Production`), selected per configuration. Drop the template's
+   `com.apple.developer.ubiquity-kvstore-identifier` key: nothing here uses the
+   key-value store (4.3), and the key would demand that capability on the App ID
+   as well.
+3. Add the Push Notifications capability (`aps-environment`).
+4. Verify how the synchronized `Montra/` group treats `.entitlements` files:
+   they must be build inputs, not copied resources.
+5. Keep the current behavior: the container stays `.none`, so the app still
+   works offline and stores nothing in iCloud.
+
+Exit criteria: `codesign -d --entitlements -` shows the iCloud and push keys in a
+Debug build and in a `--distribute` build, and `-selftest` still passes without
+an iCloud account.
+
+### Phase 2a: Container, inverse, honest status (revertible, no user switch)
+
+1. Switch `cloudKitDatabase` to `.private(SyncService.containerIdentifier)` for
+   the **persistent store only**. CloudKit mirroring needs an SQLite-backed
+   store, so `make(inMemory: true)` must keep `.none`: `-selftest`, `-snapshot`,
+   the intro/animation snapshot modes, `-preview-onboarding`, and the onboarding
+   replay all build in-memory containers and must stay offline and
+   deterministic. The `catch` fallback that opens an in-memory configuration
+   needs the same guard.
+2. Add the missing inverse for `PlannedOperation.account` and
+   `PlannedOperation.category` (for example `plannedOperations` on `Account` and
+   `Category`). Choose the delete rule to preserve today's behavior when an
+   account or category is deleted, and cover it in the backup tests. This is a
+   schema change, so it also needs the migration check in Phase 5.
+3. Add `CloudKitProvider: SyncProvider` reading `CKContainer.accountStatus`.
+   `CloudSyncState` today has only `.notConfigured`, `.ready`, `.syncing` and
+   `.failed`, so the states in section 3 need new cases and translations, and
+   `SyncService.start(provider:)` runs once and cannot report a later state: an
+   account-change observer is part of the work.
+4. Add a `lastSyncedAt` (and an in-flight flag) to the state. Nothing records a
+   sync time today, and the sheet promises one.
+5. Feed the state into the three surfaces listed in section 1.
+6. Register for remote notifications and handle CloudKit's silent push.
+7. Keep App Intents/Spotlight and the Local API as they are: both already read
+   the shared container and keep their `isPersistent` gate, so synced rows appear
+   in them without extra work.
+
+Exit criteria: with the switch not yet exposed, a Debug build with the
+entitlement shows a live status, and two Macs on one Apple Account converge.
+
+### Phase 2b: The switch, onboarding and restore
+
+1. Add a "Sync with iCloud" switch in Settings. Turning it on requires a
+   container reload, so plan for a restart prompt or a container swap in
+   `MontraApp`. It must be **off** for stores that predate this build.
+2. Offer the same choice during first run, not only in Settings, so nobody has
+   to find the setting to get sync.
+3. Gate the second Mac's onboarding and seeding. `hasCompletedOnboarding` and
+   `hasStartedOnboarding` are per-Mac, `OnboardingLaunch.needsOnboarding` runs
+   before any CloudKit import can land, and `SeedData.bootstrap` →
+   `ensureCategories` + `PeriodService.ensurePeriods` runs in `AppRootView`'s
+   task. On a second Mac that means onboarding over synced data and a second set
+   of categories and periods. Treat a mirroring import as completed onboarding,
+   or wait for the first import before deciding.
+4. Decide the restore policy. `.montra` restore replaces every row while CloudKit
+   is live: disable restore while sync is on, or perform it as a
+   delete-and-reinsert inside one CloudKit export so the other Macs converge
+   instead of resurrecting deleted rows.
+5. Add the `.noAccount` affordance Apple asks for: why iCloud is needed, plus a
+   button that opens System Settings → Apple Account. An in-app iCloud login
+   does not exist.
+6. Handle the offline case: CloudKit errors degrade to "local only" without
+   blocking writes, and the UI says so instead of spinning.
+
+Exit criteria: enabling sync on a store with real data uploads it and leaves a
+usable backup path; a second Mac does not repeat onboarding or seed duplicates;
+restore cannot corrupt the shared database.
+
+### Phase 3: What syncs, what stays per-Mac
+
+`SettingsStore` uses `UserDefaults`; the Local API switches live in
+`LocalIntegration`'s own keys. Pick one rule per value instead of syncing the
+whole store.
+
+| Value | Recommendation | Why |
+|---|---|---|
+| Accounts, categories, operations, transfers, plans, periods | Sync via CloudKit | The ledger itself |
+| `primaryCurrency`, `periodMode`, `paydayDay`, `fixedLengthDays`, `periodAnchor` | **Sync** | They change how the same rows are read; two Macs showing different monthly totals is a defect, not a preference |
+| `hideBalances`, `appearance`, `spendMetric` | Keep per-Mac | Screen and privacy preferences |
+| Local API on/off, `allowDelete`, token | Keep per-Mac | The token is a per-machine secret |
+| `didSeedDemo` | Keep per-Mac, gated as in 2b | Device-scoped onboarding state |
+| `lastBackupAt` | Keep per-Mac | Describes this Mac |
+| Exchange-rate cache | Keep per-Mac | Derived data |
+
+Implement the synced five through a small singleton SwiftData model (for example
+`SyncedSettings`), so they travel with CloudKit like the rest of the data.
+`NSUbiquitousKeyValueStore` is excluded (4.3). When it is built, the audit script
+needs to know: it reads `SettingsStore.swift` for settings and scans only
+`Models.swift` and `Plan.swift` for model fields, so a settings move or a new
+model file silently escapes the backup/API checks otherwise.
+
+Cost of this phase is real: `SettingsStore` stops being `UserDefaults`-only, so
+backup, Local API, MCP, the allowlist, and the `UserDefaults(suiteName:)` test
+injection all need attention. If scope must stay small, ship Phase 2 without it,
+document that Macs can disagree about period rules, and treat the divergence as
+a known limitation rather than a bug.
+
+### Phase 4: Optional `Sign in with Apple` (only if Option B/C is chosen)
+
+Not part of the sync release. If it is approved later:
+
+1. Add the `com.apple.developer.applesignin` entitlement (`Default`).
+2. Add a `SignInWithAppleButton` with Apple's required label and size (4.2),
+   localized in `ru` and `en`.
+3. Store only what is needed (`userIdentifier`), and never the email unless the
+   person shares it. With no server there is nothing to delete, so an
+   account-deletion path belongs to Option C, not here.
+4. Back it with a `SessionStore` exposing `.signedOut/.signedIn`, and gate only
+   features that genuinely require it. Never gate sync.
+
+### Phase 5: Release obligations
+
+Per `AGENTS.md` and `montra-feature-release`, this is a feature, not a docs
+change:
+
+1. **Localization.** New strings in `ru` and `en`, **and reword the existing
+   ones**, because they describe the current static state:
+   `sync.ready_to_set_up`, `sync.setup_steps %@`,
+   `sync.your_data_stays_on_this`, `sync.to_enable_sync`,
+   `sidebar.icloud_not_connected*`, plus `CloudSyncState.title` reusing
+   `common.done`/`common.error`.
+2. **Backup.** `currentSchemaVersion` is 1 and `currentFormatVersion` is 2. A new
+   SwiftData entity is a new backup entity: add the payload array, a
+   `BackupSummary` count, capture/restore, a restore-sheet row, and a self-test,
+   bump `currentSchemaVersion`, and keep reading v1 files. The relationship
+   inverse from 2a also needs the migration check. Machine-local exceptions get
+   allowlist entries with reasons.
+3. **Local API.** Expose the synced settings in `LedgerAPI.swift` and
+   `Docs/Local-API.md`, or record a deliberate exclusion with a reason.
+4. **MCP.** Mirror the same fields in `mcp/server.py` and `mcp/README.md`, with
+   smoke coverage.
+5. **Tests.** `-selftest` prints `ALL CHECKS PASSED`; CloudKit checks skip
+   gracefully without an iCloud account; snapshots for the new Settings states.
+6. **Audit.** `python3 Scripts/audit-feature-sync.py --require-dmg` reports zero
+   failures. Add any new model file to its `MODEL_FILES`, or let it glob
+   `Montra/Models/`.
+7. **DMG.** `Scripts/make-dmg.sh <tag> --distribute --open`, after deploying the
+   schema to production. Only `--distribute` applies `Manual` Developer ID
+   signing; a plain run is the automatically signed local build and proves
+   nothing about iCloud.
+8. **Inventory.** Update `SET-07` and `DAT-01` in `Docs/Feature-Inventory.md`;
+   `SET-07` currently asserts that "data stays local and sync is inactive".
+9. **Docs.** Rewrite `Docs/iCloud-Setup.md` as an operator runbook, update the
+   README's iCloud section and Features list, and fix `MasterPrompt.md` (line 15
+   says sync is disabled, line 419 hard-codes the container) and `PLAN.md`.
+10. **Delivery.** Branch `codex/icloud-sync`, Conventional Commit, PR with
+    before/after Settings screenshots, and the Russian release report with the
+    DMG path and 2–4 manual steps.
+
+## 6. Sync risks that the code does not handle yet
+
+| Risk | Symptom | Mitigation |
+|---|---|---|
+| Second-Mac onboarding and seeding | First launch on Mac B shows onboarding over synced data, then inserts duplicate categories and periods | Phase 2b item 3: gate bootstrap on the first import |
+| Starter data seeding per device | Duplicate categories and periods even after onboarding | Dedupe by a stable key, or seed only on a store that is empty after the initial import |
+| Generated periods per device | Two `Period` rows for the same month | `PeriodService.regenerate` runs from local settings; sync the settings (Phase 3) and dedupe on `start`, keeping `isManual` authoritative |
+| Transfers are two rows | One side arrives without the other, or `transferID` splits | Accept last-write-wins, or repair on read using `transferID` |
+| `sortIndex` collisions | Sidebar order flips between Macs | Re-index after each merge, or sort by `createdAt` as a tie-break |
+| Concurrent edits | Someone edits the same account on both Macs | SwiftData's last-write-wins; say so in the UI |
+| First enable on an existing store | Local rows never upload | Backup → enable → restore, verified on real hardware |
+| Restore while sync is on | Other Macs resurrect deleted rows or double-insert | Phase 2b item 4 |
+| iCloud unavailable | Writes fail or hang | Local-only mode, queue nothing, show status honestly |
+| Two Macs, Local API | Two servers, one token per Mac | Already per-Mac; document it |
+| No push entitlement | Changes arrive late, only on launch | B9 |
+| CloudKit refused for Developer ID | The DMG build stays "not connected" while Debug works | B10 in Phase 0; fallback is App Store distribution or a non-iCloud backend |
+| Schema not deployed | The DMG sees no records although Debug works | Deploy to production before packaging |
+| Audit goes green without checking | New model file or settings move escapes the checks | Phase 5 item 6 |
+
+## 7. Testing plan
+
+1. **Unit/self-test.** Provider state mapping for `.available`, `.noAccount`,
+   `.restricted`, `.couldNotDetermine`; container factory keeps in-memory stores
+   offline; legacy backup still opens.
+2. **Single Mac.** Enable sync, create data, quit, relaunch, confirm status and
+   no duplicates. Disable sync and confirm the app still opens the local store.
+3. **Two Macs (the only test that proves the feature).** Same Apple Account,
+   create on A, verify on B, edit on both, verify the last-write-wins outcome,
+   and confirm Mac B never repeated onboarding or seeding.
+4. **No-iCloud Mac.** A fresh user without an Apple Account: onboarding works,
+   the Settings row explains it, nothing blocks.
+5. **Restore.** Restore a `.montra` while sync is on and confirm the other Mac
+   converges.
+6. **Distribution build.** Install the `--distribute` DMG on a clean Mac and
+   confirm records appear from production CloudKit.
+7. **Audit and smoke.** `audit-feature-sync.py --require-dmg`, plus
+   `mcp/tests/smoke.py` if the API surface changed.
+
+## 8. Open questions for the owner
+
+1. Do you want sync tied to iCloud only (Option A), or is an own account system
+   with `Sign in with Apple` on the roadmap (Option C)? Everything else depends
+   on this, including whether the "sign-in" you asked for becomes a status row
+   instead of a button.
+2. Do you already have a paid Apple Developer Program team that can create iCloud
+   containers, and who owns the Developer ID certificate? There is none on this
+   Mac today.
+3. Which bundle id is final? It is permanent, because the container name derives
+   from it and containers cannot be renamed.
+4. Should existing data upload automatically on first enable, or should the first
+   enable always go through a backup and restore?
+5. Is the household case ("my partner and I share the ledger") in scope? Private
+   CloudKit cannot do it; it would need CloudKit sharing.
+6. Is Restore allowed while sync is on, or is it disabled in sync mode?
+7. Is Montra staying Developer ID–only, or is a Mac App Store build planned? It
+   changes what is allowed (B10) and whether App Review 4.8 matters at all.
+
+## 9. Checklist
+
+- [ ] Team ID, bundle id and container id decided and recorded
+- [ ] Developer ID Application certificate installed
+- [ ] B10 answered: CloudKit works in a Developer ID Release build
+- [ ] iCloud container registered; CloudKit and Push enabled on the App ID
+- [ ] Developer ID provisioning profile with iCloud and push installed
+- [ ] Two entitlement files added and selected per configuration
+- [ ] Entitlements verified with `codesign -d --entitlements -` on a `--distribute` build
+- [ ] `PlannedOperation` relationship inverses added before the container switch
+- [ ] In-memory stores and snapshot/selftest modes stay on `.none`
+- [ ] `CloudKitProvider`, new `CloudSyncState` cases and an account-change observer
+- [ ] `lastSyncedAt` tracked
+- [ ] Remote notifications registered and handled
+- [ ] Sidebar, `ICloudSheet` and the Settings row read live state
+- [ ] Sync switch defaults to off for old stores; first-run choice offered
+- [ ] Second-Mac onboarding and seeding gated on the first import
+- [ ] Restore policy decided and enforced
+- [ ] Period and currency settings synced, or the divergence documented
+- [ ] Localization added and existing `sync.*` / `sidebar.icloud_*` reworded
+- [ ] Backup entity, schema bump and allowlist updated
+- [ ] Local API and MCP parity, docs updated
+- [ ] `-selftest` reports `ALL CHECKS PASSED`
+- [ ] Two-Mac manual verification passed, including no duplicate seeding
+- [ ] CloudKit schema deployed to production
+- [ ] `audit-feature-sync.py --require-dmg` clean, with `MODEL_FILES` updated
+- [ ] `--distribute` DMG built, mounted and verified on a clean Mac
+- [ ] `Docs/Feature-Inventory.md`, README, `MasterPrompt.md`, `PLAN.md` and
+      `Docs/iCloud-Setup.md` updated
+- [ ] PR with before/after screenshots and the Russian release report

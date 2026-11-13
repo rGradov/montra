@@ -453,5 +453,25 @@ Local API / MCP remains a macOS feature; nothing is needed for it on iOS.
   so App Store validation cannot reject it for transparency.
 - Known macOS snapshot caveat: the demo transfers use `.now`, so their clock
   text changes between runs; that is the only expected diff.
+### 2026-11-14 — builder interim
+
+- Builder B (screens) interim: the nine B-owned sheets now use one flexible
+  frame (macOS keeps exact fixed sizes; iOS fills the sheet, pinned
+  header/footer, scrolling + keyboard-safe); Overview publishes account-card
+  frames under `SidebarAccountFramesKey` for the hero flight; macOS build and
+  `-selftest` green, iPhone/iPad builds green, audit 6/0 with the expected
+  no-DMG warning.
+- Builder B found two issues in Builder A's `SettingsView`: the macOS
+  Integration group is still visible on iOS, and the appearance thumbnails
+  overlap their labels. Both were relayed to Builder A with screenshot
+  evidence.
+- Contract confirmed: Builder A's `BottomSheetHost` adds
+  `.presentationSizing(.form)` on iPad and content-appropriate iPhone detents
+  so B's flexible sheets do not leave a blank gap; no custom
+  `presentationBackground`.
+- Snapshot caveat: `build/snaps-baseline` was captured on 2026-11-13; the demo
+  fixtures use `.now`, so after midnight the committed baseline no longer
+  matches. Compare fresh before/after pairs from the same worktree and verify
+  layout, not clock text.
 - Next: merge the two builder branches, then functional / code / App Store
   critics.

@@ -259,6 +259,10 @@ is signed in (for example "Using Sign in with Apple") in settings.
    here; a certificate created against another machine's CSR is useless unless
    that key is exported as a `.p12`. Limit: five Developer ID Application
    certificates per account.
+   If Xcode answers "This operation can only be performed by the Account Holder"
+   even for the owner, ignore Xcode and use the browser route above: Xcode's
+   error describes the Apple ID it holds, not the browser session. Only the
+   portal proves the role.
 4. Register the App ID `app.finance.montra` with iCloud (CloudKit) and Push
    Notifications enabled.
 5. Register the container `iCloud.app.finance.montra` and check the box for it.

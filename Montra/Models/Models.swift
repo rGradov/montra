@@ -28,6 +28,11 @@ final class Account {
     @Relationship(deleteRule: .cascade, inverse: \Operation.account)
     var operations: [Operation]? = []
 
+    /// Planned payments that point at this account. Declared here only to give
+    /// `PlannedOperation.account` the inverse CloudKit mirroring requires.
+    @Relationship(deleteRule: .nullify, inverse: \PlannedOperation.account)
+    var plannedOperations: [PlannedOperation]? = []
+
     init(
         name: String,
         currency: Currency,
@@ -114,6 +119,10 @@ final class Category {
 
     @Relationship(deleteRule: .nullify, inverse: \Operation.category)
     var operations: [Operation]? = []
+
+    /// Inverse for `PlannedOperation.category`, required by CloudKit mirroring.
+    @Relationship(deleteRule: .nullify, inverse: \PlannedOperation.category)
+    var plannedOperations: [PlannedOperation]? = []
     /// One level of nesting is enough: a category may sit under a top-level one.
     var parent: Category?
     @Relationship(inverse: \Category.parent) var children: [Category]? = []

@@ -1040,6 +1040,23 @@
         }
       }
     },
+    "analytics.metric_median": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Median"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Медиана"
+          }
+        }
+      }
+    },
     "analytics.more": {
       "extractionState": "manual",
       "localizations": {
@@ -1291,6 +1308,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "в день"
+          }
+        }
+      }
+    },
+    "analytics.per_spending_day": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "per spending day"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "в день с тратами"
           }
         }
       }
@@ -1601,6 +1635,23 @@
         }
       }
     },
+    "analytics.verdict_no_comparison_median %@ %@ %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spent %2$@ in %1$@ — the median spending day is %3$@."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "За %1$@ потрачено %2$@ — медиана дня с тратами %3$@."
+          }
+        }
+      }
+    },
     "analytics.verdict_past_less %@ %@": {
       "extractionState": "manual",
       "localizations": {
@@ -1665,6 +1716,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Куда ушли деньги"
+          }
+        }
+      }
+    },
+    "analytics.with_spending": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "with spending"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "с тратами"
           }
         }
       }
@@ -10895,6 +10963,23 @@
         }
       }
     },
+    "sync.active": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iCloud sync on"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Синхронизация iCloud включена"
+          }
+        }
+      }
+    },
     "sync.all_accounts_transactions_categories_and": {
       "extractionState": "manual",
       "localizations": {
@@ -10929,6 +11014,74 @@
         }
       }
     },
+    "sync.icloud_restricted": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iCloud is restricted"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iCloud ограничен"
+          }
+        }
+      }
+    },
+    "sync.icloud_unknown": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Checking iCloud…"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Проверяем iCloud…"
+          }
+        }
+      }
+    },
+    "sync.no_icloud_account": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sign in to iCloud"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Войдите в iCloud"
+          }
+        }
+      }
+    },
+    "sync.not_signed_in_hint": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sign in to iCloud in System Settings to sync this ledger."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Войдите в iCloud в Системных настройках, чтобы синхронизировать книгу."
+          }
+        }
+      }
+    },
     "sync.ready_to_set_up": {
       "extractionState": "manual",
       "localizations": {
@@ -10942,6 +11095,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Подготовлено, но пока не включено"
+          }
+        }
+      }
+    },
+    "sync.settings_caption": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kept up to date through your iCloud account"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Обновляется через ваш аккаунт iCloud"
           }
         }
       }
@@ -10976,6 +11146,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "Чтобы включить, понадобится:"
+          }
+        }
+      }
+    },
+    "sync.transfers_are_automatic": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Transfers run on their own schedule; the system reports when the ledger last changed."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Обмен идёт по расписанию системы; приложение показывает, когда книга менялась в последний раз."
+          }
+        }
+      }
+    },
+    "sync.updated %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Updated %@"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Обновлено %@"
           }
         }
       }
@@ -11979,74 +12183,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Перевод не найден."
-          }
-        }
-      }
-    },
-    "analytics.metric_median": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Median"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Медиана"
-          }
-        }
-      }
-    },
-    "analytics.per_spending_day": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "per spending day"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "в день с тратами"
-          }
-        }
-      }
-    },
-    "analytics.with_spending": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "with spending"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "с тратами"
-          }
-        }
-      }
-    },
-    "analytics.verdict_no_comparison_median %@ %@ %@": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Spent %2$@ in %1$@ — the median spending day is %3$@."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "За %1$@ потрачено %2$@ — медиана дня с тратами %3$@."
           }
         }
       }

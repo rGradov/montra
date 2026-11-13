@@ -3,6 +3,7 @@ import SwiftUI
 
 struct SettingsView: View {
     @EnvironmentObject private var settings: SettingsStore
+    @EnvironmentObject private var sync: SyncService
     @EnvironmentObject private var headerHost: DetailHeaderHost
     @EnvironmentObject private var rates: RateStore
     @EnvironmentObject private var integration: LocalIntegration
@@ -347,8 +348,8 @@ struct SettingsView: View {
 
             linkRow(
                 title: String(localized: "common.icloud_sync"),
-                caption: String(localized: "settings.the_app_is_ready_the"),
-                value: String(localized: "common.not_connected_2")
+                caption: String(localized: "sync.settings_caption"),
+                value: sync.state.title
             ) {
                 onOpenICloud()
             }

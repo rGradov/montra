@@ -1,13 +1,19 @@
+import AppKit
 import SwiftUI
 
+/// Explains what iCloud is doing right now. Everything here comes from
+/// `SyncService`: the account state plus the last time the ledger changed.
+/// Nothing claims to know about a transfer in flight, because SwiftData does not
+/// report one.
 struct ICloudSheet: View {
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var sync: SyncService
 
     var body: some View {
         VStack(spacing: 0) {
             SheetHeader(
                 title: String(localized: "common.icloud_sync"),
-                subtitle: String(localized: "sync.ready_to_set_up"),
+                subtitle: sync.state.title,
                 onClose: { dismiss() }
             )
 
@@ -21,32 +27,26 @@ struct ICloudSheet: View {
                         valueRow(title: String(localized: "common.storage"), value: String(localized: "common.swiftdata"))
                     }
 
-                    VStack(alignment: .leading, spacing: AppStyle.Spacing.xSmall) {
-                        Text(String(localized: "common.whats_ready"))
-                            .font(AppStyle.Typography.metadataEmphasis)
-                            .foregroundStyle(AppColors.textSecondary)
-                            .padding(.horizontal, AppStyle.Spacing.xxSmall)
+                    Text(String(localized: "sync.transfers_are_automatic"))
+                        .font(AppStyle.Typography.callout)
+                        .foregroundStyle(AppColors.textSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.horizontal, AppStyle.Spacing.xxSmall)
 
-                        InsetCard {
-                            bullet(
-                                String(localized: "sync.all_accounts_transactions_categories_and")
-                            )
-                            InsetCardDivider()
-                            bullet(String(localized: "sync.writes_go_through_repositories_giving"))
-                            InsetCardDivider()
-                            bullet(String(localized: "sync.app_settings_are_stored_separately"))
+                    if case .noAccount = sync.state {
+                        VStack(alignment: .leading, spacing: AppStyle.Spacing.xxSmall) {
+                            Text(String(localized: "sync.not_signed_in_hint"))
+                                .font(AppStyle.Typography.callout)
+                                .foregroundStyle(AppColors.textSecondary)
+                                .fixedSize(horizontal: false, vertical: true)
+
+                            Button(String(localized: "sync.no_icloud_account")) {
+                                openAppleAccountSettings()
+                            }
+                            .buttonStyle(.montra(.secondary))
                         }
+                        .padding(.horizontal, AppStyle.Spacing.xxSmall)
                     }
-
-                    VStack(alignment: .leading, spacing: AppStyle.Spacing.xxSmall) {
-                        Text(String(localized: "sync.to_enable_sync"))
-                            .font(AppStyle.Typography.callout.weight(.semibold))
-                        Text(String(localized: "sync.setup_steps \(SyncService.containerIdentifier)"))
-                            .font(AppStyle.Typography.callout)
-                            .foregroundStyle(AppColors.textSecondary)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                    .padding(.top, AppStyle.Spacing.xxSmall)
                 }
                 .padding(.horizontal, AppStyle.Spacing.large)
                 .padding(.bottom, AppStyle.Spacing.medium)
@@ -60,22 +60,31 @@ struct ICloudSheet: View {
                     .keyboardShortcut(.defaultAction)
             }
         }
-        .frame(width: 470, height: 580)
+        .frame(width: 470, height: 520)
         .background(AppColors.surfaceBase)
+        .onAppear { sync.refresh() }
     }
 
     private var statusRow: some View {
         HStack(spacing: AppStyle.Spacing.small) {
-            IconTile(symbol: "icloud.slash", color: AppColors.Chart.neutralTile)
+            IconTile(
+                symbol: sync.isConnected ? "checkmark.icloud" : "icloud.slash",
+                color: sync.isConnected ? AppColors.statusSafeText : AppColors.Chart.neutralTile
+            )
             VStack(alignment: .leading, spacing: AppStyle.Spacing.xxxSmall) {
                 Text(String(localized: "common.icloud"))
                     .font(AppStyle.Typography.headline)
-                Text(String(localized: "sync.your_data_stays_on_this"))
+                Text(sync.state.title)
                     .font(AppStyle.Typography.callout)
                     .foregroundStyle(AppColors.textSecondary)
             }
             Spacer(minLength: AppStyle.Spacing.small)
-            AppBadge(text: String(localized: "common.not_connected"), tone: .warning)
+            AppBadge(
+                text: sync.isConnected
+                    ? String(localized: "sync.active")
+                    : String(localized: "common.not_connected"),
+                tone: sync.isConnected ? .safe : .warning
+            )
         }
         .padding(.horizontal, AppStyle.Spacing.medium)
         .padding(.vertical, AppStyle.Spacing.small)
@@ -96,18 +105,12 @@ struct ICloudSheet: View {
         .padding(.vertical, AppStyle.Spacing.small)
     }
 
-    private func bullet(_ text: String) -> some View {
-        HStack(alignment: .top, spacing: AppStyle.Spacing.xSmall) {
-            Image(systemName: "checkmark")
-                .font(.system(size: 9, weight: .bold))
-                .foregroundStyle(AppColors.statusSafeText)
-                .padding(.top, 2)
-            Text(text)
-                .font(AppStyle.Typography.callout)
-                .foregroundStyle(AppColors.textSecondary)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-        .padding(.horizontal, AppStyle.Spacing.medium)
-        .padding(.vertical, AppStyle.Spacing.small)
+    /// Opens the Apple Account pane. The URL scheme is undocumented, so it falls
+    /// back to System Settings itself rather than failing silently.
+    private func openAppleAccountSettings() {
+        let specific = URL(string: "x-apple.systempreferences:com.apple.systempreferences.AppleIDSettings")
+        let fallback = URL(string: "x-apple.systempreferences:")
+        if let specific, NSWorkspace.shared.open(specific) { return }
+        if let fallback { NSWorkspace.shared.open(fallback) }
     }
 }

@@ -23,6 +23,8 @@ struct SidebarView: View {
     let accounts: [Account]
     let categoryCount: Int
     let iCloudConnected: Bool
+    /// "iCloud · updated 3 min ago", already localized by `SyncService`.
+    let iCloudStatusText: String
     /// Hidden while the onboarding hero account is still flying into place; the
     /// row keeps its space so the flight can land on its exact frame.
     var hiddenAccountID: UUID? = nil
@@ -196,7 +198,7 @@ struct SidebarView: View {
                     .foregroundStyle(iCloudConnected ? AppColors.statusSafeText : AppColors.textSecondary)
                     .accessibilityHidden(true)
 
-                Text(iCloudConnected ? String(localized: "common.icloud_connected") : String(localized: "sidebar.icloud_not_connected"))
+                Text(iCloudStatusText)
                     .font(AppStyle.Typography.callout.weight(.medium))
                     .foregroundStyle(AppColors.textSecondary)
 

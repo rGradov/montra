@@ -6,6 +6,8 @@ struct AppRootView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @EnvironmentObject private var settings: SettingsStore
     @EnvironmentObject private var rates: RateStore
+    @EnvironmentObject private var sync: SyncService
+    @Environment(\.scenePhase) private var scenePhase
 
     @Query(sort: [SortDescriptor(\Account.sortIndex, order: .forward)]) private var accounts: [Account]
     @Query(sort: [SortDescriptor(\Category.sortIndex, order: .forward)]) private var categories: [Category]
@@ -182,7 +184,8 @@ struct AppRootView: View {
                 route: $app.route,
                 accounts: accounts,
                 categoryCount: categories.count,
-                iCloudConnected: false,
+                iCloudConnected: sync.isConnected,
+                iCloudStatusText: sync.state.title,
                 hiddenAccountID: hiddenSidebarAccountID,
                 onNewAccount: { app.present(.newAccount(isSavings: false)) },
                 onNewSavingsAccount: { app.present(.newAccount(isSavings: true)) },

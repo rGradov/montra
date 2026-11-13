@@ -20,6 +20,7 @@ account system. Section 3 separates these into decisions.
 | Bundle id | **`app.finance.montra`**, so the container becomes `iCloud.app.finance.montra` |
 | Sync behaviour | **Automatic**: no manual sync button, the person never triggers sync by hand |
 | Backup | Manual `.montra` export/import stays as it is for now |
+| Sync mechanism | **SwiftData's built-in CloudKit mirroring** (`cloudKitDatabase: .private(...)`), chosen in `icloud-sync-research.md` |
 | Distribution | Notarized Developer ID DMG |
 
 Consequences: B1 is half-resolved (paid membership, but no Developer ID
@@ -30,7 +31,7 @@ only as reference.
 
 | Area | State | Where |
 |---|---|---|
-| Models | Defaults on every attribute, optional relationships, no unique constraints. One exception: `PlannedOperation.account` and `PlannedOperation.category` declare no inverse, and CloudKit mirroring requires one on every relationship | `Montra/Models/Models.swift`, `Montra/Models/Plan.swift` |
+| Models | Defaults on every attribute, optional relationships, no unique constraints, no `.deny` delete rule (only that one is unsupported; `.cascade` and `.nullify` mirror fine). One exception: `PlannedOperation.account` and `PlannedOperation.category` declare no inverse, and CloudKit mirroring requires one on every relationship | `Montra/Models/Models.swift`, `Montra/Models/Plan.swift` |
 | Container factory | One factory, pinned to `cloudKitDatabase: .none` | `ModelContainerFactory` in `Montra/App/MontraApp.swift:211` |
 | Sync seam | `CloudSyncState`, `SyncProvider` protocol, `SyncService.shared`, `containerIdentifier`. The service is never instantiated or observed: only `containerIdentifier` is read, by `ICloudSheet` | `Montra/Sync/SyncService.swift` |
 | Status surfaces | Three places show iCloud state: the sidebar (hard-coded `iCloudConnected: false`), `ICloudSheet`, and the Settings row that prints `common.not_connected_2` | `AppRootView.swift:185`, `ICloudSheet.swift`, `SettingsView.swift:349` |
@@ -280,6 +281,9 @@ an iCloud account.
 
 ### Phase 2a: Container, inverse, honest status (revertible, no user switch)
 
+Mechanism: SwiftData's built-in CloudKit mirroring, not a hand-written sync
+layer. The comparison and the reasons are in `icloud-sync-research.md`.
+
 1. Switch `cloudKitDatabase` to `.private(SyncService.containerIdentifier)` for
    the **persistent store only**. CloudKit mirroring needs an SQLite-backed
    store, so `make(inMemory: true)` must keep `.none`: `-selftest`, `-snapshot`,
@@ -297,11 +301,19 @@ an iCloud account.
    `.failed`, so the states in section 3 need new cases and translations, and
    `SyncService.start(provider:)` runs once and cannot report a later state: an
    account-change observer is part of the work.
-4. Add a `lastSyncedAt` (and an in-flight flag) to the state. Nothing records a
-   sync time today, and the sheet promises one.
-5. Feed the state into the three surfaces listed in section 1.
-6. Register for remote notifications and handle CloudKit's silent push.
-7. Keep App Intents/Spotlight and the Local API as they are: both already read
+4. Status has to be honest about what SwiftData can actually report. There are
+   no CloudKit events in its public API, so track two things instead: account
+   availability from `CKContainer.accountStatus`, and the time of the last local
+   import observed through SwiftData's History API (`HistoryProviding`,
+   macOS 15 — our deployment target). Show "updated N minutes ago", never a
+   fake "uploading 3 records" state.
+5. Add a reconcile pass that runs after an import, because the app generates
+   data locally that CloudKit will happily duplicate: starter categories and
+   materialized `Period` rows. History says an import happened; a business-key
+   comparison merges the duplicates. Without this, the second Mac doubles both.
+6. Feed the state into the three surfaces listed in section 1.
+7. Register for remote notifications and handle CloudKit's silent push.
+8. Keep App Intents/Spotlight and the Local API as they are: both already read
    the shared container and keep their `isPersistent` gate, so synced rows appear
    in them without extra work.
 
@@ -420,6 +432,11 @@ change:
 10. **Delivery.** Branch `codex/icloud-sync`, Conventional Commit, PR with
     before/after Settings screenshots, and the Russian release report with the
     DMG path and 2–4 manual steps.
+11. **Schema discipline.** CloudKit schemas are additive only once promoted.
+    Before the first production deploy, settle every model and attribute name
+    (including the settings entity from Phase 3). After it, only add fields:
+    never rename, never retype, never delete a record type. Write this into
+    `Docs/iCloud-Setup.md` so it is read before the next model change.
 
 ## 6. Sync risks that the code does not handle yet
 
@@ -438,6 +455,8 @@ change:
 | No push entitlement | Changes arrive late, only on launch | B9 |
 | CloudKit refused for Developer ID | The DMG build stays "not connected" while Debug works | B10 in Phase 0; fallback is App Store distribution or a non-iCloud backend |
 | Schema not deployed | The DMG sees no records although Debug works | Deploy to production before packaging |
+| Production schema freezes names | After the first production deploy an attribute cannot be renamed or retyped | Decide model names before that deploy; afterwards only add fields, with in-code migration |
+| No sync events | The UI cannot say "syncing", only "updated N minutes ago" | Do not fake it; the status row reports what is known |
 | Audit goes green without checking | New model file or settings move escapes the checks | Phase 5 item 6 |
 
 ## 7. Testing plan
@@ -499,7 +518,8 @@ Remaining:
 - [ ] `PlannedOperation` relationship inverses added before the container switch
 - [ ] In-memory stores and snapshot/selftest modes stay on `.none`
 - [ ] `CloudKitProvider`, new `CloudSyncState` cases and an account-change observer
-- [ ] `lastSyncedAt` tracked
+- [ ] `lastSyncedAt`-style status derived from History, no fake "syncing" state
+- [ ] Reconcile pass dedupes starter categories and periods after an import
 - [ ] Remote notifications registered and handled
 - [ ] Sidebar, `ICloudSheet` and the Settings row read live state
 - [ ] Sync switch defaults to off for old stores; first-run choice offered

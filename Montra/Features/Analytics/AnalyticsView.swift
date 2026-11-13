@@ -271,6 +271,7 @@ struct AnalyticsView: View {
                     .padding(.horizontal, AppDetailPageLayout.horizontalInset)
                     .padding(.bottom, AppStyle.Spacing.large + shotBottomRoom)
                 }
+                .shellBottomRoom()
                 .background(AppColors.surfaceBase)
                 .onScrollGeometryChange(for: CGFloat.self) { geometry in
                     geometry.contentOffset.y
@@ -335,6 +336,26 @@ struct AnalyticsView: View {
                 onDismiss: closePopup
             )
         )
+        #if os(iOS)
+        // The Mac closes the popup through an `NSEvent` monitor, which does not
+        // exist here: the UIKit equivalent is installed below. Escape works on a
+        // hardware keyboard the same way it does on the Mac.
+        .background {
+            AnalyticsTapOutsideCatcher(
+                isActive: popupDay != nil,
+                popupFrame: popupFrameGlobal,
+                anchorFrame: popupAnchorFrameGlobal,
+                onDismiss: closePopup
+            )
+        }
+        .background {
+            Button("") { closePopup() }
+                .keyboardShortcut(.escape, modifiers: [])
+                .opacity(0)
+                .frame(width: 0, height: 0)
+                .accessibilityHidden(true)
+        }
+        #endif
     }
 
     private var heatCardID: String { "analytics.heat" }
@@ -390,10 +411,11 @@ struct AnalyticsView: View {
                     day: day,
                     currency: displayCurrency,
                     masked: masked,
+                    width: layout.width,
                     caretX: layout.caretX,
                     caretSide: layout.side
                 )
-                .frame(width: AnalyticsPopupLayout.width)
+                .frame(width: layout.width)
                 .fixedSize(horizontal: false, vertical: true)
                 .onGeometryChange(for: CGSize.self) { proxy in
                     proxy.size
@@ -449,7 +471,7 @@ struct AnalyticsView: View {
         CGRect(
             x: origin.x + layout.x,
             y: origin.y + layout.y,
-            width: AnalyticsPopupLayout.width,
+            width: layout.width,
             height: popupSize.height
         )
     }
@@ -506,7 +528,7 @@ struct AnalyticsView: View {
         let popup = CGRect(
             x: shotBox.pageOrigin.x + layout.x,
             y: shotBox.pageOrigin.y + layout.y,
-            width: AnalyticsPopupLayout.width,
+            width: layout.width,
             height: popupSize.height
         )
         let cell = shotBox.cell.offsetBy(dx: shotBox.pageOrigin.x, dy: shotBox.pageOrigin.y)
@@ -955,7 +977,7 @@ private struct SummaryCell: View {
                 .font(AnalyticsStyle.figure)
                 .monospacedDigit()
                 .lineLimit(1)
-                .minimumScaleFactor(0.7)
+                .minimumScaleFactor(0.55)
                 .contentTransition(reduceMotion ? .identity : .numericText())
                 .animation(reduceMotion ? nil : AppMotion.number, value: value)
             sub
@@ -1566,6 +1588,19 @@ private struct AnalyticsHeatCard: View {
 
     var body: some View {
         OverviewCard {
+            #if os(iOS)
+            // A phone cannot hold the title and the whole legend on one line
+            // without the words overlapping the title, so the legend sits under
+            // it.
+            VStack(alignment: .leading, spacing: AppStyle.Spacing.xxSmallPlus) {
+                Text(figures: title, style: AppStyle.Typography.headline)
+                legend
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, AppStyle.Row.cardHorizontalPadding)
+            .padding(.top, AppStyle.Row.cardHorizontalPadding)
+            .padding(.bottom, AppStyle.Spacing.xSmall)
+            #else
             HStack {
                 Text(figures: title, style: AppStyle.Typography.headline)
                 Spacer(minLength: AppStyle.Spacing.small)
@@ -1574,6 +1609,7 @@ private struct AnalyticsHeatCard: View {
             .padding(.horizontal, AppStyle.Row.cardHorizontalPadding)
             .padding(.top, AppStyle.Row.cardHorizontalPadding)
             .padding(.bottom, AppStyle.Spacing.xSmall)
+            #endif
 
             HStack(spacing: AppStyle.Spacing.xxSmallPlus) {
                 ForEach(weekdays, id: \.self) { weekday in
@@ -1728,7 +1764,7 @@ private struct AnalyticsHeatCard: View {
                     HStack {
                         Spacer(minLength: 0)
                         if day.amount > 0 {
-                            Text(masked ? "••••" : MoneyFormat.number(day.amount, fractionDigits: 2))
+                            Text(masked ? "••••" : heatAmountText(day))
                                 .font(AnalyticsStyle.heatAmount)
                                 .foregroundStyle(textColor)
                                 .lineLimit(1)
@@ -1805,6 +1841,17 @@ private struct AnalyticsHeatCard: View {
         popupDay = nil
     }
 
+    /// The figure inside a heat cell. The Mac's cells are wide enough for two
+    /// decimals; a phone's ~44 pt cell only has room for whole units, and the
+    /// exact amount is in the readout below the grid and in the day's popup.
+    private func heatAmountText(_ day: AnalyticsDay) -> String {
+        #if os(iOS)
+        MoneyFormat.number(day.amount, fractionDigits: 0, grouping: false)
+        #else
+        MoneyFormat.number(day.amount, fractionDigits: 2)
+        #endif
+    }
+
     private func accessibilityText(_ day: AnalyticsDay) -> String {
         let date = AppDate.short(day.date)
         if day.amount > 0 {
@@ -1823,7 +1870,15 @@ private struct AnalyticsHeatCard: View {
 // MARK: - Shared styles and formatting
 
 private enum AnalyticsStyle {
-    static let figure = AppStyle.TextStyle(family: .rounded, size: 22, weight: .bold, tracking: 0)
+    /// Three summary figures share a phone's width, so the iOS size is a step
+    /// smaller than the desktop one; the Mac's card is unchanged.
+    static var figure: AppStyle.TextStyle {
+        #if os(iOS)
+        AppStyle.TextStyle(family: .rounded, size: 18, weight: .bold, tracking: 0)
+        #else
+        AppStyle.TextStyle(family: .rounded, size: 22, weight: .bold, tracking: 0)
+        #endif
+    }
     static let amount = AppStyle.TextStyle(family: .rounded, size: 15, weight: .semibold, tracking: 0)
     static let heatDay = AppStyle.TextStyle(family: .rounded, size: 10, weight: .semibold, tracking: 0)
     static let heatAmount = AppStyle.TextStyle(family: .rounded, size: 11, weight: .semibold, tracking: 0)
@@ -1972,6 +2027,9 @@ struct AnalyticsPopupLayout {
 
     let x: CGFloat
     let y: CGFloat
+    /// The popup's width on this page: the designed 340 pt, or less on a narrow
+    /// phone so the card and its caret never run off the edge.
+    let width: CGFloat
     /// Caret apex in the popup's own horizontal space.
     let caretX: CGFloat
     let side: Side
@@ -1987,6 +2045,7 @@ struct AnalyticsPopupLayout {
         pageOriginY: CGFloat = 0
     ) -> AnalyticsPopupLayout {
         let height = max(popupHeight, 1)
+        let popupWidth = min(Self.width, max(200, pageSize.width - pageInset * 2))
         let topLimit = pageInset
         let bottomLimit = pageSize.height - pageInset
         let aboveRoom = cell.minY - topLimit
@@ -2010,14 +2069,15 @@ struct AnalyticsPopupLayout {
         let y = min(max(preferredY, minY), maxY)
 
         let x = min(
-            max(cell.midX - width / 2, pageInset),
-            max(pageInset, pageSize.width - width - pageInset)
+            max(cell.midX - popupWidth / 2, pageInset),
+            max(pageInset, pageSize.width - popupWidth - pageInset)
         )
-        let caretX = min(max(cell.midX - x, caretInset), width - caretInset)
+        let caretX = min(max(cell.midX - x, caretInset), popupWidth - caretInset)
 
         return AnalyticsPopupLayout(
             x: x,
             y: y,
+            width: popupWidth,
             caretX: caretX,
             side: side,
             isClamped: isClamped,
@@ -2031,6 +2091,8 @@ private struct AnalyticsDayPopup: View {
     let day: AnalyticsDay
     let currency: Currency
     let masked: Bool
+    /// The width the layout resolved for this page.
+    let width: CGFloat
     let caretX: CGFloat
     let caretSide: AnalyticsPopupLayout.Side
 
@@ -2049,7 +2111,7 @@ private struct AnalyticsDayPopup: View {
             InsetCardDivider(horizontalInset: 12)
             rows
         }
-        .frame(width: AnalyticsPopupLayout.width, alignment: .leading)
+        .frame(width: width, alignment: .leading)
         .background {
             RoundedRectangle(cornerRadius: AppStyle.Radius.lg, style: .continuous)
                 .fill(AppColors.surfaceRaised)
@@ -2147,7 +2209,7 @@ private struct AnalyticsDayPopup: View {
         }
         .frame(width: Self.caretWidth, height: Self.caretHeight)
         .offset(
-            x: caretX - AnalyticsPopupLayout.width / 2,
+            x: caretX - width / 2,
             y: caretSide == .above ? Self.caretOffset : -Self.caretOffset
         )
     }
@@ -2282,6 +2344,101 @@ private final class AnalyticsPopupDismissState {
     }
     #endif
 }
+
+#if os(iOS)
+/// Closes the day popup on a tap anywhere outside it. The Mac uses an `NSEvent`
+/// monitor, which does not exist on iOS, so this installs the UIKit equivalent
+/// on the window. It observes taps without cancelling them, so the page still
+/// scrolls and its own controls still work while the popup is up — the same
+/// behaviour the Mac has.
+private struct AnalyticsTapOutsideCatcher: UIViewRepresentable {
+    let isActive: Bool
+    let popupFrame: CGRect
+    let anchorFrame: CGRect
+    let onDismiss: () -> Void
+
+    func makeCoordinator() -> Coordinator { Coordinator() }
+
+    func makeUIView(context: Context) -> UIView {
+        let view = UIView()
+        view.isUserInteractionEnabled = false
+        view.isHidden = true
+        return view
+    }
+
+    func updateUIView(_ uiView: UIView, context: Context) {
+        let coordinator = context.coordinator
+        coordinator.popupFrame = popupFrame
+        coordinator.anchorFrame = anchorFrame
+        coordinator.onDismiss = onDismiss
+        // The window only exists once the view is mounted and attached.
+        DispatchQueue.main.async {
+            coordinator.sync(isActive: isActive, window: uiView.window)
+        }
+    }
+
+    static func dismantleUIView(_ uiView: UIView, coordinator: Coordinator) {
+        coordinator.remove()
+    }
+
+    final class Coordinator: NSObject {
+        var popupFrame: CGRect = .null
+        var anchorFrame: CGRect = .null
+        var onDismiss: (() -> Void)?
+        private var recognizer: UITapGestureRecognizer?
+        private weak var installedWindow: UIWindow?
+
+        func sync(isActive: Bool, window: UIWindow?) {
+            if isActive, let window {
+                install(on: window)
+            } else if !isActive {
+                remove()
+            }
+        }
+
+        private func install(on window: UIWindow) {
+            if let recognizer, installedWindow === window {
+                window.addGestureRecognizer(recognizer)
+                return
+            }
+            remove()
+            let tap = UITapGestureRecognizer(target: self, action: #selector(handle(_:)))
+            tap.cancelsTouchesInView = false
+            tap.delegate = self
+            window.addGestureRecognizer(tap)
+            recognizer = tap
+            installedWindow = window
+        }
+
+        func remove() {
+            if let recognizer {
+                recognizer.view?.removeGestureRecognizer(recognizer)
+            }
+            recognizer = nil
+            installedWindow = nil
+        }
+
+        /// The anchor cell keeps its own tap, which toggles the popup. Every
+        /// other tap outside the card dismisses it.
+        @objc private func handle(_ recognizer: UITapGestureRecognizer) {
+            guard let window = recognizer.view else { return }
+            let point = recognizer.location(in: window)
+            if anchorFrame.contains(point) { return }
+            if !popupFrame.isEmpty, popupFrame.contains(point) { return }
+            onDismiss?()
+        }
+    }
+}
+
+extension AnalyticsTapOutsideCatcher.Coordinator: UIGestureRecognizerDelegate {
+    func gestureRecognizer(
+        _ gestureRecognizer: UIGestureRecognizer,
+        shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer
+    ) -> Bool {
+        true
+    }
+}
+#endif
 
 private struct AnalyticsCaret: Shape {
     let pointsUp: Bool

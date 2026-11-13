@@ -33,6 +33,7 @@ struct CategoriesView: View {
                 .padding(.horizontal, AppDetailPageLayout.horizontalInset)
                 .padding(.bottom, AppStyle.Spacing.large)
             }
+            .shellBottomRoom()
         }
         .background(AppColors.surfaceBase)
         .onAppear { syncHeader() }

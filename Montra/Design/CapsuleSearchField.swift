@@ -3,6 +3,16 @@ import SwiftUI
 import AppKit
 #endif
 
+/// The capsule's height: a comfortable field on a touch screen, the compact
+/// desktop height on the Mac.
+private enum SearchFieldMetrics {
+    #if os(iOS)
+    static let minHeight: CGFloat = 36
+    #else
+    static let minHeight: CGFloat = 0
+    #endif
+}
+
 /// The search capsule from the reference: magnifier, plain field, clear button,
 /// a focus border, Escape to clear. Clicking anywhere in the capsule focuses it,
 /// and a click outside gives focus back to the window.
@@ -10,6 +20,10 @@ struct CapsuleSearchField: View {
     @Binding var query: String
     var prompt: String = String(localized: "common.search")
     var width: CGFloat = 220
+    /// Takes the width it is offered instead of the fixed 220 pt capsule. A
+    /// phone page uses this so the field fills its row; the Mac keeps the
+    /// capsule it always had.
+    var fillsWidth = false
     /// Incrementing this focuses the field, so ⌘F can reach it from the page.
     var focusToken: Int = 0
 
@@ -35,6 +49,11 @@ struct CapsuleSearchField: View {
                 .foregroundStyle(AppColors.textPrimary)
                 .focused($isFocused)
                 .focusEffectDisabled()
+                #if os(iOS)
+                .submitLabel(.search)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+                #endif
                 .accessibilityLabel(String(localized: "common.search_transactions"))
                 .platformExitCommand {
                     if hasText {
@@ -62,7 +81,9 @@ struct CapsuleSearchField: View {
         }
         .padding(.horizontal, AppStyle.Spacing.small)
         .padding(.vertical, AppStyle.Spacing.xxSmallPlus)
-        .frame(width: width)
+        .frame(minHeight: SearchFieldMetrics.minHeight)
+        .frame(width: fillsWidth ? nil : width)
+        .frame(maxWidth: fillsWidth ? .infinity : nil)
         .background {
             Capsule(style: .continuous).fill(AppColors.fillSecondary)
         }

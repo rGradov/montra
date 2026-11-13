@@ -6,10 +6,26 @@ import SwiftUI
 enum OnboardingLayout {
     /// The column the welcome copy and the forms live in, as in the reference.
     static let contentMaxWidth: CGFloat = 520
-    static let horizontalPadding: CGFloat = 48
-    static let verticalPadding: CGFloat = 40
     static let buttonWidth: CGFloat = 240
     static let formWidth: CGFloat = 360
+
+    /// A phone keeps a 24 pt gutter so the column has as much room as possible;
+    /// the Mac and iPad keep the reference's 48.
+    static var horizontalPadding: CGFloat {
+        #if os(iOS)
+        AppPlatform.isPhone ? 24 : 48
+        #else
+        48
+        #endif
+    }
+
+    static var verticalPadding: CGFloat {
+        #if os(iOS)
+        AppPlatform.isPhone ? 28 : 40
+        #else
+        40
+        #endif
+    }
 }
 
 private enum OnboardingTransitions {
@@ -122,6 +138,10 @@ struct OnboardingFlowView: View {
     @State private var createdExpense: Operation?
     @State private var selectedExpenses: Set<StarterCategory>
     @State private var selectedIncome: Set<StarterCategory>
+    /// The measured height of the footer on iOS, so the scrolling step can be
+    /// centred in the space that is actually left. 150 is a first-pass estimate
+    /// for two buttons; the real value arrives with the first layout.
+    @State private var footerHeight: CGFloat = 150
 
     private let isPreview: Bool
 
@@ -180,25 +200,76 @@ struct OnboardingFlowView: View {
         ZStack {
             AppColors.surfaceBase.ignoresSafeArea()
 
-            VStack(spacing: 0) {
-                stepBody
-                    .id(step)
-                    .transition(OnboardingTransitions.step(reduceMotion: reduceMotion))
-                    .frame(maxWidth: OnboardingLayout.contentMaxWidth, maxHeight: .infinity)
-                    .padding(.horizontal, OnboardingLayout.horizontalPadding)
-                    .padding(.top, OnboardingLayout.verticalPadding)
-
-                footer
-                    .padding(.horizontal, OnboardingLayout.horizontalPadding)
-                    .padding(.top, AppStyle.Spacing.medium)
-                    .padding(.bottom, OnboardingLayout.verticalPadding)
-            }
+            #if os(iOS)
+            iosLayout
+            #else
+            macLayout
+            #endif
         }
         .animation(reduceMotion ? nil : .easeInOut(duration: 0.45), value: step)
         #if os(macOS)
         .frame(minWidth: AppWindowLayout.width, minHeight: AppWindowLayout.minHeight)
         #endif
     }
+
+    /// The Mac keeps the reference column: the step is centred in the window and
+    /// the buttons sit under it.
+    private var macLayout: some View {
+        VStack(spacing: 0) {
+            stepBody
+                .id(step)
+                .transition(OnboardingTransitions.step(reduceMotion: reduceMotion))
+                .frame(maxWidth: OnboardingLayout.contentMaxWidth, maxHeight: .infinity)
+                .padding(.horizontal, OnboardingLayout.horizontalPadding)
+                .padding(.top, OnboardingLayout.verticalPadding)
+
+            footer
+                .padding(.horizontal, OnboardingLayout.horizontalPadding)
+                .padding(.top, AppStyle.Spacing.medium)
+                .padding(.bottom, OnboardingLayout.verticalPadding)
+        }
+    }
+
+    #if os(iOS)
+    /// On iOS the step scrolls, so the long steps (categories, the expense form)
+    /// and a landscape phone never clip. When everything fits, the step is still
+    /// centred in the space above the buttons, exactly like on the Mac.
+    private var iosLayout: some View {
+        GeometryReader { proxy in
+            VStack(spacing: 0) {
+                ScrollView {
+                    stepBody
+                        .id(step)
+                        .transition(OnboardingTransitions.step(reduceMotion: reduceMotion))
+                        .frame(maxWidth: OnboardingLayout.contentMaxWidth)
+                        .frame(
+                            minHeight: max(0, proxy.size.height - footerHeight),
+                            alignment: .center
+                        )
+                        .padding(.horizontal, OnboardingLayout.horizontalPadding)
+                        .padding(.top, OnboardingLayout.verticalPadding)
+                        .padding(.bottom, AppStyle.Spacing.medium)
+                }
+                .scrollDismissesKeyboard(.interactively)
+                .scrollBounceBehavior(.basedOnSize)
+
+                footer
+                    .padding(.horizontal, OnboardingLayout.horizontalPadding)
+                    .padding(.top, AppStyle.Spacing.medium)
+                    .padding(.bottom, OnboardingLayout.verticalPadding)
+                    .background {
+                        GeometryReader { footerProxy in
+                            Color.clear
+                                .onAppear { footerHeight = footerProxy.size.height }
+                                .onChange(of: footerProxy.size.height) { _, height in
+                                    footerHeight = height
+                                }
+                        }
+                    }
+            }
+        }
+    }
+    #endif
 
     @ViewBuilder
     private var stepBody: some View {
@@ -354,7 +425,7 @@ struct OnboardingFlowView: View {
                     }
                 }
             }
-            .frame(width: OnboardingLayout.formWidth)
+            .frame(maxWidth: OnboardingLayout.formWidth)
             .onboardingBlurIn(index: 1)
 
             Text(String(localized: "onboarding.your_data_stays_on_this"))
@@ -433,7 +504,7 @@ struct OnboardingFlowView: View {
                     selection: $selectedIncome
                 )
             }
-            .frame(width: OnboardingLayout.formWidth)
+            .frame(maxWidth: OnboardingLayout.formWidth)
             .onboardingBlurIn(index: 1)
 
             Text(String(localized: "onboarding.well_add_other_for_expenses"))
@@ -519,7 +590,8 @@ struct OnboardingFlowView: View {
                     .foregroundStyle(AppColors.textSecondary)
             }
             .padding(.horizontal, AppStyle.Spacing.medium)
-            .frame(width: OnboardingLayout.formWidth, height: 52)
+            .frame(maxWidth: OnboardingLayout.formWidth)
+            .frame(height: 52)
             .background(
                 AppColors.surfaceRaised,
                 in: RoundedRectangle(cornerRadius: AppStyle.Radius.md, style: .continuous)
@@ -541,7 +613,7 @@ struct OnboardingFlowView: View {
                     }
                 }
             }
-            .frame(width: OnboardingLayout.formWidth)
+            .frame(maxWidth: OnboardingLayout.formWidth)
             .onboardingBlurIn(index: 3)
         }
         .onAppear { prepareCategoryIfNeeded() }
@@ -685,9 +757,19 @@ enum OnboardingStep: Int, CaseIterable, Hashable {
 private struct OnboardingWelcomeStepView: View {
     @Environment(\.welcomeArtworkWaitsForMori) private var waitsForMori
 
+    /// The reference icon is sized for a window. An iPad page has the room for a
+    /// bolder mark, so it grows a step; the Mac keeps 148 exactly.
+    private var artworkSize: CGFloat {
+        #if os(iOS)
+        AppPlatform.isPad ? 184 : 148
+        #else
+        148
+        #endif
+    }
+
     var body: some View {
         VStack(spacing: AppStyle.Spacing.xLarge) {
-            MontraArtwork(size: 148)
+            MontraArtwork(size: artworkSize)
                 // The mascot flies onto this icon, so it waits out of focus: the
                 // mascot painted inside it has to be unreadable, or there would be
                 // two. Only the focus changes, never the brightness -- dimming the
@@ -823,7 +905,7 @@ private struct OnboardingDoneStep: View {
                     )
                 }
             }
-            .frame(width: OnboardingLayout.formWidth)
+            .frame(maxWidth: OnboardingLayout.formWidth)
             .onboardingBlurIn(index: 2)
 
             Text(expense == nil
@@ -935,7 +1017,13 @@ private struct OnboardingAccountStylePicker: View {
             }
         }
         .padding(AppStyle.Spacing.medium)
+        #if os(macOS)
         .frame(width: 360)
+        #else
+        // A phone shows this popover as a sheet; the width gives way rather than
+        // clipping the colour row on a narrow screen.
+        .frame(minWidth: 280, maxWidth: 360)
+        #endif
     }
 }
 

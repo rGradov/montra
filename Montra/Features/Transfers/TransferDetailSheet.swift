@@ -69,6 +69,7 @@ struct TransferDetailSheet: View {
                 .padding(.horizontal, AppStyle.Spacing.large)
                 .padding(.vertical, AppStyle.Spacing.small)
             }
+            .sheetKeyboardScrolling()
 
             SheetFooter {
                 Spacer(minLength: 0)
@@ -77,7 +78,7 @@ struct TransferDetailSheet: View {
                     .keyboardShortcut(.defaultAction)
             }
         }
-        .frame(width: 470, height: 380)
+        .sheetContentFrame(width: 470, height: 380)
         .background(AppColors.surfaceBase)
     }
 

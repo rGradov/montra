@@ -24,6 +24,14 @@ struct BackupRestoreSheet: View {
 
     @State private var restored: BackupSummary?
     @State private var isRestoring = false
+    #if os(iOS)
+    /// The file exporter is the iOS counterpart of the Mac's save panel: the
+    /// "save the current state first" step must not be a silent no-op there.
+    @State private var exportDocument: BackupDocument?
+    @State private var exportFileName = ""
+    @State private var isExporting = false
+    @State private var exportErrorText: String?
+    #endif
 
     private var summary: BackupSummary { candidate.summary }
 
@@ -37,9 +45,36 @@ struct BackupRestoreSheet: View {
                     .transition(.opacity)
             }
         }
-        .frame(width: 520, height: 640)
+        .sheetContentFrame(width: 520, height: 640)
         .background(AppColors.surfaceBase)
         .animation(reduceMotion ? nil : .easeInOut(duration: 0.28), value: restored != nil)
+        #if os(iOS)
+        .fileExporter(
+            isPresented: $isExporting,
+            document: exportDocument,
+            contentType: BackupFile.contentType,
+            defaultFilename: exportFileName
+        ) { result in
+            exportDocument = nil
+            switch result {
+            case .success:
+                settings.lastBackupAt = .now
+            case .failure(let error):
+                exportErrorText = error.localizedDescription
+            }
+        }
+        .alert(
+            String(localized: "backup.error.save_title"),
+            isPresented: Binding(
+                get: { exportErrorText != nil },
+                set: { if !$0 { exportErrorText = nil } }
+            )
+        ) {
+            Button(String(localized: "common.ok"), role: .cancel) { exportErrorText = nil }
+        } message: {
+            Text(exportErrorText ?? "")
+        }
+        #endif
     }
 
     // MARK: - Confirmation
@@ -90,6 +125,7 @@ struct BackupRestoreSheet: View {
                 .padding(.horizontal, AppStyle.Spacing.large)
                 .padding(.bottom, AppStyle.Spacing.medium)
             }
+            .sheetKeyboardScrolling()
 
             SheetFooter {
                 Spacer(minLength: AppStyle.Spacing.small)
@@ -233,12 +269,22 @@ struct BackupRestoreSheet: View {
                 settings: settings,
                 environment: environment
             )
+            #if os(iOS)
+            exportDocument = BackupFile.document(for: backup)
+            exportFileName = "Montra-\(currentStamp())-before-restore"
+            isExporting = true
+            #else
             if let url = try BackupFile.export(backup, suggestedName: "Montra-\(currentStamp())-before-restore.\(BackupFile.fileExtension)") {
                 settings.lastBackupAt = .now
                 BackupFile.confirmSave(url)
             }
+            #endif
         } catch {
+            #if os(iOS)
+            exportErrorText = error.localizedDescription
+            #else
             BackupFile.presentError(error, title: String(localized: "backup.error.save_title"))
+            #endif
         }
     }
 

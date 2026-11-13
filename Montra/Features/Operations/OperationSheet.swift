@@ -204,12 +204,22 @@ struct OperationSheet: View {
                             transferFields
                             dateField
                         } else {
+                            #if os(iOS)
+                            // Two half-width values on a phone leave neither
+                            // readable (the account name is the first to go), so
+                            // each field takes its own row.
+                            VStack(alignment: .leading, spacing: AppStyle.Spacing.small) {
+                                accountField
+                                dateField
+                            }
+                            #else
                             HStack(alignment: .top, spacing: AppStyle.Spacing.small) {
                                 accountField
                                     .frame(maxWidth: .infinity, alignment: .leading)
                                 dateField
                                     .frame(maxWidth: .infinity, alignment: .leading)
                             }
+                            #endif
 
                             categoryField
 
@@ -238,7 +248,12 @@ struct OperationSheet: View {
                         }
                     }
                 }
+                #if os(macOS)
                 .frame(height: isTransfer ? 494 : 413)
+                #else
+                .frame(maxHeight: .infinity)
+                #endif
+                .sheetKeyboardScrolling()
             }
 
             SheetFooter {
@@ -255,7 +270,7 @@ struct OperationSheet: View {
                     .keyboardShortcut(.defaultAction)
             }
         }
-        .frame(width: 470)
+        .sheetContentFrame(width: 470)
         .background(AppColors.surfaceBase)
         .onAppear(perform: prepare)
         .onChange(of: kind) { _, _ in
@@ -464,24 +479,30 @@ struct OperationSheet: View {
                     .foregroundStyle(AppColors.textSecondary)
             }
 
+            #if os(iOS)
+            VStack(alignment: .leading, spacing: AppStyle.Spacing.small) {
+                accountPicker(title: String(localized: "common.from"), selected: fromAccount, onSelect: selectFrom)
+
+                HStack {
+                    Spacer(minLength: 0)
+                    swapTransferButton
+                    Spacer(minLength: 0)
+                }
+
+                accountPicker(title: String(localized: "common.to"), selected: toAccount, onSelect: selectTo)
+            }
+            #else
             HStack(alignment: .top, spacing: AppStyle.Spacing.xSmall) {
                 accountPicker(title: String(localized: "common.from"), selected: fromAccount, onSelect: selectFrom)
                     .frame(maxWidth: .infinity, alignment: .leading)
 
-                Button {
-                    swapTransferAccounts()
-                } label: {
-                    Image(systemName: "arrow.left.arrow.right")
-                        .font(.system(size: 11, weight: .semibold))
-                }
-                .buttonStyle(.montra(.secondary, width: .square))
-                .padding(.top, 23)
-                .platformHelp(String(localized: "transaction.form.swap_accounts"))
-                .accessibilityLabel(String(localized: "transaction.form.swap_accounts"))
+                swapTransferButton
+                    .padding(.top, 23)
 
                 accountPicker(title: String(localized: "common.to"), selected: toAccount, onSelect: selectTo)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
+            #endif
 
             TransferAmountField(
                 title: String(localized: "transfer.amount_sent"),
@@ -526,6 +547,18 @@ struct OperationSheet: View {
                     .foregroundStyle(AppColors.textSecondary)
             }
         }
+    }
+
+    private var swapTransferButton: some View {
+        Button {
+            swapTransferAccounts()
+        } label: {
+            Image(systemName: "arrow.left.arrow.right")
+                .font(.system(size: 11, weight: .semibold))
+        }
+        .buttonStyle(.montra(.secondary, width: .square))
+        .platformHelp(String(localized: "transaction.form.swap_accounts"))
+        .accessibilityLabel(String(localized: "transaction.form.swap_accounts"))
     }
 
     private var transferRateHint: String {
@@ -748,8 +781,9 @@ struct OperationSheet: View {
                     Text(String(localized: "transaction.form.schedule_future_payments_without_recording"))
                         .font(AppStyle.Typography.metadata)
                         .foregroundStyle(AppColors.textSecondary)
-                        .lineLimit(1)
+                        .lineLimit(RepeatCaption.lineLimit)
                         .minimumScaleFactor(0.92)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
 
                 Spacer(minLength: AppStyle.Spacing.small)
@@ -1033,5 +1067,18 @@ struct OperationSheet: View {
         formatter.minimumFractionDigits = 0
         formatter.maximumFractionDigits = 8
         return formatter.string(from: NSDecimalNumber(decimal: value)) ?? ""
+    }
+}
+
+
+/// The repeat switch's caption fits one line on the Mac's 470 pt sheet; a phone
+/// needs the second line rather than an ellipsis in the middle of the sentence.
+private enum RepeatCaption {
+    static var lineLimit: Int {
+        #if os(iOS)
+        2
+        #else
+        1
+        #endif
     }
 }

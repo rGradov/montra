@@ -71,7 +71,23 @@ struct OnboardingIntroView: View {
     @State private var flightProgress: CGFloat = 0
     @State private var flightOpacity: Double = 1
 
-    private let mascotSize = OnboardingHero.mascotSize
+    /// The intro's own geometry is sized for a window. On a 13-inch iPad it reads
+    /// small, so the mascot, its glow and the sparkle field scale with the
+    /// screen; the Mac keeps its original sizes. This is geometry only: every
+    /// timing, curve and delay below is untouched.
+    @State private var viewSize: CGSize = .zero
+
+    private var artworkScale: CGFloat {
+        #if os(iOS)
+        let smallest = min(viewSize.width, viewSize.height)
+        guard smallest > 1 else { return 1 }
+        return min(1.55, max(1, smallest / 720))
+        #else
+        1
+        #endif
+    }
+
+    private var mascotSize: CGFloat { OnboardingHero.mascotSize * artworkScale }
 
     init(
         playsSound: Bool = true,
@@ -119,6 +135,11 @@ struct OnboardingIntroView: View {
                 .animation(.easeOut(duration: OnboardingIntroTiming.copyAside), value: isDismissing)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .onGeometryChange(for: CGSize.self) { proxy in
+            proxy.size
+        } action: { size in
+            if viewSize != size { viewSize = size }
+        }
         // Reduce Motion, and a run that never measured the icon, keep the plain
         // crossfade this screen used to have.
         .modifier(IntroCrossfade(isActive: isDismissing && !showsFlight))
@@ -199,7 +220,7 @@ struct OnboardingIntroView: View {
                 glowField
                     .position(x: proxy.size.width / 2, y: proxy.size.height / 2)
                 IntroSparkles()
-                    .frame(width: 620, height: 540)
+                    .frame(width: 620 * artworkScale, height: 540 * artworkScale)
                     .opacity(glow)
                     .position(x: proxy.size.width / 2, y: proxy.size.height / 2)
             }
@@ -229,8 +250,8 @@ struct OnboardingIntroView: View {
             startRadius: 12,
             endRadius: 380
         )
-        .frame(width: 880, height: 880)
-        .blur(radius: 52)
+        .frame(width: 880 * artworkScale, height: 880 * artworkScale)
+        .blur(radius: 52 * artworkScale)
         .scaleEffect(0.72 + 0.28 * glow)
     }
 
@@ -258,7 +279,7 @@ struct OnboardingIntroView: View {
                 Button(action: toggleMute) {
                     Image(systemName: isMuted ? "speaker.slash.fill" : "speaker.wave.1.fill")
                         .font(.system(size: 11, weight: .semibold))
-                        .frame(width: 24, height: 24)
+                        .frame(width: IntroControlMetrics.muteSize, height: IntroControlMetrics.muteSize)
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
@@ -274,10 +295,14 @@ struct OnboardingIntroView: View {
                     .font(AppStyle.Typography.metadata)
                     .foregroundStyle(AppColors.textSecondary)
                     .pointingHandOnHover()
+                    // A comfortable touch target on a phone, where the label is
+                    // the smallest thing on screen.
+                    .frame(minWidth: IntroControlMetrics.skipMinWidth, minHeight: IntroControlMetrics.muteSize)
+                    .contentShape(Rectangle())
                     .accessibilityLabel(String(localized: "common.skip_onboarding"))
             }
-            .padding(.horizontal, AppStyle.Spacing.xLarge)
-            .padding(.bottom, AppStyle.Spacing.large)
+            .padding(.horizontal, IntroControlMetrics.horizontalPadding)
+            .padding(.bottom, IntroControlMetrics.bottomPadding)
         }
     }
 
@@ -375,6 +400,22 @@ struct OnboardingIntroView: View {
         isMuted.toggle()
         soundtrack.setMuted(isMuted)
     }
+}
+
+/// The intro's two corner controls: the Mac keeps its compact 24 pt targets, a
+/// touch screen gets 44 pt.
+private enum IntroControlMetrics {
+    #if os(iOS)
+    static let muteSize: CGFloat = 44
+    static let skipMinWidth: CGFloat = 64
+    static let horizontalPadding = AppStyle.Spacing.large
+    static let bottomPadding = AppStyle.Spacing.medium
+    #else
+    static let muteSize: CGFloat = 24
+    static let skipMinWidth: CGFloat = 0
+    static let horizontalPadding = AppStyle.Spacing.xLarge
+    static let bottomPadding = AppStyle.Spacing.large
+    #endif
 }
 
 /// The hand-off this screen used before the mascot flew: the whole intro fades

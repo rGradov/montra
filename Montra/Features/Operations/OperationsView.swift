@@ -385,6 +385,7 @@ struct OperationsView: View {
                     .animation(AppMotion.insert, value: visibleOperations.count + visiblePlans.count)
                 }
             }
+            .shellBottomRoom()
         }
         .background(AppColors.surfaceBase)
         .onAppear {
@@ -415,33 +416,58 @@ struct OperationsView: View {
         }
     }
 
-    private var plansBar: some View {
-        HStack(spacing: AppStyle.Spacing.xSmall) {
-            HStack(spacing: AppStyle.Spacing.xxSmallPlus) {
-                Image(systemName: "calendar.badge.clock")
-                    .font(.system(size: 10, weight: .semibold))
-                Text(String(localized: "common.scheduled_payments"))
+    private var plansLabel: some View {
+        HStack(spacing: AppStyle.Spacing.xxSmallPlus) {
+            Image(systemName: "calendar.badge.clock")
+                .font(.system(size: 10, weight: .semibold))
+            Text(String(localized: "common.scheduled_payments"))
+        }
+        .font(AppStyle.Typography.callout.weight(.medium))
+        .foregroundStyle(AppColors.textSecondary)
+        .lineLimit(1)
+    }
+
+    private var plansResetButton: some View {
+        Button(String(localized: "common.reset")) {
+            withAnimation(AppMotion.row) {
+                planFilter = .all
+                selected.removeAll()
             }
-            .font(AppStyle.Typography.callout.weight(.medium))
-            .foregroundStyle(AppColors.textSecondary)
+        }
+        .buttonStyle(.montra(.quiet, size: .small))
+    }
+
+    private var plansBar: some View {
+        #if os(iOS)
+        // The label and the reset action keep the first line, the two status
+        // chips get their own, so nothing overlaps on a phone.
+        VStack(alignment: .leading, spacing: AppStyle.Spacing.xxSmallPlus) {
+            HStack(spacing: AppStyle.Spacing.xSmall) {
+                plansLabel
+                Spacer(minLength: AppStyle.Spacing.small)
+                if planFilter != .all { plansResetButton }
+            }
+            HStack(spacing: AppStyle.Spacing.xSmall) {
+                planChip(.missed, count: missedCount)
+                planChip(.upcoming, count: upcomingCount)
+            }
+        }
+        .padding(.horizontal, AppDetailPageLayout.horizontalInset)
+        .padding(.bottom, AppStyle.Spacing.xSmall)
+        #else
+        HStack(spacing: AppStyle.Spacing.xSmall) {
+            plansLabel
 
             planChip(.missed, count: missedCount)
             planChip(.upcoming, count: upcomingCount)
 
             Spacer(minLength: AppStyle.Spacing.small)
 
-            if planFilter != .all {
-                Button(String(localized: "common.reset")) {
-                    withAnimation(AppMotion.row) {
-                        planFilter = .all
-                        selected.removeAll()
-                    }
-                }
-                .buttonStyle(.montra(.quiet, size: .small))
-            }
+            if planFilter != .all { plansResetButton }
         }
         .padding(.horizontal, AppDetailPageLayout.horizontalInset)
         .padding(.bottom, AppStyle.Spacing.xSmall)
+        #endif
     }
 
     private func planChip(_ item: PlanFilter, count: Int) -> some View {
@@ -538,7 +564,7 @@ struct OperationsView: View {
         )
     }
 
-    private var filterBar: some View {
+    private var filterChips: some View {
         HStack(spacing: AppStyle.Spacing.xSmall) {
             ForEach(OperationFilter.allCases) { item in
                 FilterChip(
@@ -552,6 +578,27 @@ struct OperationsView: View {
                 .accessibilityAddTraits(.isButton)
                 .accessibilityAddTraits(filter == item ? .isSelected : [])
             }
+        }
+    }
+
+    private var filterBar: some View {
+        #if os(iOS)
+        // A phone cannot hold the three chips and the search capsule on one line,
+        // so the search gets a row of its own and keeps its full width.
+        VStack(alignment: .leading, spacing: AppStyle.Spacing.xSmall) {
+            filterChips
+            CapsuleSearchField(
+                query: $searchText,
+                fillsWidth: true,
+                focusToken: searchFocusToken
+            )
+        }
+        .padding(.horizontal, AppDetailPageLayout.horizontalInset)
+        .padding(.top, AppStyle.Spacing.xSmall)
+        .padding(.bottom, AppStyle.Spacing.xSmall)
+        #else
+        HStack(spacing: AppStyle.Spacing.xSmall) {
+            filterChips
 
             Spacer(minLength: AppStyle.Spacing.small)
 
@@ -564,72 +611,129 @@ struct OperationsView: View {
         .padding(.horizontal, AppDetailPageLayout.horizontalInset)
         .padding(.top, AppStyle.Spacing.xSmall)
         .padding(.bottom, AppStyle.Spacing.xSmall)
+        #endif
+    }
+
+    private var selectAllToggle: some View {
+        Toggle(isOn: Binding(
+            get: { allSelected },
+            set: { isOn in
+                let ids = visibleOperations.map(\.id)
+                if isOn {
+                    selected.formUnion(ids)
+                } else {
+                    selected.subtract(ids)
+                }
+            }
+        )) {
+            Text(String(localized: "common.select_all"))
+                .font(AppStyle.Typography.body.weight(.medium))
+        }
+        #if os(macOS)
+        .toggleStyle(.checkbox)
+        #else
+        .toggleStyle(.touchCheckbox)
+        #endif
+        .tint(AppColors.actionPrimary)
+    }
+
+    private var scopeMenu: some View {
+        PopoverMenu(
+            options: OperationPeriodScope.allCases,
+            selection: scope,
+            optionLabel: { $0.title },
+            onSelect: { scope = $0 }
+        ) {
+            FilterChip(style: .dropdown, label: scope.title, leadingSystemImage: "calendar")
+                .contentShape(Capsule())
+        }
+        .fixedSize(horizontal: true, vertical: false)
+        .accessibilityLabel(String(localized: "transaction.list.period \(scope.title)"))
+    }
+
+    private var sortMenu: some View {
+        PopoverMenu(
+            options: OperationSort.allCases,
+            selection: sort,
+            optionLabel: { $0.title },
+            minimumWidth: 140,
+            onSelect: { sort = $0 }
+        ) {
+            HStack(spacing: AppStyle.Spacing.xxSmallPlus) {
+                Image(systemName: "arrow.up.arrow.down")
+                    .font(.system(size: 11, weight: .semibold))
+                Text(sort.title)
+            }
+            .font(AppStyle.Typography.headline)
+            .foregroundStyle(AppColors.textPrimary)
+            .padding(.horizontal, AppStyle.Spacing.small + 2)
+            .frame(height: 30)
+            .background(AppColors.fillSecondary, in: Capsule(style: .continuous))
+            .overlay {
+                Capsule(style: .continuous).strokeBorder(AppColors.borderStrong, lineWidth: 1)
+            }
+            .contentShape(Capsule())
+        }
+        .fixedSize(horizontal: true, vertical: false)
+        .accessibilityLabel(String(localized: "transaction.list.sort \(sort.title)"))
     }
 
     private var selectAllRow: some View {
-        HStack(spacing: AppStyle.Spacing.xSmall) {
-            Toggle(isOn: Binding(
-                get: { allSelected },
-                set: { isOn in
-                    let ids = visibleOperations.map(\.id)
-                    if isOn {
-                        selected.formUnion(ids)
-                    } else {
-                        selected.subtract(ids)
-                    }
-                }
-            )) {
-                Text(String(localized: "common.select_all"))
-                    .font(AppStyle.Typography.body.weight(.medium))
+        Group {
+            #if os(iOS)
+            ViewThatFits(in: .horizontal) {
+                selectAllRowWide
+                selectAllRowStacked
             }
-            #if os(macOS)
-            .toggleStyle(.checkbox)
             #else
-            .toggleStyle(.touchCheckbox)
+            selectAllRowWide
             #endif
-            .tint(AppColors.actionPrimary)
-
-            Spacer(minLength: AppStyle.Spacing.small)
-
-            PopoverMenu(
-                options: OperationPeriodScope.allCases,
-                selection: scope,
-                optionLabel: { $0.title },
-                onSelect: { scope = $0 }
-            ) {
-                FilterChip(style: .dropdown, label: scope.title, leadingSystemImage: "calendar")
-                    .contentShape(Capsule())
-            }
-            .accessibilityLabel(String(localized: "transaction.list.period \(scope.title)"))
-
-            PopoverMenu(
-                options: OperationSort.allCases,
-                selection: sort,
-                optionLabel: { $0.title },
-                minimumWidth: 140,
-                onSelect: { sort = $0 }
-            ) {
-                HStack(spacing: AppStyle.Spacing.xxSmallPlus) {
-                    Image(systemName: "arrow.up.arrow.down")
-                        .font(.system(size: 11, weight: .semibold))
-                    Text(sort.title)
-                }
-                .font(AppStyle.Typography.headline)
-                .foregroundStyle(AppColors.textPrimary)
-                .padding(.horizontal, AppStyle.Spacing.small + 2)
-                .frame(height: 30)
-                .background(AppColors.fillSecondary, in: Capsule(style: .continuous))
-                .overlay {
-                    Capsule(style: .continuous).strokeBorder(AppColors.borderStrong, lineWidth: 1)
-                }
-                .contentShape(Capsule())
-            }
-            .accessibilityLabel(String(localized: "transaction.list.sort \(sort.title)"))
         }
         .padding(.horizontal, AppDetailPageLayout.horizontalInset)
         .padding(.top, AppStyle.Spacing.xSmall)
         .padding(.bottom, AppStyle.Spacing.small)
     }
+
+    private var selectAllRowWide: some View {
+        HStack(spacing: AppStyle.Spacing.xSmall) {
+            selectAllControl
+            Spacer(minLength: AppStyle.Spacing.small)
+            scopeMenu
+            sortMenu
+        }
+    }
+
+    /// The custom checkbox style draws only the box, so iOS pairs it with the
+    /// label the Mac's native checkbox shows itself.
+    @ViewBuilder
+    private var selectAllControl: some View {
+        #if os(iOS)
+        HStack(spacing: AppStyle.Spacing.xSmall) {
+            selectAllToggle
+            Text(String(localized: "common.select_all"))
+                .font(AppStyle.Typography.body.weight(.medium))
+                .foregroundStyle(AppColors.textPrimary)
+                .lineLimit(1)
+        }
+        #else
+        selectAllToggle
+        #endif
+    }
+
+    #if os(iOS)
+    /// When the toggle and the two menus do not fit on one line, the menus drop
+    /// below it. Both stay at their natural size instead of being compressed.
+    private var selectAllRowStacked: some View {
+        VStack(alignment: .leading, spacing: AppStyle.Spacing.xSmall) {
+            selectAllControl
+            HStack(spacing: AppStyle.Spacing.xSmall) {
+                scopeMenu
+                sortMenu
+                Spacer(minLength: 0)
+            }
+        }
+    }
+    #endif
 
     private func count(for filter: OperationFilter) -> Int {
         switch filter {
@@ -713,7 +817,27 @@ struct OperationsView: View {
             masked: settings.hideBalances,
             onToggle: { toggle(operation) },
             onEdit: { onEditOperation(operation) },
+            onDuplicate: { duplicate(operation) },
             onDelete: { requestDelete([operation]) }
+        )
+    }
+
+    /// A copy of an operation, saved at once. The new row lands next to the
+    /// original (the list is date-sorted) and the usual new-row highlight makes
+    /// the copy obvious. A transfer leg is never duplicated: the pair would
+    /// disagree with the accounts.
+    private func duplicate(_ operation: Operation) {
+        guard !operation.isTransfer, let account = operation.account else { return }
+        _ = OperationRepository(context: context).create(
+            kind: operation.kind,
+            amount: operation.amount,
+            account: account,
+            category: operation.category,
+            date: operation.date,
+            place: operation.place,
+            latitude: operation.latitude,
+            longitude: operation.longitude,
+            note: operation.note
         )
     }
 
@@ -758,6 +882,7 @@ struct OperationListRow: View {
     let masked: Bool
     let onToggle: () -> Void
     let onEdit: () -> Void
+    var onDuplicate: (() -> Void)?
     let onDelete: () -> Void
 
     @State private var isHovering = false
@@ -772,6 +897,8 @@ struct OperationListRow: View {
                 .toggleStyle(.touchCheckbox)
                 #endif
                 .tint(AppColors.actionPrimary)
+                // A 22 pt box with vertical padding is a 44 pt touch target.
+                .modifier(SelectionToggleTouchTarget())
                 .accessibilityLabel(String(localized: "common.select_transaction"))
 
             Button(action: onEdit) {
@@ -832,6 +959,11 @@ struct OperationListRow: View {
         .animation(AppMotion.highlight, value: isNew)
         .contextMenu {
             Button(operation.isTransfer ? String(localized: "common.open_transfer") : String(localized: "common.edit_2"), action: onEdit)
+            if !operation.isTransfer, let onDuplicate {
+                Button(action: onDuplicate) {
+                    Label(String(localized: "common.duplicate"), systemImage: "plus.square.on.square")
+                }
+            }
             Divider()
             Button(String(localized: "common.delete"), role: .destructive, action: onDelete)
         }
@@ -854,5 +986,18 @@ struct OperationListRow: View {
                 || operation.category?.parent?.isMandatory == true
             return mandatory ? (String(localized: "common.essential"), .warning) : nil
         }
+    }
+}
+
+
+/// Grows a compact selection checkbox to a 44 pt touch target on iOS without
+/// changing the Mac's 14 pt row layout.
+struct SelectionToggleTouchTarget: ViewModifier {
+    func body(content: Content) -> some View {
+        #if os(iOS)
+        content.padding(.vertical, 11)
+        #else
+        content
+        #endif
     }
 }

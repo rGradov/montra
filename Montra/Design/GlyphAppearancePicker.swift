@@ -345,34 +345,47 @@ struct ColorPickerRow: View {
     @Binding var selection: PaletteColor
 
     var body: some View {
+        #if os(iOS)
+        // Ten swatches in one row are wider than a phone's form column, so they
+        // wrap onto a second line instead of running off the sheet.
+        FlowLayout(spacing: AppStyle.Spacing.xSmall, lineSpacing: AppStyle.Spacing.xxSmall) {
+            swatches
+        }
+        #else
         HStack(spacing: AppStyle.Spacing.xSmall) {
-            ForEach(PaletteColor.allCases) { color in
-                Button {
-                    selection = color
-                } label: {
-                    Circle()
-                        .fill(color.tileColor)
-                        .frame(width: 22, height: 22)
-                        .overlay {
-                            Circle()
-                                .strokeBorder(.white.opacity(0.22), lineWidth: 0.5)
-                        }
-                        .overlay {
-                            if selection == color {
-                                Circle()
-                                    .inset(by: -3)
-                                    .strokeBorder(AppColors.textPrimary, lineWidth: 2)
-                            }
-                        }
-                        .frame(width: 28, height: 28)
-                }
-                .buttonStyle(.plain)
-                .pointingHandOnHover()
-                .platformHelp(color.title)
-                .accessibilityLabel(color.title)
-                .accessibilityAddTraits(selection == color ? .isSelected : [])
-            }
+            swatches
             Spacer(minLength: 0)
+        }
+        #endif
+    }
+
+    @ViewBuilder
+    private var swatches: some View {
+        ForEach(PaletteColor.allCases) { color in
+            Button {
+                selection = color
+            } label: {
+                Circle()
+                    .fill(color.tileColor)
+                    .frame(width: 22, height: 22)
+                    .overlay {
+                        Circle()
+                            .strokeBorder(.white.opacity(0.22), lineWidth: 0.5)
+                    }
+                    .overlay {
+                        if selection == color {
+                            Circle()
+                                .inset(by: -3)
+                                .strokeBorder(AppColors.textPrimary, lineWidth: 2)
+                        }
+                    }
+                    .frame(width: 28, height: 28)
+            }
+            .buttonStyle(.plain)
+            .pointingHandOnHover()
+            .platformHelp(color.title)
+            .accessibilityLabel(color.title)
+            .accessibilityAddTraits(selection == color ? .isSelected : [])
         }
     }
 }

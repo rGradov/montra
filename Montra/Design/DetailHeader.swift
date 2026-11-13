@@ -31,12 +31,33 @@ struct SharedDetailHeader: View {
         let config = host.config
 
         VStack(alignment: .leading, spacing: AppStyle.Spacing.xxSmall) {
+            backRow(config)
+
+            #if os(iOS)
+            // A page's actions are laid out beside its title on the Mac and on a
+            // wide iPad page. On a phone they do not fit there, so they drop to
+            // their own row instead of being squeezed into a truncated strip.
+            ViewThatFits(in: .horizontal) {
+                titleRow(config)
+                stackedRow(config)
+            }
+            #else
+            titleRow(config)
+            #endif
+        }
+        .padding(.horizontal, AppDetailPageLayout.horizontalInset)
+        .padding(.top, AppDetailPageLayout.topContentInset)
+        .padding(.bottom, AppStyle.Spacing.small)
+        .background(AppColors.surfaceBase)
+    }
+
+    private func backRow(_ config: DetailHeaderConfig) -> some View {
+        Group {
             if let backTitle = config.backTitle, let onBack = config.onBack {
                 Button(action: onBack) {
                     Label(backTitle, systemImage: "chevron.left")
                 }
                 .buttonStyle(.montra(.quiet, size: .small))
-                .padding(.bottom, 2)
             } else {
                 // Keep the back row reserved on top-level pages so the title and
                 // subtitle never change height between routes.
@@ -48,33 +69,105 @@ struct SharedDetailHeader: View {
                 .disabled(true)
                 .allowsHitTesting(false)
                 .accessibilityHidden(true)
-                .padding(.bottom, 2)
-            }
-
-            HStack(alignment: .top, spacing: AppStyle.Spacing.medium) {
-                VStack(alignment: .leading, spacing: AppStyle.Spacing.xxSmall) {
-                    AnimatedPageTitle(title: config.title)
-
-                    Group {
-                        if let subtitle = config.subtitle, !subtitle.isEmpty {
-                            AnimatedHeaderSubtitle(text: subtitle)
-                        } else {
-                            Color.clear
-                        }
-                    }
-                    .frame(height: 28, alignment: .topLeading)
-                }
-
-                Spacer(minLength: AppStyle.Spacing.medium)
-
-                config.trailing
-                    .padding(.top, 1)
             }
         }
-        .padding(.horizontal, AppDetailPageLayout.horizontalInset)
-        .padding(.top, AppDetailPageLayout.topContentInset)
-        .padding(.bottom, AppStyle.Spacing.small)
-        .background(AppColors.surfaceBase)
+        .padding(.bottom, 2)
+    }
+
+    private func titleBlock(_ config: DetailHeaderConfig) -> some View {
+        VStack(alignment: .leading, spacing: AppStyle.Spacing.xxSmall) {
+            AnimatedPageTitle(title: config.title)
+
+            Group {
+                if let subtitle = config.subtitle, !subtitle.isEmpty {
+                    AnimatedHeaderSubtitle(text: subtitle)
+                } else {
+                    Color.clear
+                }
+            }
+            // The Mac keeps the exact reserved height it always had. On iOS the
+            // subtitle may need a second line at larger Dynamic Type sizes, so it
+            // reserves a minimum instead of a fixed height.
+            .modifier(HeaderSubtitleHeight())
+        }
+    }
+
+    private func titleRow(_ config: DetailHeaderConfig) -> some View {
+        HStack(alignment: .top, spacing: AppStyle.Spacing.medium) {
+            titleBlock(config)
+
+            Spacer(minLength: AppStyle.Spacing.medium)
+
+            config.trailing
+                .padding(.top, 1)
+        }
+    }
+
+    #if os(iOS)
+    /// Title, then the page's actions on their own line. The actions scroll
+    /// sideways when even a full row is not enough (a narrow phone in landscape
+    /// with three header buttons), so nothing is ever clipped or scaled down.
+    private func stackedRow(_ config: DetailHeaderConfig) -> some View {
+        VStack(alignment: .leading, spacing: AppStyle.Spacing.xSmall) {
+            titleBlock(config)
+
+            ScrollView(.horizontal) {
+                config.trailing
+                    .padding(.top, 1)
+                    .padding(.bottom, 2)
+            }
+            .scrollIndicators(.hidden)
+            .scrollBounceBehavior(.basedOnSize)
+        }
+    }
+    #endif
+}
+
+/// The subtitle's reserved height: fixed on the Mac (unchanged), a minimum on
+/// iOS so large text sizes are not clipped.
+private struct HeaderSubtitleHeight: ViewModifier {
+    func body(content: Content) -> some View {
+        #if os(iOS)
+        content.frame(minHeight: 28, alignment: .topLeading)
+        #else
+        content.frame(height: 28, alignment: .topLeading)
+        #endif
+    }
+}
+
+/// Page titles: one line at their natural width on the Mac, where the window
+/// always has room. On iOS a title can be longer than the screen (an account
+/// name), so it may wrap to a second line and truncates only after that.
+private struct PageTitleWidth: ViewModifier {
+    static var lineLimit: Int {
+        #if os(iOS)
+        2
+        #else
+        1
+        #endif
+    }
+
+    func body(content: Content) -> some View {
+        #if os(iOS)
+        content.frame(maxWidth: .infinity, alignment: .leading)
+        #else
+        content.fixedSize(horizontal: true, vertical: false)
+        #endif
+    }
+}
+
+extension View {
+    /// The room a scrolling page leaves under its last row for the floating
+    /// shell bar. The bar's height belongs to the shell, which publishes it as
+    /// safe area, so this only adds breathing space on top of that safe area and
+    /// never hard-codes a height.
+    @ViewBuilder
+    func shellBottomRoom(_ extra: CGFloat = 0) -> some View {
+        #if os(iOS)
+        self.safeAreaPadding(.bottom, AppStyle.Spacing.small + extra)
+        #else
+        self
+        #endif
     }
 }
 
@@ -98,26 +191,20 @@ struct AnimatedPageTitle: View {
     var body: some View {
         ZStack(alignment: .leading) {
             if let previousTitle {
-                Text(previousTitle)
-                    .font(AppStyle.Typography.pageTitle)
-                    .lineLimit(1)
-                    .truncationMode(.tail)
+                titleText(previousTitle)
                     .opacity(previousTitleVisible ? 1 : 0)
                     .offset(y: previousTitleVisible ? 0 : -5)
                     .blur(radius: previousTitleVisible ? 0 : 1.5)
             }
 
-            Text(displayedTitle)
-                .font(AppStyle.Typography.pageTitle)
-                .lineLimit(1)
-                .truncationMode(.tail)
+            titleText(displayedTitle)
                 .opacity(titleVisible || reduceMotion ? 1 : 0)
                 .offset(y: titleVisible || reduceMotion ? 0 : 6)
                 .blur(radius: titleVisible || reduceMotion ? 0 : 0.8)
                 .animation(titleAnimation, value: titleVisible)
                 .id(animationToken)
         }
-        .fixedSize(horizontal: true, vertical: false)
+        .modifier(PageTitleWidth())
         .accessibilityRepresentation {
             Text(title)
                 .accessibilityAddTraits(.isHeader)
@@ -125,6 +212,14 @@ struct AnimatedPageTitle: View {
         .onChange(of: title) { _, newTitle in
             animateTitleChange(to: newTitle)
         }
+    }
+
+    private func titleText(_ value: String) -> some View {
+        Text(value)
+            .font(AppStyle.Typography.pageTitle)
+            .lineLimit(PageTitleWidth.lineLimit)
+            .truncationMode(.tail)
+            .multilineTextAlignment(.leading)
     }
 
     private func animateTitleChange(to newTitle: String) {

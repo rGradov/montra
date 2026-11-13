@@ -138,6 +138,7 @@ struct AccountDetailView: View {
                 guard previous.isScrolling != current.isScrolling else { return }
                 isScrolling = current.isScrolling
             }
+            .shellBottomRoom()
         }
         .background(AppColors.surfaceBase)
         .sheet(item: $deleteRequest) { request in
@@ -219,6 +220,8 @@ struct AccountDetailView: View {
             Text(settings.money(balance, currency: account.currency))
                 .font(AppStyle.Typography.title.weight(.bold).numbers)
                 .monospacedDigit()
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
                 .contentTransition(.numericText())
 
             Text(String(localized: "account.in_this_account"))
@@ -240,20 +243,17 @@ struct AccountDetailView: View {
         .accessibilityElement(children: .combine)
     }
 
+    /// The five filter chips. On a phone they wrap onto a second line instead of
+    /// being clipped at the right edge; the Mac keeps one row.
     private var filterRow: some View {
+        #if os(iOS)
+        FlowLayout(spacing: AppStyle.Spacing.xSmall, lineSpacing: AppStyle.Spacing.xSmall) {
+            kindFilterChips
+            planFilterChips
+        }
+        #else
         HStack(spacing: AppStyle.Spacing.xSmall) {
-            ForEach(OperationFilter.allCases) { item in
-                FilterChip(
-                    style: .tab,
-                    label: item.title,
-                    isSelected: planFilter == .all && filter == item,
-                    leadingSystemImage: item.icon,
-                    count: count(for: item)
-                )
-                .onTapGesture { selectKind(item) }
-                .accessibilityAddTraits(.isButton)
-                .accessibilityAddTraits(planFilter == .all && filter == item ? .isSelected : [])
-            }
+            kindFilterChips
 
             Rectangle()
                 .fill(AppColors.borderSubtle)
@@ -261,23 +261,45 @@ struct AccountDetailView: View {
                 .padding(.horizontal, AppStyle.Spacing.xxxSmall)
                 .accessibilityHidden(true)
 
-            ForEach([PlanFilter.missed, .upcoming]) { item in
-                FilterChip(
-                    style: .tab,
-                    label: item.title,
-                    isSelected: planFilter == item,
-                    leadingSystemImage: item == .missed ? "exclamationmark.circle" : "calendar.badge.clock",
-                    count: planCount(item)
-                )
-                .onTapGesture { togglePlanFilter(item) }
-                .accessibilityAddTraits(.isButton)
-                .accessibilityAddTraits(planFilter == item ? .isSelected : [])
-                .platformHelp(item == .missed
-                      ? String(localized: "account.past_scheduled_payments_without_a")
-                      : String(localized: "account.payments_scheduled_over_the_next"))
-            }
+            planFilterChips
 
             Spacer(minLength: 0)
+        }
+        #endif
+    }
+
+    @ViewBuilder
+    private var kindFilterChips: some View {
+        ForEach(OperationFilter.allCases) { item in
+            FilterChip(
+                style: .tab,
+                label: item.title,
+                isSelected: planFilter == .all && filter == item,
+                leadingSystemImage: item.icon,
+                count: count(for: item)
+            )
+            .onTapGesture { selectKind(item) }
+            .accessibilityAddTraits(.isButton)
+            .accessibilityAddTraits(planFilter == .all && filter == item ? .isSelected : [])
+        }
+    }
+
+    @ViewBuilder
+    private var planFilterChips: some View {
+        ForEach([PlanFilter.missed, .upcoming]) { item in
+            FilterChip(
+                style: .tab,
+                label: item.title,
+                isSelected: planFilter == item,
+                leadingSystemImage: item == .missed ? "exclamationmark.circle" : "calendar.badge.clock",
+                count: planCount(item)
+            )
+            .onTapGesture { togglePlanFilter(item) }
+            .accessibilityAddTraits(.isButton)
+            .accessibilityAddTraits(planFilter == item ? .isSelected : [])
+            .platformHelp(item == .missed
+                  ? String(localized: "account.past_scheduled_payments_without_a")
+                  : String(localized: "account.payments_scheduled_over_the_next"))
         }
     }
 
@@ -344,7 +366,7 @@ struct AccountDetailView: View {
             #if os(macOS)
             .toggleStyle(.checkbox)
             #else
-            .toggleStyle(.switch)
+            .toggleStyle(.touchCheckbox)
             #endif
             .tint(AppColors.actionPrimary)
 

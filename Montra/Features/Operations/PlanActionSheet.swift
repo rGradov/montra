@@ -81,7 +81,8 @@ struct PlanActionSheet: View {
                         linkContent(plan)
                     }
                 }
-                .frame(height: 500)
+                .sheetScrollHeight(500)
+                .sheetKeyboardScrolling()
 
                 footer(plan)
             } else {
@@ -93,7 +94,7 @@ struct PlanActionSheet: View {
                 Spacer()
             }
         }
-        .frame(width: 470)
+        .sheetContentFrame(width: 470)
         .background(AppColors.surfaceBase)
         .alert(
             deleteScope == .series ? String(localized: "schedule.delete_the_entire_series") : String(localized: "schedule.delete_this_payment"),

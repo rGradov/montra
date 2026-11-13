@@ -518,8 +518,8 @@ change:
 | Backup / API / MCP | No new persisted field or action, so no payload change; audit confirms |
 | `-selftest` | 218 checks, `ALL CHECKS PASSED` |
 | `audit-feature-sync --require-dmg` | 7 passed, 0 failures |
-| DMG | Built and signed with the Developer ID profile, Production entitlements verified inside the image; notarization accepted by Apple not yet confirmed |
-| CloudKit production schema | **Not deployed**: CloudKit creates schema in development only, and `cktool` needs a management token from CloudKit Console, so this is a portal action |
+| DMG | **Done**: built, signed with the Developer ID profile, notarization **Accepted**, ticket stapled, `spctl` reports "accepted / Notarized Developer ID", and the binary inside the image prints `ALL CHECKS PASSED` |
+| CloudKit production schema | **Not deployed, and now proven by the app**: launching the notarized Developer ID build logs `Never successfully initialized and cannot execute request … CKErrorDomain Code=2`. CloudKit creates schema in development only, and `cktool` needs a management token from CloudKit Console, so this is a portal action |
 
 ## 6. Sync risks that the code does not handle yet
 

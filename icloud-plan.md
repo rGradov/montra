@@ -512,11 +512,11 @@ change:
 | Phase 0 prerequisites | Done: App ID, container, capabilities, certificates, both profiles, notary credentials |
 | Phase 1 signing | Done: Debug and Developer ID builds carry iCloud + push entitlements |
 | Phase 2a mirroring | Done: `.private(container)` for the persistent store, inverses added, live status in sidebar/Settings/sheet |
-| Phase 2b switch/onboarding | **Not done**: sync is always on for the persistent store; there is no user switch, no first-run choice, and the second-Mac onboarding gate is still a risk |
+| Phase 2b switch/onboarding | Switch: **not done** by design, sync is always on. Duplicate rows: **done** — `LedgerReconcile` merges the starter categories and periods a second Mac seeds before the first import, moving operations to the survivor and keeping a hand-edited period. It never touches categories the person created |
 | Phase 3 settings sync | Not done by design: settings stay per-Mac, documented |
 | Localization | Done: `ru` and `en`, 654 call sites resolve |
 | Backup / API / MCP | No new persisted field or action, so no payload change; audit confirms |
-| `-selftest` | 218 checks, `ALL CHECKS PASSED` |
+| `-selftest` | 225 checks, `ALL CHECKS PASSED`, also on the binary inside the DMG |
 | `audit-feature-sync --require-dmg` | 7 passed, 0 failures |
 | DMG | **Done**: built, signed with the Developer ID profile, notarization **Accepted**, ticket stapled, `spctl` reports "accepted / Notarized Developer ID", and the binary inside the image prints `ALL CHECKS PASSED` |
 | CloudKit production schema | **Not deployed, and now proven by the app**: launching the notarized Developer ID build logs `Never successfully initialized and cannot execute request … CKErrorDomain Code=2`. CloudKit creates schema in development only, and `cktool` needs a management token from CloudKit Console, so this is a portal action |
@@ -526,8 +526,8 @@ change:
 | Risk | Symptom | Mitigation |
 |---|---|---|
 | Second-Mac onboarding and seeding | First launch on Mac B shows onboarding over synced data, then inserts duplicate categories and periods | Phase 2b item 3: gate bootstrap on the first import |
-| Starter data seeding per device | Duplicate categories and periods even after onboarding | Dedupe by a stable key, or seed only on a store that is empty after the initial import |
-| Generated periods per device | Two `Period` rows for the same month | `PeriodService.regenerate` runs from local settings; sync the settings (Phase 3) and dedupe on `start`, keeping `isManual` authoritative |
+| Starter data seeding per device | Duplicate categories and periods even after onboarding | **Handled**: `LedgerReconcile` merges duplicates of app-generated rows at launch, after onboarding and after a restore |
+| Generated periods per device | Two `Period` rows for the same month | **Handled** by `LedgerReconcile`: one row per exact range, and `isManual` wins |
 | Transfers are two rows | One side arrives without the other, or `transferID` splits | Accept last-write-wins, or repair on read using `transferID` |
 | `sortIndex` collisions | Sidebar order flips between Macs | Re-index after each merge, or sort by `createdAt` as a tie-break |
 | Concurrent edits | Someone edits the same account on both Macs | SwiftData's last-write-wins; say so in the UI |

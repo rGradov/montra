@@ -12067,6 +12067,91 @@
           }
         }
       }
+    },
+    "common.new_window": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "New Window"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Новое окно"
+          }
+        }
+      }
+    },
+    "common.open_in_new_window": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open in New Window"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Открыть в новом окне"
+          }
+        }
+      }
+    },
+    "navigation.menu": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Navigation"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Навигация"
+          }
+        }
+      }
+    },
+    "settings.swiftdata_on_this_device": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "SwiftData, on this device"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "SwiftData, на этом устройстве"
+          }
+        }
+      }
+    },
+    "about.your_data_stays_on_this_device": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your data stays on this device. You can enable iCloud sync later."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Данные остаются на этом устройстве. Синхронизацию iCloud можно включить позже."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

@@ -126,7 +126,13 @@ struct AppRootView: View {
         .sheet(item: $app.sheet) { sheet in
             sheetContent(sheet)
                 .environmentObject(settings)
+                .environmentObject(rates)
         }
+        #if os(iOS)
+        // The iPad menu bar and hardware keyboard act on the focused window's
+        // model. macOS keeps its `NotificationCenter` menu bus below.
+        .focusedSceneValue(\.appModel, app)
+        #endif
         .task {
             // The welcome flow creates the categories and the first account; a
             // launch that opens onboarding must not seed the full default set
@@ -184,6 +190,7 @@ struct AppRootView: View {
         }
     }
 
+    @ViewBuilder
     private var appShell: some View {
         #if os(macOS)
         HStack(spacing: 0) {
@@ -212,46 +219,16 @@ struct AppRootView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(AppColors.surfaceBase)
         #else
-        VStack(spacing: 0) {
-            detail
-            temporaryIOSTabBar
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(AppColors.surfaceBase)
+        // Five roots behind one bottom menu: the system tab bar on iPhone, the
+        // custom Liquid Glass bar on iPad. Both own a `NavigationStack` per tab,
+        // so each tab keeps its own page and history.
+        IOSNavigationShell(
+            app: app,
+            rootContent: { tab in AnyView(screen(tab.route)) },
+            destinationContent: { route in AnyView(screen(route)) }
+        )
         #endif
     }
-
-    #if os(iOS)
-    /// A structural placeholder for the Liquid Glass bottom navigation. The
-    /// real tab shell replaces it in the navigation phase; this keeps every
-    /// screen reachable while the port compiles and runs.
-    private var temporaryIOSTabBar: some View {
-        HStack(spacing: 0) {
-            ForEach(Route.iOSTabs, id: \.self) { route in
-                Button {
-                    app.open(route)
-                } label: {
-                    VStack(spacing: 3) {
-                        Image(systemName: route.iOSSymbol)
-                            .font(.system(size: 17, weight: .medium))
-                        Text(route.iOSTitle)
-                            .font(.system(size: 10, weight: .medium))
-                            .lineLimit(1)
-                    }
-                    .frame(maxWidth: .infinity)
-                    .foregroundStyle(app.route.sidebarSection == route ? AppColors.textPrimary : AppColors.textTertiary)
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel(route.iOSTitle)
-                .accessibilityAddTraits(app.route.sidebarSection == route ? .isSelected : [])
-            }
-        }
-        .padding(.top, 8)
-        .padding(.bottom, 6)
-        .background(.bar)
-    }
-    #endif
 
     private var isCovered: Bool {
         showsOnboarding || onboardingReplay != nil
@@ -454,6 +431,7 @@ struct AppRootView: View {
         }
     }
 
+    #if os(macOS)
     private var detail: some View {
         VStack(spacing: 0) {
             SharedDetailHeader(host: headerHost)
@@ -462,77 +440,7 @@ struct AppRootView: View {
                 AppColors.surfaceBase.ignoresSafeArea()
 
                 Group {
-                    switch app.route {
-                case .overview:
-                    OverviewView(
-                        periodRevision: periodRevision,
-                        onNewOperation: { account in
-                            app.present(.newOperation(OperationSource(account: account, kind: nil)))
-                        },
-                        onNewAccount: { app.present(.newAccount(isSavings: false)) },
-                        onOpenAccount: { account in app.open(.account(account.id)) },
-                        onOpenPeriods: { app.present(.periods) },
-                        onOpenOperations: { app.open(.operations) },
-                        onEditOperation: openOperation
-                    )
-
-                case .operations:
-                    OperationsView(
-                        onBack: { app.open(.overview) },
-                        onNewOperation: { kind in
-                            app.present(.newOperation(OperationSource(account: nil, kind: kind)))
-                        },
-                        onEditOperation: openOperation,
-                        onOpenPlan: { plan in app.present(.planActions(plan.id)) }
-                    )
-
-                case .categories:
-                    CategoriesView(
-                        onNewCategory: { kind in app.present(.newCategory(kind)) },
-                        onEditCategory: { category in app.present(.editCategory(category)) }
-                    )
-
-                case .analytics:
-                    AnalyticsView(
-                        onNewOperation: {
-                            app.present(.newOperation(OperationSource(account: nil, kind: nil)))
-                        }
-                    )
-
-                case .settings:
-                    SettingsView(
-                        onOpenPeriods: { app.present(.periods) },
-                        onOpenICloud: { app.present(.iCloud) },
-                        onDataCleared: showOnboardingAfterClear,
-                        onDataRestored: showAfterRestore
-                    )
-
-                case .about:
-                    AboutView(onReplayOnboarding: startOnboardingReplay)
-
-                case .account(let id):
-                    if let account = accounts.first(where: { $0.id == id }) {
-                        AccountDetailView(
-                            account: account,
-                            onBack: { app.open(.overview) },
-                            onEdit: { app.present(.editAccount(account)) },
-                            onNewOperation: { kind in
-                                app.present(.newOperation(OperationSource(account: account, kind: kind)))
-                            },
-                            onEditOperation: openOperation,
-                            onOpenPlan: { plan in app.present(.planActions(plan.id)) }
-                        )
-                        .id(account.id)
-                    } else {
-                        EmptyState(
-                            symbol: "questionmark.circle",
-                            title: String(localized: "app.account_not_found"),
-                            message: String(localized: "app.it_may_have_been_deleted"),
-                            actionTitle: String(localized: "app.back_to_overview"),
-                            action: { app.open(.overview) }
-                        )
-                    }
-                    }
+                    screen(app.route)
                 }
                 .id(routeKey)
                 .transition(.opacity)
@@ -543,9 +451,102 @@ struct AppRootView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
+    #endif
 
+    /// One page. The macOS shell shows the current route here; the iOS shell
+    /// builds each tab's root and every pushed page from the same switch, so the
+    /// two platforms can never drift apart.
+    @ViewBuilder
+    private func screen(_ route: Route) -> some View {
+        switch route {
+        case .overview:
+            OverviewView(
+                periodRevision: periodRevision,
+                onNewOperation: { account in
+                    app.present(.newOperation(OperationSource(account: account, kind: nil)))
+                },
+                onNewAccount: { app.present(.newAccount(isSavings: false)) },
+                onOpenAccount: { account in app.open(.account(account.id)) },
+                onOpenPeriods: { app.present(.periods) },
+                onOpenOperations: { app.open(.operations) },
+                onEditOperation: openOperation
+            )
+
+        case .operations:
+            OperationsView(
+                onBack: { app.open(.overview) },
+                onNewOperation: { kind in
+                    app.present(.newOperation(OperationSource(account: nil, kind: kind)))
+                },
+                onEditOperation: openOperation,
+                onOpenPlan: { plan in app.present(.planActions(plan.id)) }
+            )
+
+        case .categories:
+            CategoriesView(
+                onNewCategory: { kind in app.present(.newCategory(kind)) },
+                onEditCategory: { category in app.present(.editCategory(category)) }
+            )
+
+        case .analytics:
+            AnalyticsView(
+                onNewOperation: {
+                    app.present(.newOperation(OperationSource(account: nil, kind: nil)))
+                }
+            )
+
+        case .settings:
+            SettingsView(
+                onOpenPeriods: { app.present(.periods) },
+                onOpenICloud: { app.present(.iCloud) },
+                onOpenAbout: { app.present(.about) },
+                onDataCleared: showOnboardingAfterClear,
+                onDataRestored: showAfterRestore
+            )
+
+        case .about:
+            AboutView(onReplayOnboarding: startOnboardingReplay)
+
+        case .account(let id):
+            if let account = accounts.first(where: { $0.id == id }) {
+                AccountDetailView(
+                    account: account,
+                    onBack: { app.open(.overview) },
+                    onEdit: { app.present(.editAccount(account)) },
+                    onNewOperation: { kind in
+                        app.present(.newOperation(OperationSource(account: account, kind: kind)))
+                    },
+                    onEditOperation: openOperation,
+                    onOpenPlan: { plan in app.present(.planActions(plan.id)) }
+                )
+                .id(account.id)
+            } else {
+                EmptyState(
+                    symbol: "questionmark.circle",
+                    title: String(localized: "app.account_not_found"),
+                    message: String(localized: "app.it_may_have_been_deleted"),
+                    actionTitle: String(localized: "app.back_to_overview"),
+                    action: { app.open(.overview) }
+                )
+            }
+        }
+    }
+
+    /// Every sheet's content. The iOS presentation chrome (detents, drag
+    /// indicator, form sizing) is applied once, here, so no sheet repeats it.
     @ViewBuilder
     private func sheetContent(_ sheet: AppSheet) -> some View {
+        #if os(iOS)
+        BottomSheetHost(sheet: sheet) {
+            sheetBody(sheet)
+        }
+        #else
+        sheetBody(sheet)
+        #endif
+    }
+
+    @ViewBuilder
+    private func sheetBody(_ sheet: AppSheet) -> some View {
         switch sheet {
         case .newOperation(let source):
             OperationSheet(mode: .create(source))
@@ -573,6 +574,18 @@ struct AppRootView: View {
             PeriodsSheet()
         case .iCloud:
             ICloudSheet()
+        case .about:
+            AboutSheet(onReplayOnboarding: replayOnboardingFromSheet)
+        }
+    }
+
+    /// A replay starts from a sheet that has to be gone first: the welcome flow
+    /// is a full-window overlay behind the presentation.
+    private func replayOnboardingFromSheet() {
+        app.sheet = nil
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 550_000_000)
+            startOnboardingReplay()
         }
     }
 
@@ -590,33 +603,3 @@ private struct OnboardingReplay: Identifiable {
     let container: ModelContainer
     let settings: SettingsStore
 }
-
-#if os(iOS)
-extension Route {
-    static let iOSTabs: [Route] = [.overview, .operations, .categories, .analytics, .settings]
-
-    var iOSTitle: String {
-        switch self {
-        case .overview: String(localized: "navigation.overview")
-        case .operations: String(localized: "transaction.all")
-        case .categories: String(localized: "navigation.categories")
-        case .analytics: String(localized: "navigation.analytics")
-        case .settings: String(localized: "navigation.settings")
-        case .about: String(localized: "common.about")
-        case .account: String(localized: "common.account")
-        }
-    }
-
-    var iOSSymbol: String {
-        switch self {
-        case .overview: "square.grid.2x2"
-        case .operations: "list.bullet"
-        case .categories: "tag"
-        case .analytics: "chart.bar"
-        case .settings: "gearshape"
-        case .about: "info.circle"
-        case .account: "creditcard"
-        }
-    }
-}
-#endif

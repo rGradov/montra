@@ -274,6 +274,22 @@ Exit criteria: Team ID, bundle id, container id and profile are recorded in a
 short "environment" note in `Docs/iCloud-Setup.md`, and the Phase 0 smoke test
 confirms CloudKit from a Developer ID build.
 
+Checking it from the terminal, because only some of Phase 0 is local:
+
+```bash
+# The certificate is local and must show up as an identity, not just a cert.
+security find-identity -v -p codesigning | grep "Developer ID Application"
+
+# Profiles Xcode has downloaded for this account.
+ls -la ~/Library/Developer/Xcode/UserData/Provisioning\ Profiles
+```
+
+The App ID, the iCloud container and the capability switches are server-side and
+have no local artifact; confirm those in the developer portal. A downloaded
+`.cer` that was never double-clicked appears in `find-certificate` but **not** in
+`find-identity`, because it has no private key: that is the usual reason a
+"created" certificate still cannot sign.
+
 ### Phase 1: Signing and entitlements (no behavior change)
 
 1. Set `PRODUCT_BUNDLE_IDENTIFIER = app.finance.montra` in `Montra.xcconfig` and

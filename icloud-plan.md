@@ -56,7 +56,7 @@ about what syncs and what stays per-Mac.
 | B7 | CloudKit schema deployed to production | No schema exists yet | Deploy the development schema to production in CloudKit Console **before** shipping the DMG, otherwise release builds see no records |
 | B8 | Container environment entitlement | Absent | `com.apple.developer.icloud-container-environment` (`Production` for the DMG build, `Development` for local builds) |
 | B9 | Push Notifications capability | Absent; no `aps-environment` anywhere | Add it: CloudKit uses silent pushes for timely cross-device updates. It also has to be in the provisioning profile |
-| B10 | CloudKit on Developer ID builds | Never tested | **Test before any entitlement work** (Phase 0 exit criterion). Apple documents App Store distribution for the iCloud key-value store and says nothing either way about CloudKit with Developer ID. A Debug build proves nothing about the DMG |
+| B10 | CloudKit on Developer ID builds | Apple documents it as supported: for Developer ID software, "applications can also take advantage of advanced capabilities such as CloudKit and push notifications". Still never exercised in Montra, so one empirical check remains | Run the Phase 0 smoke test once; no architectural fallback is expected to be needed |
 
 B2 and B3 are the real gate: without a team, the iCloud entitlement cannot be
 signed at all, so the app will keep reporting "not connected" even after the
@@ -225,14 +225,20 @@ is signed in (for example "Using Sign in with Apple") in settings.
   key-value store is **not** a safe way to sync settings here (see Phase 3).
   Limits if it is ever used: 1024 keys, 1 MB total, 1 MB per value, 128 UTF-16
   characters per key, stored unencrypted (never put the Local API token there).
-- **UNVERIFIED, and the one thing to test before anything else:** Apple's docs
-  do not state whether CloudKit itself is supported for Developer ID–distributed
-  macOS apps, while the key-value store doc explicitly requires App Store
-  distribution. Build a throwaway app with the entitlement, confirm
-  `CKContainer.accountStatus` reaches `.available`, then repeat with a Developer
-  ID signed Release build on a second Mac. If the signed distribution build is
-  refused, the fallbacks are Mac App Store distribution, or a non-iCloud sync
-  backend.
+- **Developer ID supports CloudKit and push.** Apple's Developer ID certificate
+  page says notarized Developer ID software may use "advanced capabilities such
+  as CloudKit and push notifications", and that a Developer ID provisioning
+  profile gates those capabilities at install and at every launch. So the
+  distribution channel is not the blocker the earlier draft assumed. What
+  remains unverified is Montra's own configuration: that our entitlement set
+  produces a profile that CloudKit accepts, which the Phase 0 smoke test proves.
+- **A Developer ID certificate can be created in a browser or in Xcode.** Apple:
+  "You can create up to five Developer ID Application certificates … using
+  either your developer account or Xcode. Required role: Account Holder." The
+  browser flow still needs a locally generated CSR (Keychain Access →
+  Certificate Assistant), because the private key never leaves the Mac. Xcode's
+  Accounts → Manage Certificates → `+` is the same request without the file
+  juggling.
 
 ## 5. Work plan
 
@@ -240,20 +246,33 @@ is signed in (for example "Using Sign in with Apple") in settings.
 
 1. ~~Confirm Apple Developer Program membership~~ done: paid membership confirmed.
 2. ~~Pick the production bundle id~~ done: `app.finance.montra`.
-3. Install a `Developer ID Application` certificate (none exists on this Mac) and
-   record the 10-character Team ID.
+3. Create a `Developer ID Application` certificate and record the 10-character
+   Team ID. Two equivalent routes, both requiring the **Account Holder** role:
+   - **Browser:** Certificates, Identifiers & Profiles → Certificates → `+` →
+     Software → Developer ID → Developer ID Application → upload a CSR, then
+     download the `.cer` and double-click it into the login keychain.
+   - **Xcode:** Settings → Accounts → Manage Certificates → `+` → Developer ID
+     Application.
+   The CSR must be generated on this Mac (Keychain Access → Certificate Assistant
+   → Request a Certificate from a Certificate Authority). The private key stays
+   here; a certificate created against another machine's CSR is useless unless
+   that key is exported as a `.p12`. Limit: five Developer ID Application
+   certificates per account.
 4. Register the App ID `app.finance.montra` with iCloud (CloudKit) and Push
    Notifications enabled.
 5. Register the container `iCloud.app.finance.montra` and check the box for it.
-6. Create the Developer ID provisioning profile with iCloud and push, and
-   install it.
+6. Produce the Developer ID provisioning profile that carries iCloud and push.
+   Apple documents portal creation only for App Store distribution profiles, so
+   expect Xcode to mint this one when the target signs for Developer ID with the
+   capabilities enabled. Record what actually worked.
 7. Log in to CloudKit Console once so the container is visible.
-8. **Run the B10 smoke test now**, with a throwaway app, before any work on
-   Montra's signing.
+8. Run the smoke test: a throwaway or Montra Debug build with the entitlement
+   reaches `CKContainer.accountStatus == .available`, then the Developer ID
+   Release build does the same on a second Mac.
 
-Exit criteria: Team ID, bundle id, container id and profile name are recorded in
-a short "environment" note in `Docs/iCloud-Setup.md`, and **B10 has a recorded
-yes or no**. A "no" stops the plan and sends it back to the owner.
+Exit criteria: Team ID, bundle id, container id and profile are recorded in a
+short "environment" note in `Docs/iCloud-Setup.md`, and the Phase 0 smoke test
+confirms CloudKit from a Developer ID build.
 
 ### Phase 1: Signing and entitlements (no behavior change)
 

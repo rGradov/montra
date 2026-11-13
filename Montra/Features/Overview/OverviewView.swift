@@ -95,6 +95,7 @@ struct OverviewView: View {
             .padding(.horizontal, AppDetailPageLayout.horizontalInset)
             .padding(.bottom, AppStyle.Spacing.large)
         }
+        .shellBottomRoom()
         .background(AppColors.surfaceBase)
         .onAppear {
             syncHeader()
@@ -166,12 +167,20 @@ struct OverviewView: View {
                     Text(money(totalInDisplay))
                         .font(AppStyle.Typography.title.weight(.bold).numbers)
                         .monospacedDigit()
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.6)
                         .contentTransition(reduceMotion ? .identity : .numericText())
                         .animation(reduceMotion ? nil : AppMotion.number, value: totalInDisplay)
 
                     Text(Finance.onAccountsText(visibleAccounts.count))
                         .font(AppStyle.Typography.rowTitle.numbers)
                         .foregroundStyle(AppColors.textSecondary)
+                        .lineLimit(1)
+                        #if os(iOS)
+                        // English runs longer than Russian here; a phone should
+                        // shrink the caption rather than cut it off.
+                        .minimumScaleFactor(0.7)
+                        #endif
                 }
 
                 Spacer(minLength: AppStyle.Spacing.small)
@@ -183,6 +192,8 @@ struct OverviewView: View {
                     Text(money(summary.expense))
                         .font(AppStyle.Typography.rowTitle.numbers)
                         .monospacedDigit()
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
                         .contentTransition(reduceMotion ? .identity : .numericText())
                         .animation(reduceMotion ? nil : AppMotion.number, value: summary.expense)
                 }
@@ -269,20 +280,35 @@ struct OverviewView: View {
     }
 
     private var currencyChips: some View {
+        #if os(iOS)
+        // Four currency totals do not fit a phone's width. Wrapping keeps every
+        // one of them readable instead of squeezing each capsule until its own
+        // text runs onto a second line.
+        FlowLayout(spacing: AppStyle.Spacing.xSmall, lineSpacing: AppStyle.Spacing.xSmall) {
+            currencyChipViews
+        }
+        .padding(.top, AppStyle.Spacing.xxSmall)
+        #else
         HStack(spacing: AppStyle.Spacing.xSmall) {
-            ForEach(presentCurrencies) { currency in
-                CurrencyChip(
-                    currency: currency,
-                    total: Finance.totalConverted(visibleAccounts, to: currency, rates: rates.rates),
-                    isSelected: currency == displayCurrency,
-                    masked: settings.hideBalances
-                ) {
-                    withAnimation(AppMotion.number) { selectedCurrency = currency }
-                }
-            }
+            currencyChipViews
             Spacer(minLength: 0)
         }
         .padding(.top, AppStyle.Spacing.xxSmall)
+        #endif
+    }
+
+    @ViewBuilder
+    private var currencyChipViews: some View {
+        ForEach(presentCurrencies) { currency in
+            CurrencyChip(
+                currency: currency,
+                total: Finance.totalConverted(visibleAccounts, to: currency, rates: rates.rates),
+                isSelected: currency == displayCurrency,
+                masked: settings.hideBalances
+            ) {
+                withAnimation(AppMotion.number) { selectedCurrency = currency }
+            }
+        }
     }
 
     // MARK: - Accounts
@@ -328,6 +354,7 @@ struct OverviewView: View {
                             isEmphasized: highlightedAccountID == account.id,
                             isDimmed: highlightedAccountID != nil && highlightedAccountID != account.id,
                             onOpen: { onOpenAccount(account) },
+                            onNewOperation: { onNewOperation(account) },
                             onHover: { hovering in
                                 guard highlightedAccountID == nil || hovering else { return }
                                 highlightedAccountID = hovering ? account.id : nil
@@ -499,6 +526,7 @@ private struct AccountOverviewRow: View {
     let isEmphasized: Bool
     let isDimmed: Bool
     let onOpen: () -> Void
+    let onNewOperation: () -> Void
     let onHover: (Bool) -> Void
 
     @State private var isHovering = false
@@ -521,22 +549,30 @@ private struct AccountOverviewRow: View {
                 Spacer(minLength: AppStyle.Spacing.small)
 
                 HStack(spacing: AppStyle.Spacing.small) {
-                    if let share {
+                    // A phone row cannot hold the share, the balance and the
+                    // account's metadata on one line; the share is the one figure
+                    // Analytics also shows, so it is the one that makes way.
+                    if let share, !AppPlatform.isPhone {
                         Text(Finance.shareText(share))
                             .font(AppStyle.Typography.metadata.numbers)
                             .foregroundStyle(AppColors.textTertiary)
+                            .lineLimit(1)
                     }
 
                     VStack(alignment: .trailing, spacing: 1) {
                         Text(MoneyFormat.string(account.balance, currency: account.currency, masked: masked))
                             .font(AppStyle.Typography.sectionTitle.numbers)
                             .monospacedDigit()
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.7)
                             .frame(minWidth: 64, alignment: .trailing)
 
                         if let converted {
                             Text("≈ \(MoneyFormat.string(converted, currency: displayCurrency, masked: masked))")
                                 .font(AppStyle.Typography.metadata.numbers)
                                 .monospacedDigit()
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.7)
                                 .foregroundStyle(AppColors.textTertiary)
                                 .frame(minWidth: 64, alignment: .trailing)
                         } else {
@@ -547,6 +583,9 @@ private struct AccountOverviewRow: View {
                         }
                     }
                 }
+                // The figures keep their size; a long account name truncates
+                // first, which is what a narrow phone needs.
+                .layoutPriority(1)
             }
             .padding(.horizontal, AppStyle.Row.cardHorizontalPadding)
             .padding(.vertical, AppStyle.Spacing.small)
@@ -565,8 +604,44 @@ private struct AccountOverviewRow: View {
             onHover(hovering)
         }
         .pointingHandOnHover()
+        .modifier(AccountCardFramePublisher(accountID: account.id))
+        .contextMenu {
+            Button {
+                onNewOperation()
+            } label: {
+                Label(String(localized: "transaction.new"), systemImage: "plus")
+            }
+            Button(action: onOpen) {
+                Label(String(localized: "common.open_account"), systemImage: "arrow.up.forward.square")
+            }
+        }
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(.isButton)
+    }
+}
+
+/// Publishes this account card's frame under `SidebarAccountFramesKey`, the
+/// preference the onboarding hero flight reads. The sidebar does the same on the
+/// Mac; on iOS the card in Overview is the flight's destination, so the landing
+/// happens on the card the person can see instead of fading out. The value is
+/// live, so a scroll, rotation or different window width cannot send the chip to
+/// a stale spot.
+private struct AccountCardFramePublisher: ViewModifier {
+    let accountID: UUID
+
+    func body(content: Content) -> some View {
+        #if os(iOS)
+        content.background {
+            GeometryReader { proxy in
+                Color.clear.preference(
+                    key: SidebarAccountFramesKey.self,
+                    value: [accountID: proxy.frame(in: .named(OnboardingHero.coordinateSpace))]
+                )
+            }
+        }
+        #else
+        content
+        #endif
     }
 }
 
@@ -730,11 +805,14 @@ private struct CurrencyChip: View {
             HStack(spacing: AppStyle.Spacing.xxSmallPlus) {
                 Text(currency.code)
                     .font(AppStyle.Typography.body.weight(isSelected ? .semibold : .regular))
+                    .lineLimit(1)
                 Text(MoneyFormat.string(total, currency: currency, masked: masked))
                     .font(AppStyle.Typography.metadata.numbers.weight(isSelected ? .medium : .regular))
                     .monospacedDigit()
                     .foregroundStyle(isSelected ? AppColors.textPrimary : AppColors.textTertiary)
+                    .lineLimit(1)
             }
+            .fixedSize(horizontal: true, vertical: false)
             .foregroundStyle(isSelected ? AppColors.textPrimary : AppColors.textSecondary)
             .padding(.horizontal, AppStyle.Spacing.small)
             .padding(.vertical, AppStyle.Spacing.xxSmallPlus)

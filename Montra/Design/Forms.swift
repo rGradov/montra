@@ -1,4 +1,7 @@
 import SwiftUI
+#if os(iOS)
+import UIKit
+#endif
 
 // MARK: - Sheet chrome
 
@@ -51,6 +54,90 @@ struct SheetFooter<Content: View>: View {
                 .fill(AppColors.borderSubtle)
                 .frame(height: 0.5)
         }
+    }
+}
+
+// MARK: - Sheet sizing
+
+/// A sheet's outer frame. The Mac keeps the exact fixed size its window flow
+/// always used; iPhone and iPad are flexible, so the content fills the sheet the
+/// shell presents instead of leaving blank bands above and below it.
+private struct SheetContentFrame: ViewModifier {
+    let macWidth: CGFloat
+    let macHeight: CGFloat?
+
+    func body(content: Content) -> some View {
+        #if os(macOS)
+        if let macHeight {
+            content.frame(width: macWidth, height: macHeight)
+        } else {
+            content.frame(width: macWidth)
+        }
+        #else
+        // `maxWidth: .infinity` alone lets the content report its widest child's
+        // ideal width, which can be wider than a phone: the sheet then lays the
+        // form out past both screen edges and the first and last characters of
+        // every row are cut. A phone sheet is always exactly the screen wide, so
+        // the content is given that width; an iPad sheet keeps the flexible
+        // width the shell's presentation sizing asks for.
+        if let phoneWidth = SheetContentFrame.phoneWidth {
+            content
+                .frame(width: phoneWidth)
+                .frame(maxHeight: .infinity)
+        } else {
+            content.frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+        #endif
+    }
+}
+
+#if os(iOS)
+extension SheetContentFrame {
+    /// The screen width on an iPhone; nil on iPad. Read from the active window
+    /// scene so a rotating phone picks up the new width on the next layout pass.
+    @MainActor
+    static var phoneWidth: CGFloat? {
+        guard AppPlatform.isPhone else { return nil }
+        let scene = UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .first { $0.activationState == .foregroundActive }
+            ?? UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first
+        let width = scene?.screen.bounds.width ?? 0
+        return width > 1 ? width : nil
+    }
+}
+#endif
+
+extension View {
+    /// The sheet's size: fixed on the Mac, filling the presented sheet on iOS.
+    func sheetContentFrame(width: CGFloat, height: CGFloat? = nil) -> some View {
+        modifier(SheetContentFrame(macWidth: width, macHeight: height))
+    }
+
+    /// The height a sheet's scrolling body may take. Fixed on the Mac; on iOS it
+    /// takes whatever the sheet offers, so the form fills it.
+    @ViewBuilder
+    func sheetScrollHeight(_ macHeight: CGFloat?) -> some View {
+        #if os(macOS)
+        if let macHeight {
+            self.frame(maxHeight: macHeight)
+        } else {
+            self.frame(maxHeight: .infinity)
+        }
+        #else
+        self.frame(maxHeight: .infinity)
+        #endif
+    }
+
+    /// Keyboard-safe scrolling inside a sheet on iOS: dragging puts the keyboard
+    /// away and the system scrolls the focused field into view.
+    @ViewBuilder
+    func sheetKeyboardScrolling() -> some View {
+        #if os(iOS)
+        self.scrollDismissesKeyboard(.interactively)
+        #else
+        self
+        #endif
     }
 }
 

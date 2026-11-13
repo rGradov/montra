@@ -73,7 +73,8 @@ struct PeriodsSheet: View {
                 .padding(.horizontal, AppStyle.Spacing.large)
                 .padding(.bottom, AppStyle.Spacing.medium)
             }
-            .frame(maxHeight: 520)
+            .sheetScrollHeight(520)
+            .sheetKeyboardScrolling()
 
             SheetFooter {
                 Text(String(localized: "period.adjacent_periods_will_move_with"))
@@ -85,7 +86,7 @@ struct PeriodsSheet: View {
                     .keyboardShortcut(.defaultAction)
             }
         }
-        .frame(width: 520, height: 660)
+        .sheetContentFrame(width: 520, height: 660)
         .background(AppColors.surfaceBase)
         .onAppear(perform: selectCurrent)
         .onChange(of: periods.count) { _, _ in

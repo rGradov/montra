@@ -20,11 +20,15 @@ struct OperationCompactRow: View {
                 Toggle("", isOn: Binding(get: { isSelected }, set: { _ in onToggle() }))
                     .labelsHidden()
                     #if os(macOS)
-            .toggleStyle(.checkbox)
-            #else
-            .toggleStyle(.switch)
-            #endif
+                    .toggleStyle(.checkbox)
+                    #else
+                    // The same selection box the All Operations list uses: a
+                    // system switch on every row would read as a setting, not a
+                    // selection, and it takes twice the width of a phone row.
+                    .toggleStyle(.touchCheckbox)
+                    #endif
                     .tint(AppColors.actionPrimary)
+                    .modifier(SelectionToggleTouchTarget())
                     .accessibilityLabel(String(localized: "common.select_transaction"))
             }
 

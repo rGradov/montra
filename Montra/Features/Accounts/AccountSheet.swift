@@ -87,7 +87,8 @@ struct AccountSheet: View {
                 .padding(.horizontal, AppStyle.Spacing.large)
                 .padding(.bottom, AppStyle.Spacing.medium)
             }
-            .frame(maxHeight: 535)
+            .sheetScrollHeight(535)
+            .sheetKeyboardScrolling()
 
             SheetFooter {
                 if isEditing {
@@ -103,7 +104,7 @@ struct AccountSheet: View {
                     .keyboardShortcut(.defaultAction)
             }
         }
-        .frame(width: 470, height: 650)
+        .sheetContentFrame(width: 470, height: 650)
         .background(AppColors.surfaceBase)
         .alert(String(localized: "common.delete_account"), isPresented: $isConfirmingDelete) {
             Button(String(localized: "common.delete"), role: .destructive) { deleteAccount() }
@@ -142,7 +143,7 @@ struct AccountSheet: View {
                 Text(String(localized: "common.savings_account"))
                     .font(AppStyle.Typography.metadata)
                     .foregroundStyle(isSavings ? AppColors.textSecondary : AppColors.textTertiary)
-                    .lineLimit(1)
+                    .modifier(SheetCaptionStyle())
             }
             .platformHelp(String(localized: "account.for_money_youre_setting_aside"))
             .padding(.trailing, AppStyle.Row.cardHorizontalPadding)
@@ -167,8 +168,7 @@ struct AccountSheet: View {
                 Text(String(localized: "account.stays_in_the_sidebar"))
                     .font(AppStyle.Typography.metadata)
                     .foregroundStyle(AppColors.textSecondary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.92)
+                    .modifier(SheetCaptionStyle(scalesToFit: true))
             }
 
             Spacer(minLength: AppStyle.Spacing.xSmall)
@@ -333,5 +333,39 @@ struct AccountSheet: View {
         formatter.minimumFractionDigits = 0
         formatter.maximumFractionDigits = 8
         return formatter.string(from: NSDecimalNumber(decimal: value)) ?? ""
+    }
+}
+
+
+/// A sheet caption that fits one line on the Mac's fixed 470 pt sheet. On a
+/// phone the same sentence needs its second line rather than an ellipsis that
+/// cuts the meaning in half. The Mac's rendering is left exactly as it was.
+private struct SheetCaptionStyle: ViewModifier {
+    var scalesToFit = false
+
+    func body(content: Content) -> some View {
+        #if os(iOS)
+        content
+            .lineLimit(2)
+            .multilineTextAlignment(.trailing)
+            .modifier(CaptionScaling(enabled: scalesToFit))
+        #else
+        content
+            .lineLimit(1)
+            .modifier(CaptionScaling(enabled: scalesToFit))
+        #endif
+    }
+}
+
+private struct CaptionScaling: ViewModifier {
+    let enabled: Bool
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if enabled {
+            content.minimumScaleFactor(0.92)
+        } else {
+            content
+        }
     }
 }

@@ -51,7 +51,8 @@ struct ICloudSheet: View {
                 .padding(.horizontal, AppStyle.Spacing.large)
                 .padding(.bottom, AppStyle.Spacing.medium)
             }
-            .frame(maxHeight: 480)
+            .sheetScrollHeight(480)
+            .sheetKeyboardScrolling()
 
             SheetFooter {
                 Spacer(minLength: AppStyle.Spacing.small)
@@ -60,7 +61,7 @@ struct ICloudSheet: View {
                     .keyboardShortcut(.defaultAction)
             }
         }
-        .frame(width: 470, height: 580)
+        .sheetContentFrame(width: 470, height: 580)
         .background(AppColors.surfaceBase)
     }
 

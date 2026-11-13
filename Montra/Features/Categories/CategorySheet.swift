@@ -100,7 +100,8 @@ struct CategorySheet: View {
                 .padding(.horizontal, AppStyle.Spacing.large)
                 .padding(.bottom, AppStyle.Spacing.medium)
             }
-            .frame(maxHeight: 535)
+            .sheetScrollHeight(535)
+            .sheetKeyboardScrolling()
 
             SheetFooter {
                 if isEditing, editingCategory?.isSystem == false {
@@ -116,7 +117,7 @@ struct CategorySheet: View {
                     .keyboardShortcut(.defaultAction)
             }
         }
-        .frame(width: 470)
+        .sheetContentFrame(width: 470)
         .background(AppColors.surfaceBase)
         .onChange(of: kind) { oldKind, newKind in
             if newKind == .income { isMandatory = false }

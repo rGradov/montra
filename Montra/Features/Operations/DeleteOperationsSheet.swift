@@ -130,7 +130,7 @@ struct DeleteOperationsSheet: View {
                 .transition(.opacity.combined(with: .scale(scale: 0.985)))
             }
         }
-        .frame(width: 540, height: 600)
+        .sheetContentFrame(width: 540, height: 600)
         .background(AppColors.surfaceBase)
         .animation(.easeInOut(duration: 0.35), value: phase)
     }
@@ -161,7 +161,6 @@ struct DeleteOperationsSheet: View {
 
             footer
         }
-        .frame(width: 540, height: 600)
         .background(AppColors.surfaceBase)
     }
 
@@ -314,7 +313,7 @@ struct DeleteSuccessView: View {
                 .padding(.bottom, AppStyle.Spacing.large)
         }
         .padding(.horizontal, AppStyle.Spacing.large)
-        .frame(width: 540, height: 600)
+        .sheetContentFrame(width: 540, height: 600)
         .background(AppColors.surfaceBase)
         .opacity(contentVisible ? 1 : 0)
         .offset(y: contentVisible ? 0 : 10)

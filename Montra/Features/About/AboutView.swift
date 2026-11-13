@@ -3,41 +3,23 @@ import SwiftUI
 
 /// The About page in the reference's shape: a centred mark and version, one big
 /// figure, a list of what the app does, and a single action — replaying the
-/// welcome flow.
+/// welcome flow. The macOS page and the iOS bottom sheet share this content, so
+/// the two can never disagree about the version or the figures.
 struct AboutView: View {
-    private static let contentMaxWidth: CGFloat = 560
-
     @EnvironmentObject private var settings: SettingsStore
     @EnvironmentObject private var headerHost: DetailHeaderHost
     @EnvironmentObject private var rates: RateStore
 
-    @Query(sort: [SortDescriptor(\Account.sortIndex, order: .forward)]) private var accounts: [Account]
-    @Query private var operations: [Operation]
-
     let onReplayOnboarding: () -> Void
-
-    private var version: String {
-        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0"
-    }
-
-    private var total: Decimal {
-        Finance.totalConverted(accounts, to: settings.primaryCurrency, rates: rates.rates)
-    }
 
     var body: some View {
         VStack(spacing: 0) {
             ScrollView {
-                VStack(spacing: AppStyle.Spacing.large) {
-                    identity
-                    replayCard
-                    summaryCard
-                    capabilitiesCard
-                    footer
-                }
-                .frame(maxWidth: Self.contentMaxWidth)
-                .frame(maxWidth: .infinity)
-                .padding(.horizontal, AppDetailPageLayout.horizontalInset)
-                .padding(.bottom, AppStyle.Spacing.large)
+                AboutContent(onReplayOnboarding: onReplayOnboarding)
+                    .frame(maxWidth: AboutContent.contentMaxWidth)
+                    .frame(maxWidth: .infinity)
+                    .padding(.horizontal, AppDetailPageLayout.horizontalInset)
+                    .padding(.bottom, AppStyle.Spacing.large)
             }
         }
         .background(AppColors.surfaceBase)
@@ -52,6 +34,37 @@ struct AboutView: View {
             onBack: nil,
             trailing: AnyView(EmptyView())
         )
+    }
+}
+
+/// Everything below the header. Shared by the macOS page and the iOS sheet.
+struct AboutContent: View {
+    static let contentMaxWidth: CGFloat = 560
+
+    @EnvironmentObject private var settings: SettingsStore
+    @EnvironmentObject private var rates: RateStore
+
+    @Query(sort: [SortDescriptor(\Account.sortIndex, order: .forward)]) private var accounts: [Account]
+    @Query private var operations: [Operation]
+
+    let onReplayOnboarding: () -> Void
+
+    private var version: String {
+        AboutMetrics.version
+    }
+
+    private var total: Decimal {
+        Finance.totalConverted(accounts, to: settings.primaryCurrency, rates: rates.rates)
+    }
+
+    var body: some View {
+        VStack(spacing: AppStyle.Spacing.large) {
+            identity
+            replayCard
+            summaryCard
+            capabilitiesCard
+            footer
+        }
     }
 
     private var identity: some View {
@@ -133,7 +146,7 @@ struct AboutView: View {
                     detail: String(localized: "about.use_categories_places_and_notes")
                 )
 
-                Text(String(localized: "about.your_data_stays_on_this"))
+                Text(privacyNote)
                     .font(AppStyle.Typography.callout)
                     .foregroundStyle(AppColors.textTertiary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -142,6 +155,16 @@ struct AboutView: View {
             .padding(.horizontal, AppStyle.Spacing.medium)
             .padding(.vertical, AppStyle.Spacing.medium)
         }
+    }
+
+    /// The macOS line mentions the Mac; the port says "this device", because a
+    /// phone is not a Mac.
+    private var privacyNote: String {
+        #if os(macOS)
+        String(localized: "about.your_data_stays_on_this")
+        #else
+        String(localized: "about.your_data_stays_on_this_device")
+        #endif
     }
 
     private func capability(symbol: String, title: String, detail: String) -> some View {
@@ -173,6 +196,12 @@ struct AboutView: View {
         .multilineTextAlignment(.center)
         .frame(maxWidth: .infinity)
         .padding(.top, AppStyle.Spacing.xxSmall)
+    }
+}
+
+enum AboutMetrics {
+    static var version: String {
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0"
     }
 }
 

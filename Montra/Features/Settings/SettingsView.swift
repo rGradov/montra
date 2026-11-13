@@ -7,17 +7,31 @@ struct SettingsView: View {
     @EnvironmentObject private var rates: RateStore
     @EnvironmentObject private var integration: LocalIntegration
     @Environment(\.modelContext) private var context
+    #if os(iOS)
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    #endif
 
     @Query(sort: [SortDescriptor(\Period.start, order: .forward)]) private var periods: [Period]
     @Query private var operations: [Operation]
 
     let onOpenPeriods: () -> Void
     let onOpenICloud: () -> Void
+    let onOpenAbout: () -> Void
     let onDataCleared: () -> Void
     let onDataRestored: () -> Void
 
     @State private var pendingAction: PendingAction?
     @State private var pendingRestore: BackupRestoreCandidate?
+
+    #if os(iOS)
+    // iOS has no save/open panels: backups go through SwiftUI's file exporter and
+    // importer, and the CSV through the system share sheet.
+    @State private var exportDocument: BackupDocument?
+    @State private var isExportingBackup = false
+    @State private var isImportingBackup = false
+    @State private var sharedCSV: SharedFile?
+    @State private var notice: BackupNotice?
+    #endif
 
     private enum PendingAction: String, Identifiable {
         case clearAll
@@ -34,16 +48,27 @@ struct SettingsView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: AppStyle.Spacing.medium) {
                     generalGroup
-                    integrationGroup
+                    // The Local API and the MCP bridge are macOS features: an iOS
+                    // app cannot expose a useful loopback server, so the group is
+                    // absent instead of permanently unavailable.
+                    if AppPlatform.supportsLocalIntegration {
+                        integrationGroup
+                    }
                     periodGroup
                     ratesGroup
                     backupGroup
                     dataGroup
                     aboutGroup
                 }
+                .platformReadableWidth()
                 .padding(.horizontal, AppDetailPageLayout.horizontalInset)
                 .padding(.bottom, AppStyle.Spacing.large)
             }
+            #if os(iOS)
+            .sheet(item: $sharedCSV) { file in
+                ActivityShareSheet(items: [file.url])
+            }
+            #endif
         }
         .background(AppColors.surfaceBase)
         .onAppear { syncHeader() }
@@ -52,6 +77,9 @@ struct SettingsView: View {
                 .environmentObject(settings)
                 .environmentObject(rates)
                 .environmentObject(integration)
+                #if os(iOS)
+                .restoreSheetPresentation()
+                #endif
         }
         .alert(String(localized: "settings.delete_all_data"), isPresented: isPresented(.clearAll)) {
             Button(String(localized: "common.delete_all"), role: .destructive) {
@@ -62,6 +90,30 @@ struct SettingsView: View {
         } message: {
             Text(String(localized: "settings.accounts_transactions_scheduled_payments_and"))
         }
+        #if os(iOS)
+        .fileExporter(
+            isPresented: $isExportingBackup,
+            document: exportDocument,
+            contentType: BackupFile.contentType,
+            defaultFilename: BackupFile.suggestedName(),
+            onCompletion: handleBackupExport
+        )
+        .fileImporter(
+            isPresented: $isImportingBackup,
+            allowedContentTypes: [BackupFile.contentType],
+            allowsMultipleSelection: false,
+            onCompletion: handleBackupImport
+        )
+        .alert(
+            notice?.title ?? "",
+            isPresented: Binding(get: { notice != nil }, set: { if !$0 { notice = nil } })
+        ) {
+            Button(String(localized: "common.ok"), role: .cancel) { notice = nil }
+        } message: {
+            Text(notice?.message ?? "")
+        }
+        .task { prepareRestorePreviewIfRequested() }
+        #endif
     }
 
     private func isPresented(_ action: PendingAction) -> Binding<Bool> {
@@ -93,16 +145,45 @@ struct SettingsView: View {
 
             divider
 
-            controlRow(title: String(localized: "common.appearance")) {
-                HStack(alignment: .top, spacing: AppStyle.Spacing.medium) {
-                    ForEach(SettingsStore.Appearance.allCases) { appearance in
-                        AppearanceOptionButton(
-                            appearance: appearance,
-                            isSelected: settings.appearance == appearance
-                        ) {
-                            settings.appearance = appearance
-                        }
-                    }
+            appearanceRow
+        }
+    }
+
+    /// Three 64pt thumbnails and a label do not share one row on a phone: the
+    /// label wins the space and the captions wrap one letter per line. At compact
+    /// width the choices span a row of their own under the label.
+    @ViewBuilder
+    private var appearanceRow: some View {
+        #if os(iOS)
+        if horizontalSizeClass == .compact {
+            VStack(alignment: .leading, spacing: AppStyle.Spacing.small) {
+                rowLabel(title: String(localized: "common.appearance"), caption: nil)
+                appearanceOptions
+            }
+            .padding(.horizontal, AppStyle.Spacing.medium)
+            .padding(.vertical, rowVerticalPadding)
+        } else {
+            regularAppearanceRow
+        }
+        #else
+        regularAppearanceRow
+        #endif
+    }
+
+    private var regularAppearanceRow: some View {
+        controlRow(title: String(localized: "common.appearance")) {
+            appearanceOptions
+        }
+    }
+
+    private var appearanceOptions: some View {
+        HStack(alignment: .top, spacing: AppStyle.Spacing.medium) {
+            ForEach(SettingsStore.Appearance.allCases) { appearance in
+                AppearanceOptionButton(
+                    appearance: appearance,
+                    isSelected: settings.appearance == appearance
+                ) {
+                    settings.appearance = appearance
                 }
             }
         }
@@ -255,7 +336,7 @@ struct SettingsView: View {
                 .disabled(rates.isRefreshing)
             }
             .padding(.horizontal, AppStyle.Spacing.medium)
-            .padding(.vertical, AppStyle.Spacing.small)
+            .padding(.vertical, rowVerticalPadding)
         }
     }
 
@@ -302,6 +383,22 @@ struct SettingsView: View {
     }
 
     private func saveBackup() {
+        #if os(iOS)
+        do {
+            let backup = try BackupService.capture(
+                context: context,
+                settings: settings,
+                environment: backupEnvironment
+            )
+            exportDocument = BackupFile.document(for: backup)
+            isExportingBackup = true
+        } catch {
+            notice = BackupNotice(
+                title: String(localized: "backup.error.save_title"),
+                message: error.localizedDescription
+            )
+        }
+        #else
         do {
             let backup = try BackupService.capture(
                 context: context,
@@ -314,9 +411,13 @@ struct SettingsView: View {
         } catch {
             BackupFile.presentError(error, title: String(localized: "backup.error.save_title"))
         }
+        #endif
     }
 
     private func chooseBackup() {
+        #if os(iOS)
+        isImportingBackup = true
+        #else
         do {
             guard let picked = try BackupFile.chooseArchive() else { return }
             pendingRestore = BackupRestoreCandidate(
@@ -326,7 +427,91 @@ struct SettingsView: View {
         } catch {
             BackupFile.presentError(error, title: String(localized: "backup.error.open_title"))
         }
+        #endif
     }
+
+    #if os(iOS)
+    private func handleBackupExport(_ result: Result<URL, Error>) {
+        exportDocument = nil
+        switch result {
+        case .success:
+            settings.lastBackupAt = .now
+            notice = BackupNotice(
+                title: String(localized: "backup.saved_title"),
+                message: String(localized: "backup.save_caption")
+            )
+        case .failure(let error):
+            guard !Self.isUserCancelled(error) else { return }
+            notice = BackupNotice(
+                title: String(localized: "backup.error.save_title"),
+                message: error.localizedDescription
+            )
+        }
+    }
+
+    private func handleBackupImport(_ result: Result<[URL], Error>) {
+        switch result {
+        case .success(let urls):
+            guard let url = urls.first else { return }
+            // The picker hands back a security-scoped URL; the read happens here,
+            // while the scope is open.
+            let isScoped = url.startAccessingSecurityScopedResource()
+            defer { if isScoped { url.stopAccessingSecurityScopedResource() } }
+            do {
+                let picked = try BackupFile.readArchive(from: url)
+                pendingRestore = BackupRestoreCandidate(
+                    archive: picked.backup,
+                    fileName: picked.url.lastPathComponent
+                )
+            } catch {
+                notice = BackupNotice(
+                    title: String(localized: "backup.error.open_title"),
+                    message: error.localizedDescription
+                )
+            }
+        case .failure(let error):
+            guard !Self.isUserCancelled(error) else { return }
+            notice = BackupNotice(
+                title: String(localized: "backup.error.open_title"),
+                message: error.localizedDescription
+            )
+        }
+    }
+
+    private func exportTransactions() {
+        do {
+            sharedCSV = SharedFile(url: try CSVExporter.temporaryFileURL(for: operations))
+        } catch {
+            notice = BackupNotice(
+                title: String(localized: "export.couldnt_save_the_file"),
+                message: error.localizedDescription
+            )
+        }
+    }
+
+    private static func isUserCancelled(_ error: Error) -> Bool {
+        let nsError = error as NSError
+        return nsError.domain == NSCocoaErrorDomain && nsError.code == NSUserCancelledError
+    }
+
+    /// `-qa-sheet restore` screenshots the restore sheet: it needs a decoded
+    /// backup, which the demo store can produce on demand.
+    private func prepareRestorePreviewIfRequested() {
+        #if DEBUG
+        guard QAFixtures.presentsRestoreSheet, pendingRestore == nil else { return }
+        guard let backup = try? BackupService.capture(
+            context: context,
+            settings: settings,
+            environment: backupEnvironment
+        ) else { return }
+        pendingRestore = BackupRestoreCandidate(archive: backup, fileName: "Montra-demo.montra")
+        #endif
+    }
+    #else
+    private func exportTransactions() {
+        CSVExporter.export(operations)
+    }
+    #endif
 
     private var dataGroup: some View {
         group(String(localized: "common.data")) {
@@ -360,7 +545,7 @@ struct SettingsView: View {
                 caption: String(localized: "settings.export_all_transactions_as_a"),
                 value: "\(operations.count)"
             ) {
-                CSVExporter.export(operations)
+                exportTransactions()
             }
 
             divider
@@ -378,10 +563,31 @@ struct SettingsView: View {
 
     private var aboutGroup: some View {
         group(String(localized: "common.about_2")) {
-            plainRow(title: String(localized: "common.version"), value: "1.0")
+            // On iOS the About page is not a destination: this row opens it as a
+            // bottom sheet. The macOS About page stays a sidebar destination, so
+            // the row would be a duplicate there.
+            if !AppPlatform.isMac {
+                linkRow(
+                    title: String(localized: "common.about"),
+                    caption: String(localized: "about.version_data_and_onboarding"),
+                    value: AboutMetrics.version
+                ) {
+                    onOpenAbout()
+                }
+                divider
+            }
+            plainRow(title: String(localized: "common.version"), value: AboutMetrics.version)
             divider
-            plainRow(title: String(localized: "common.storage"), value: String(localized: "settings.swiftdata_on_this_mac"))
+            plainRow(title: String(localized: "common.storage"), value: storageText)
         }
+    }
+
+    private var storageText: String {
+        #if os(macOS)
+        String(localized: "settings.swiftdata_on_this_mac")
+        #else
+        String(localized: "settings.swiftdata_on_this_device")
+        #endif
     }
 
     // MARK: - Building blocks
@@ -429,7 +635,7 @@ struct SettingsView: View {
                 .accessibilityLabel(title)
         }
         .padding(.horizontal, AppStyle.Spacing.medium)
-        .padding(.vertical, AppStyle.Spacing.small)
+        .padding(.vertical, rowVerticalPadding)
     }
 
     private func controlRow<Control: View>(
@@ -443,7 +649,7 @@ struct SettingsView: View {
             control()
         }
         .padding(.horizontal, AppStyle.Spacing.medium)
-        .padding(.vertical, AppStyle.Spacing.small)
+        .padding(.vertical, rowVerticalPadding)
     }
 
     private func linkRow(
@@ -474,7 +680,7 @@ struct SettingsView: View {
                     .foregroundStyle(AppColors.textTertiary)
             }
             .padding(.horizontal, AppStyle.Spacing.medium)
-            .padding(.vertical, AppStyle.Spacing.small)
+            .padding(.vertical, rowVerticalPadding)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -515,7 +721,7 @@ struct SettingsView: View {
                     }
             }
             .padding(.horizontal, AppStyle.Spacing.medium)
-            .padding(.vertical, AppStyle.Spacing.small)
+            .padding(.vertical, rowVerticalPadding)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -532,7 +738,17 @@ struct SettingsView: View {
                 .foregroundStyle(AppColors.textSecondary)
         }
         .padding(.horizontal, AppStyle.Spacing.medium)
-        .padding(.vertical, AppStyle.Spacing.small)
+        .padding(.vertical, rowVerticalPadding)
+    }
+
+    /// iOS touch targets want a little more room than the desktop rows; the
+    /// macOS row height stays exactly as it was.
+    private var rowVerticalPadding: CGFloat {
+        #if os(iOS)
+        AppStyle.Spacing.small + 2
+        #else
+        AppStyle.Spacing.small
+        #endif
     }
 
     private func dayLabel(_ day: Int) -> String {
@@ -690,3 +906,40 @@ private extension Color {
         )
     }
 }
+
+#if os(iOS)
+/// A one-line result for the file flows, shown as a SwiftUI alert: the Mac uses
+/// `NSAlert`, which does not exist here.
+private struct BackupNotice: Identifiable {
+    let id = UUID()
+    let title: String
+    let message: String
+}
+#endif
+
+#if os(iOS)
+private extension View {
+    /// The restore sheet is presented by Settings rather than by
+    /// `BottomSheetHost`, so it carries the same chrome: a tall sheet, drag
+    /// indicator, and a centred form card at iPad regular width.
+    @ViewBuilder
+    func restoreSheetPresentation() -> some View {
+        self
+            .presentationDetents([.large])
+            .presentationDragIndicator(.visible)
+            .modifier(RestoreFormSizing())
+    }
+}
+
+private struct RestoreFormSizing: ViewModifier {
+    @Environment(\.horizontalSizeClass) private var sizeClass
+
+    func body(content: Content) -> some View {
+        if sizeClass == .regular {
+            content.presentationSizing(.form)
+        } else {
+            content
+        }
+    }
+}
+#endif

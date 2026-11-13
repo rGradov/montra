@@ -47,9 +47,9 @@ struct MontraApp: App {
             settings = SettingsStore(defaults: qaDefaults)
             #if DEBUG
             if let appearance = QAFixtures.appearance { settings.appearance = appearance }
-            let qaContext = container.mainContext
-            SeedData.bootstrap(context: qaContext, settings: settings)
-            SeedData.seedDemo(context: qaContext, settings: settings)
+            // The same store the macOS snapshots render: same rows, same rates,
+            // so the platforms are compared on identical figures.
+            QAFixtures.seedStore(container.mainContext, settings: settings)
             #endif
         } else if previewOnboarding {
             let previewDefaults = UserDefaults(suiteName: "montra.preview") ?? .standard
@@ -76,7 +76,11 @@ struct MontraApp: App {
         launchSheet = nil
         #endif
         _settings = StateObject(wrappedValue: settings)
+        #if DEBUG
+        let rates = qaDemo ? QAFixtures.makeRates() : RateStore()
+        #else
         let rates = RateStore()
+        #endif
         _rates = StateObject(wrappedValue: rates)
         _integration = StateObject(wrappedValue: LocalIntegration(container: container, available: !previewOnboarding))
 
@@ -162,17 +166,32 @@ struct MontraApp: App {
             }
         }
         #else
-        WindowGroup {
-            root
+        // One shared `ModelContainer` for every window: a second container over
+        // the same store is the classic SwiftData trap. A window opens on the
+        // tab it was asked for (`openWindow(id:value:)`), otherwise on the
+        // launch route.
+        WindowGroup(id: AppSceneID.main, for: AppTab.self) { tab in
+            root(initialTab: tab.wrappedValue)
         }
         .windowResizability(.contentMinSize)
         .defaultSize(width: 1180, height: 820)
+        .commands {
+            IOSAppCommands()
+        }
         #endif
     }
 
-    @ViewBuilder
     private var root: some View {
-        AppRootView(initialRoute: launchRoute, needsOnboarding: needsOnboarding, initialSheet: launchSheet)
+        root(initialTab: nil)
+    }
+
+    @ViewBuilder
+    private func root(initialTab: AppTab?) -> some View {
+        AppRootView(
+            initialRoute: initialTab?.route ?? launchRoute,
+            needsOnboarding: needsOnboarding,
+            initialSheet: launchSheet
+        )
             .environmentObject(settings)
             .environmentObject(rates)
             .environmentObject(integration)

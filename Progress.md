@@ -1,6 +1,6 @@
 # Montra iOS / iPadOS port — progress log
 
-Status: **planning approved in chat, execution started**
+Status: **Phase 0 complete — multiplatform build green, both simulators launch**
 Started: 2026-11-13
 Branch: `codex/ios-liquid-glass` (created from `codex/new-operation-sheet` @ `a77d61e`)
 Owner: main agent + Builder A + Builder B + three critics
@@ -87,20 +87,24 @@ macOS baseline: build OK with `CODE_SIGNING_ALLOWED=NO` (the local signing confi
 5. **iPhone navigation**: native `TabView` (real Liquid Glass tab bar, tab
    minimize behavior, system accessibility) with one `NavigationStack` per tab.
    Screens keep their own `PageHeader`; the system navigation bar is hidden, so
-   the visual language does not change. **iPad navigation**: iPadOS places the
-   adapted TabView tab bar at the top; because the brief requires the bottom, an
-   iPad-specific custom bottom bar is built with
-   `glassEffect(.regular.interactive(), in: Capsule())` (the same Liquid Glass
-   material), mirroring the native iPhone item order and selection behavior. If
-   the simulator shows native bottom placement is available, native wins and the
-   custom bar is deleted (no dead code).
+   the visual language does not change. **iPad navigation**: research (see
+   `Docs/Research-iPadOS-Features.md`) confirmed there is **no supported way** to
+   put a `TabView` bar at the bottom on iPadOS — the system puts it at the top
+   (optionally becoming a sidebar). The brief explicitly asks for the bottom
+   menu on iPad, so iPad gets a custom bottom bar built with
+   `GlassEffectContainer` + `glassEffect(.regular.interactive())` (real Liquid
+   Glass material, same item order and accessibility as the iPhone bar). The
+   HIG trade-off (no top bar/sidebar morph) is documented and will be shown to
+   the reviewer; a native top-bar/sidebar variant can replace it behind a flag
+   if the product prefers HIG over the brief. iPhone keeps the native bar.
 6. **All modals become bottom sheets on iOS/iPadOS**: one central
    `BottomSheetHost` in the shell applies `presentationDetents`,
-   `presentationDragIndicator(.visible)`, corner radius and keyboard-safe
-   scrolling to every `AppSheet`; each sheet's fixed desktop frame becomes
-   flexible on iOS. Popovers inside controls keep their native iPad behavior
-   (popover on regular width, sheet on compact) — that is the system-correct
-   presentation, not a desktop popup.
+   `presentationDragIndicator(.visible)`, corner radius, `.presentationSizing(.form)`
+   on iPad and keyboard-safe scrolling to every `AppSheet`; each sheet's fixed
+   desktop frame becomes flexible on iOS. iOS 26 gives partial sheets the new
+   inset Liquid Glass material, so no custom `presentationBackground` is added
+   (it would suppress the system material). Popovers inside controls keep their
+   native iPad behavior (popover on regular width, sheet on compact).
 7. **Settings is the rightmost tab; About is a row inside Settings** and opens
    `AboutSheet` (identity, version, totals, capabilities, replay onboarding).
    The macOS About page stays exactly as it is.
@@ -412,5 +416,31 @@ Local API / MCP remains a macOS feature; nothing is needed for it on iOS.
 
 ## 11. Progress log
 
-- 2026-11-13: baseline inspected; plan written; baseline macOS build started.
-  iPadOS feature research delegated. No source changes yet.
+### 2026-11-13 — Phase 0
+
+- Baseline captured: macOS build, `-selftest` 182/182, audit 7/7, 49 baseline
+  snapshots, existing DMG `Montra-1.0-new-operation.dmg`.
+- Branch `codex/ios-liquid-glass` created; signing configuration and this plan
+  committed.
+- Target converted to one multiplatform target: iOS/iPadOS 26.0, macOS 15.0,
+  `TARGETED_DEVICE_FAMILY = 1,2`, all-four iPad orientations, launch screen,
+  scene manifest, indirect input, iOS 1024 app icon, location string.
+- Platform layer added (`Montra/Platform/PlatformSupport.swift`): dynamic
+  colours, `PlatformImage`, asset lookup, `platformHelp`,
+  `platformExitCommand`, pointer hover, appearance, platform flags.
+- AppKit isolated: Touch Bar, window configurator, snapshot runner, `-selftest`,
+  onboarding snapshot runner, AppKit panels, `NSCursor`, `NSEvent` monitors,
+  pasteboard and `NSApplication` are macOS-only; the iOS build compiles.
+- iOS/iPadOS launch verified in the iPhone 17 Pro (iOS 26.1) and iPad Air 13"
+  (iOS 26.1) simulators; the Mori onboarding intro renders on both.
+- Baseline introspection: snapshot differences after the foundation are only
+  the time-stamped demo transfer rows (23:05 → 23:18), no layout change.
+- iPadOS research completed: `Docs/Research-iPadOS-Features.md` (56 sources,
+  SDK-verified). Key decisions: no system bottom bar on iPad → custom bottom
+  glass bar per the brief; native `TabView` on iPhone; sheet detents and no
+  custom sheet background; Local API stays macOS-only; `UIRequiresFullScreen`
+  is deprecated and not used; privacy manifest added.
+- Known state: the iOS shell is still the temporary bottom strip in
+  `AppRootView` (Builder A replaces it); the macOS shell is untouched.
+- Next: Builder A (navigation, Settings/About, sheets, iPad shell features) and
+  Builder B (onboarding, screens, file/system flows) in separate worktrees.

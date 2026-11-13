@@ -1,6 +1,8 @@
-import AppKit
 import Foundation
 import SwiftUI
+#if os(macOS)
+import AppKit
+#endif
 
 /// Reads the stores and hands the operations over as a spreadsheet. Kept out of
 /// the views so the format lives in one place and can grow export options later.
@@ -33,6 +35,16 @@ enum CSVExporter {
         return "\u{FEFF}" + lines.joined(separator: "\r\n")
     }
 
+    /// The iOS share sheet needs a file on disk; the Mac writes straight to the
+    /// URL the save panel returned.
+    static func temporaryFileURL(for operations: [Operation]) throws -> URL {
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("montra-operations.csv")
+        try (csv(for: operations).data(using: .utf8) ?? Data()).write(to: url, options: .atomic)
+        return url
+    }
+
+    #if os(macOS)
     static func export(_ operations: [Operation]) {
         let panel = NSSavePanel()
         panel.title = String(localized: "common.export_transactions")
@@ -51,6 +63,13 @@ enum CSVExporter {
             alert.runModal()
         }
     }
+    #else
+    /// iOS shares the temporary file through the system share sheet; the
+    /// Settings screen owns the presentation.
+    static func export(_ operations: [Operation]) {
+        _ = try? temporaryFileURL(for: operations)
+    }
+    #endif
 
     private static func escape(_ value: String) -> String {
         if value.contains(";") || value.contains("\"") || value.contains("\n") {

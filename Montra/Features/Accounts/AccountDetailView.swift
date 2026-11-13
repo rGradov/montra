@@ -272,7 +272,7 @@ struct AccountDetailView: View {
                 .onTapGesture { togglePlanFilter(item) }
                 .accessibilityAddTraits(.isButton)
                 .accessibilityAddTraits(planFilter == item ? .isSelected : [])
-                .help(item == .missed
+                .platformHelp(item == .missed
                       ? String(localized: "account.past_scheduled_payments_without_a")
                       : String(localized: "account.payments_scheduled_over_the_next"))
             }
@@ -341,7 +341,11 @@ struct AccountDetailView: View {
                 Text(String(localized: "common.select_all"))
                     .font(AppStyle.Typography.body.weight(.medium))
             }
+            #if os(macOS)
             .toggleStyle(.checkbox)
+            #else
+            .toggleStyle(.switch)
+            #endif
             .tint(AppColors.actionPrimary)
 
             Spacer(minLength: AppStyle.Spacing.small)

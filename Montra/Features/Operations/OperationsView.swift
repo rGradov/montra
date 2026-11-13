@@ -582,7 +582,11 @@ struct OperationsView: View {
                 Text(String(localized: "common.select_all"))
                     .font(AppStyle.Typography.body.weight(.medium))
             }
+            #if os(macOS)
             .toggleStyle(.checkbox)
+            #else
+            .toggleStyle(.touchCheckbox)
+            #endif
             .tint(AppColors.actionPrimary)
 
             Spacer(minLength: AppStyle.Spacing.small)
@@ -762,7 +766,11 @@ struct OperationListRow: View {
         HStack(spacing: AppStyle.Spacing.small) {
             Toggle("", isOn: Binding(get: { isSelected }, set: { _ in onToggle() }))
                 .labelsHidden()
+                #if os(macOS)
                 .toggleStyle(.checkbox)
+                #else
+                .toggleStyle(.touchCheckbox)
+                #endif
                 .tint(AppColors.actionPrimary)
                 .accessibilityLabel(String(localized: "common.select_transaction"))
 

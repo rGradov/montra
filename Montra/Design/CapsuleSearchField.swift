@@ -1,5 +1,7 @@
-import AppKit
 import SwiftUI
+#if os(macOS)
+import AppKit
+#endif
 
 /// The search capsule from the reference: magnifier, plain field, clear button,
 /// a focus border, Escape to clear. Clicking anywhere in the capsule focuses it,
@@ -13,7 +15,9 @@ struct CapsuleSearchField: View {
 
     @FocusState private var isFocused: Bool
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    #if os(macOS)
     @State private var outsideClickMonitor: Any?
+    #endif
 
     private var hasText: Bool { !query.isEmpty }
 
@@ -32,7 +36,7 @@ struct CapsuleSearchField: View {
                 .focused($isFocused)
                 .focusEffectDisabled()
                 .accessibilityLabel(String(localized: "common.search_transactions"))
-                .onExitCommand {
+                .platformExitCommand {
                     if hasText {
                         query = ""
                     } else {
@@ -51,7 +55,7 @@ struct CapsuleSearchField: View {
                 }
                 .buttonStyle(.plain)
                 .contentShape(Rectangle())
-                .help(String(localized: "common.clear_search"))
+                .platformHelp(String(localized: "common.clear_search"))
                 .accessibilityLabel(String(localized: "common.clear_search"))
                 .transition(.opacity)
             }
@@ -85,6 +89,7 @@ struct CapsuleSearchField: View {
     /// something non-focusable. Resigning on any outside mouse-down makes the
     /// focus border behave the way a search field should.
     private func installOutsideClickResign() {
+        #if os(macOS)
         guard outsideClickMonitor == nil else { return }
         outsideClickMonitor = NSEvent.addLocalMonitorForEvents(matching: .leftMouseDown) { event in
             guard let window = event.window,
@@ -94,12 +99,15 @@ struct CapsuleSearchField: View {
             window.makeFirstResponder(nil)
             return event
         }
+        #endif
     }
 
     private func removeOutsideClickResign() {
+        #if os(macOS)
         if let monitor = outsideClickMonitor {
             NSEvent.removeMonitor(monitor)
             outsideClickMonitor = nil
         }
+        #endif
     }
 }

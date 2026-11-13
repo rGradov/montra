@@ -1,5 +1,7 @@
-import AppKit
 import SwiftData
+#if os(macOS)
+import AppKit
+#endif
 import SwiftUI
 
 /// The Analytics screen: how much left, where it went, whether the pace is
@@ -313,6 +315,7 @@ struct AnalyticsView: View {
             closePopup()
             return .handled
         }
+        #if os(macOS)
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didResignActiveNotification)) { _ in
             // QA captures drive the app while the harness owns the screen, so an
             // activation change must not remove the popup mid-capture.
@@ -323,6 +326,7 @@ struct AnalyticsView: View {
             guard !isShotMode else { return }
             closePopup()
         }
+        #endif
         .modifier(
             AnalyticsPopupDismissModifier(
                 isActive: popupDay != nil,
@@ -550,17 +554,26 @@ struct AnalyticsView: View {
         fflush(stdout)
     }
 
+    /// Window telemetry feeds the macOS screenshot harness only; on iOS the
+    /// shot mode is driven by `simctl` and needs no window coordinates.
+    private var windowScale: CGFloat {
+        #if os(macOS)
+        shotWindow?.backingScaleFactor ?? NSScreen.main?.backingScaleFactor ?? 1
+        #else
+        1
+        #endif
+    }
+
+    #if os(macOS)
     private var shotWindow: NSWindow? {
         NSApp.windows.first { $0.isVisible && $0.contentView != nil }
     }
-
-    private var windowScale: CGFloat {
-        shotWindow?.backingScaleFactor ?? NSScreen.main?.backingScaleFactor ?? 1
-    }
+    #endif
 
     /// The window's frame in the same corner-based space `screencapture -R` uses,
     /// so the harness can capture exactly the window.
     private func windowJSON() -> [String: Double] {
+        #if os(macOS)
         guard let window = shotWindow else {
             return ["x": 0, "y": 0, "w": Double(AppWindowLayout.width),
                     "h": Double(AppWindowLayout.defaultHeight)]
@@ -573,6 +586,9 @@ struct AnalyticsView: View {
             "w": Double(window.frame.width),
             "h": Double(window.frame.height),
         ]
+        #else
+        return ["x": 0, "y": 0, "w": 0, "h": 0]
+        #endif
     }
 
     private func rectJSON(_ rect: CGRect) -> [String: Double] {
@@ -2207,6 +2223,7 @@ private struct AnalyticsPopupDismissModifier: ViewModifier {
     }
 
     private func install() {
+        #if os(macOS)
         guard isActive, monitor == nil else { return }
         monitor = NSEvent.addLocalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown, .keyDown]) { event in
             if event.type == .keyDown {
@@ -2218,12 +2235,15 @@ private struct AnalyticsPopupDismissModifier: ViewModifier {
             state.dismissIfOutside(window: window, event: event)
             return event
         }
+        #endif
     }
 
     private func remove() {
+        #if os(macOS)
         guard let monitor else { return }
         NSEvent.removeMonitor(monitor)
         self.monitor = nil
+        #endif
     }
 }
 
@@ -2241,6 +2261,7 @@ private final class AnalyticsPopupDismissState {
     var anchorCellFrame: CGRect = .null
     var onDismiss: (() -> Void)?
 
+    #if os(macOS)
     func dismissIfOutside(window: NSWindow, event: NSEvent) {
         let point = Self.point(for: event, in: window)
         // The anchor cell keeps its own tap, which toggles the popup: the monitor
@@ -2259,6 +2280,7 @@ private final class AnalyticsPopupDismissState {
         let y = view.isFlipped ? local.y : view.bounds.height - local.y
         return CGPoint(x: local.x - view.bounds.minX, y: y - view.bounds.minY)
     }
+    #endif
 }
 
 private struct AnalyticsCaret: Shape {

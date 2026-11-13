@@ -10,8 +10,8 @@ struct ListRowIcon: View {
 
     var body: some View {
         Group {
-            if let asset = NSImage(named: symbol) {
-                Image(nsImage: asset)
+            if let asset = AppAssets.image(named: symbol) {
+                Image(platformImage: asset)
                     .resizable()
                     .renderingMode(.template)
                     .scaledToFit()

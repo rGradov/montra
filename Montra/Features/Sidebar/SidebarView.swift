@@ -458,7 +458,7 @@ private struct SidebarAddButton: View {
         .pointingHandOnHover()
         .opacity(isShown ? 1 : 0)
         .animation(reduceMotion ? nil : .easeOut(duration: 0.12), value: isShown)
-        .help(label)
+        .platformHelp(label)
         .accessibilityLabel(label)
     }
 }

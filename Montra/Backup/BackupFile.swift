@@ -1,10 +1,13 @@
-import AppKit
 import Foundation
 import UniformTypeIdentifiers
+#if os(macOS)
+import AppKit
+#endif
 
-/// The file-level half of backups: the save and open panels, the `.montra`
-/// extension and the small confirmations around them. Kept apart from
-/// `BackupService` so the archive logic never depends on AppKit.
+/// The file-level half of backups: the save and open panels on the Mac, the
+/// document handed to SwiftUI's file exporter on iOS, the `.montra` extension
+/// and the small confirmations around them. Kept apart from `BackupService` so
+/// the archive logic never depends on a window toolkit.
 @MainActor
 enum BackupFile {
     static let fileExtension = "montra"
@@ -12,7 +15,7 @@ enum BackupFile {
     /// A dynamic type for the extension. It gives the panels both the filter and
     /// the default extension without an Info.plist declaration, because the app
     /// is not a document-based one and backups are opened from Settings.
-    static var contentType: UTType {
+    nonisolated static var contentType: UTType {
         UTType(filenameExtension: fileExtension, conformingTo: .data) ?? .data
     }
 
@@ -25,7 +28,19 @@ enum BackupFile {
         return "Montra-\(formatter.string(from: now)).\(fileExtension)"
     }
 
-    // MARK: - Panels
+    /// The document iOS and iPadOS hand to `.fileExporter`.
+    static func document(for backup: MontraBackup) -> BackupDocument {
+        BackupDocument(backup: backup)
+    }
+
+    /// Reads an archive picked with `.fileImporter` and keeps the file name for
+    /// the restore confirmation.
+    static func readArchive(from url: URL) throws -> (backup: MontraBackup, url: URL) {
+        (try BackupService.read(from: url), url)
+    }
+
+    #if os(macOS)
+    // MARK: - Mac panels
 
     /// Shows the save panel and writes the archive. Returns nil when the person
     /// cancels, and throws when the file cannot be written.
@@ -60,8 +75,6 @@ enum BackupFile {
         return (try BackupService.read(from: url), url)
     }
 
-    // MARK: - Feedback
-
     static func confirmSave(_ url: URL) {
         let alert = NSAlert()
         alert.messageText = String(localized: "backup.saved_title")
@@ -87,4 +100,27 @@ enum BackupFile {
         alert.addButton(withTitle: String(localized: "common.ok"))
         alert.runModal()
     }
+    #else
+    // MARK: - iOS / iPadOS
+
+    /// iOS presents the system file exporter instead of a modal panel; the
+    /// document is built by `document(for:)` and the view owns the presentation.
+    static func makeDocument(_ backup: MontraBackup) -> BackupDocument {
+        document(for: backup)
+    }
+
+    // The iOS Settings screen drives the pickers with SwiftUI state and shows
+    // its own alerts; these remain for source compatibility with the Mac flow.
+    static func export(_ backup: MontraBackup, suggestedName name: String? = nil) throws -> URL? {
+        nil
+    }
+
+    static func chooseArchive() throws -> (backup: MontraBackup, url: URL)? {
+        nil
+    }
+
+    static func confirmSave(_ url: URL) {}
+
+    static func presentError(_ error: Error, title: String? = nil) {}
+    #endif
 }

@@ -9,6 +9,7 @@ struct MontraApp: App {
     /// QA launches that screenshot the Analytics heat map open that screen
     /// directly; a normal launch keeps the Overview.
     private let launchRoute: Route
+    private let launchSheet: AppSheet?
     @StateObject private var settings: SettingsStore
     @StateObject private var integration: LocalIntegration
     @StateObject private var rates: RateStore
@@ -16,8 +17,10 @@ struct MontraApp: App {
     @MainActor
     init() {
         AppFonts.register()
+        #if os(macOS)
         if SelfTest.runIfRequested() { exit(0) }
         if OnboardingIntroSnapshot.renderIfRequested() { exit(0) }
+        #endif
 
         // `-preview-onboarding` runs the welcome flow on a throwaway store, so it
         // can be tried without touching real data. Used by the README and for QA.
@@ -27,13 +30,28 @@ struct MontraApp: App {
         let rendersOnly = CommandLine.arguments.contains("-snapshot")
             || CommandLine.arguments.contains("-animate-header")
             || CommandLine.arguments.contains("-animate-onboarding-intro")
-        let container = previewOnboarding || rendersOnly
+        #if DEBUG
+        let qaDemo = QAFixtures.isEnabled
+        #else
+        let qaDemo = false
+        #endif
+        let container = previewOnboarding || rendersOnly || qaDemo
             ? ModelContainerFactory.make(inMemory: true)
             : ModelContainerFactory.make()
         self.container = container
 
         let settings: SettingsStore
-        if previewOnboarding {
+        if qaDemo {
+            let qaDefaults = UserDefaults(suiteName: "montra.qa") ?? .standard
+            qaDefaults.removePersistentDomain(forName: "montra.qa")
+            settings = SettingsStore(defaults: qaDefaults)
+            #if DEBUG
+            if let appearance = QAFixtures.appearance { settings.appearance = appearance }
+            let qaContext = container.mainContext
+            SeedData.bootstrap(context: qaContext, settings: settings)
+            SeedData.seedDemo(context: qaContext, settings: settings)
+            #endif
+        } else if previewOnboarding {
             let previewDefaults = UserDefaults(suiteName: "montra.preview") ?? .standard
             previewDefaults.removePersistentDomain(forName: "montra.preview")
             settings = SettingsStore(defaults: previewDefaults)
@@ -42,7 +60,21 @@ struct MontraApp: App {
         }
         let analyticsLaunch = ProcessInfo.processInfo.environment["MONTRA_ANALYTICS_SHOT"] == "1"
             || ProcessInfo.processInfo.environment["MONTRA_ANALYTICS_SCOPE"] != nil
-        launchRoute = analyticsLaunch ? .analytics : .overview
+        var initialRoute: Route = analyticsLaunch ? .analytics : .overview
+        #if DEBUG
+        if qaDemo {
+            let accounts = (try? container.mainContext.fetch(
+                FetchDescriptor<Account>(sortBy: [SortDescriptor(\.sortIndex)])
+            )) ?? []
+            initialRoute = QAFixtures.route(accounts: accounts) ?? initialRoute
+        }
+        #endif
+        launchRoute = initialRoute
+        #if DEBUG
+        launchSheet = qaDemo ? QAFixtures.sheet : nil
+        #else
+        launchSheet = nil
+        #endif
         _settings = StateObject(wrappedValue: settings)
         let rates = RateStore()
         _rates = StateObject(wrappedValue: rates)
@@ -55,9 +87,12 @@ struct MontraApp: App {
         let accountCount = previewOnboarding
             ? 0
             : ((try? container.mainContext.fetchCount(FetchDescriptor<Account>())) ?? 0)
-        needsOnboarding = previewOnboarding
-            || OnboardingLaunch.needsOnboarding(accountCount: accountCount, settings: settings)
+        needsOnboarding = qaDemo
+            ? false
+            : (previewOnboarding
+                || OnboardingLaunch.needsOnboarding(accountCount: accountCount, settings: settings))
 
+        #if os(macOS)
         if #available(macOS 26.0, *) {
             let isPersistent = container.configurations.contains { !$0.isStoredInMemoryOnly }
             let ledger = SpotlightLedger(
@@ -67,18 +102,13 @@ struct MontraApp: App {
         }
 
         SnapshotRunner.runIfRequested(container: container, settings: settings)
+        #endif
     }
 
     var body: some Scene {
+        #if os(macOS)
         WindowGroup {
-            AppRootView(initialRoute: launchRoute, needsOnboarding: needsOnboarding)
-                .environmentObject(settings)
-                .environmentObject(rates)
-                .environmentObject(integration)
-                .modelContainer(container)
-                .onChange(of: settings.hasCompletedOnboarding, initial: true) { _, completed in
-                    integration.startIfEnabled(onboardingComplete: completed)
-                }
+            root
                 .background(WindowConfigurator())
                 .frame(minWidth: AppWindowLayout.width, maxWidth: AppWindowLayout.width,
                        minHeight: AppWindowLayout.minHeight)
@@ -131,6 +161,28 @@ struct MontraApp: App {
                     .keyboardShortcut(",", modifiers: .command)
             }
         }
+        #else
+        WindowGroup {
+            root
+        }
+        .windowResizability(.contentMinSize)
+        .defaultSize(width: 1180, height: 820)
+        #endif
+    }
+
+    @ViewBuilder
+    private var root: some View {
+        AppRootView(initialRoute: launchRoute, needsOnboarding: needsOnboarding, initialSheet: launchSheet)
+            .environmentObject(settings)
+            .environmentObject(rates)
+            .environmentObject(integration)
+            .modelContainer(container)
+            .onChange(of: settings.hasCompletedOnboarding, initial: true) { _, completed in
+                integration.startIfEnabled(onboardingComplete: completed)
+            }
+            #if os(iOS)
+            .preferredColorScheme(settings.appearance.colorScheme)
+            #endif
     }
 }
 
@@ -154,6 +206,7 @@ enum AppWindowLayout {
 
 /// Pins the window to the app's one width and clears the title bar, leaving the
 /// traffic lights floating over the sidebar exactly as the reference does.
+#if os(macOS)
 private struct WindowConfigurator: NSViewRepresentable {
     /// `MONTRA_ANALYTICS_SHOT` keeps the window's top-left corner on the screen's
     /// top-left corner so `screencapture -R 0,0,<w>,<h>` frames the window.
@@ -207,6 +260,7 @@ private struct WindowConfigurator: NSViewRepresentable {
         NSRunningApplication.current.activate()
     }
 }
+#endif
 
 enum ModelContainerFactory {
     static let schema = Schema([Account.self, Category.self, Operation.self, Period.self, PlannedOperation.self])

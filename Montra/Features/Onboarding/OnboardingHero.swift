@@ -1,6 +1,10 @@
-import AppKit
 import ImageIO
 import SwiftUI
+#if os(macOS)
+import AppKit
+#else
+import UIKit
+#endif
 
 /// The onboarding hand-offs: the mascot flying into the welcome icon, and the
 /// first account flying from the "done" screen into its sidebar row. Both move a
@@ -153,7 +157,7 @@ struct MoriStillLayer: View {
     var body: some View {
         Group {
             if let image = MoriArtwork.stillImage() {
-                Image(nsImage: image)
+                Image(platformImage: image)
                     .resizable()
                     .interpolation(.high)
                     .aspectRatio(contentMode: .fit)
@@ -243,7 +247,7 @@ struct OnboardingAccountHeroChip: View {
 
 enum MoriArtwork {
     private static var cachedFrames: [MoriFrame]?
-    private static var cachedStill: NSImage?
+    private static var cachedStill: PlatformImage?
 
     static func frames() -> [MoriFrame] {
         if let cachedFrames { return cachedFrames }
@@ -252,10 +256,7 @@ enum MoriArtwork {
 
         let frames: [MoriFrame] = (0..<CGImageSourceGetCount(source)).compactMap { index in
             guard let cgImage = CGImageSourceCreateImageAtIndex(source, index, nil) else { return nil }
-            let image = NSImage(
-                cgImage: cgImage,
-                size: NSSize(width: cgImage.width, height: cgImage.height)
-            )
+            let image = AppAssets.image(cgImage: cgImage)
 
             var duration: TimeInterval = 0.04
             if let properties = CGImageSourceCopyPropertiesAtIndex(source, index, nil) as? [CFString: Any],
@@ -272,17 +273,17 @@ enum MoriArtwork {
         return frames
     }
 
-    static func stillImage() -> NSImage? {
+    static func stillImage() -> PlatformImage? {
         if let cachedStill { return cachedStill }
         guard let url = Bundle.main.url(forResource: "MoriMascot", withExtension: "png") else { return nil }
-        let image = NSImage(contentsOf: url)
+        let image = AppAssets.image(contentsOf: url)
         cachedStill = image
         return image
     }
 }
 
 struct MoriFrame {
-    let image: NSImage
+    let image: PlatformImage
     let duration: TimeInterval
 }
 

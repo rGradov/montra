@@ -144,7 +144,7 @@ struct AccountSheet: View {
                     .foregroundStyle(isSavings ? AppColors.textSecondary : AppColors.textTertiary)
                     .lineLimit(1)
             }
-            .help(String(localized: "account.for_money_youre_setting_aside"))
+            .platformHelp(String(localized: "account.for_money_youre_setting_aside"))
             .padding(.trailing, AppStyle.Row.cardHorizontalPadding)
         }
         .animation(AppMotion.row, value: isSavings)
@@ -190,7 +190,7 @@ struct AccountSheet: View {
             RoundedRectangle(cornerRadius: AppStyle.Radius.md, style: .continuous)
                 .strokeBorder(AppColors.borderSubtle, lineWidth: 0.5)
         }
-        .help(String(localized: "account.removes_this_account_from_the"))
+        .platformHelp(String(localized: "account.removes_this_account_from_the"))
         .animation(AppMotion.row, value: isHiddenFromOverview)
     }
 

@@ -1,4 +1,3 @@
-import AppKit
 import CoreText
 import SwiftUI
 
@@ -36,7 +35,7 @@ enum AppColors {
     static let selectionRing = Color(light: 0x0F0E0D, dark: 0xFFFFFF)
 
     // Actions
-    static let actionPrimary = Color(nsColor: actionPrimaryNSColor)
+    static let actionPrimary = Color(light: 0x353431, dark: 0xECEAE6)
     static let actionPrimaryHover = Color(light: 0x42403D, dark: 0xF6F4F1)
     static let actionPrimaryPressed = Color(light: 0x2A2927, dark: 0xD8D5D0)
     static let onActionPrimary = Color(light: 0xFFFFFF, dark: 0x171615)
@@ -80,32 +79,6 @@ enum AppColors {
         static let neutralTile = Color(light: 0x8C8983, dark: 0x6E6B66)
     }
 
-    static var controlAccentNSColor: NSColor { actionPrimaryNSColor }
-
-    private static let actionPrimaryNSColor = NSColor(light: 0x353431, dark: 0xECEAE6)
-}
-
-extension NSColor {
-    static func hex(_ value: UInt32, alpha: CGFloat = 1) -> NSColor {
-        let red = CGFloat((value >> 16) & 0xFF) / 255
-        let green = CGFloat((value >> 8) & 0xFF) / 255
-        let blue = CGFloat(value & 0xFF) / 255
-        return NSColor(srgbRed: red, green: green, blue: blue, alpha: alpha)
-    }
-
-    convenience init(light: UInt32, dark: UInt32) {
-        let light = NSColor.hex(light)
-        let dark = NSColor.hex(dark)
-        self.init(name: nil) { appearance in
-            appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua ? dark : light
-        }
-    }
-}
-
-extension Color {
-    init(light: UInt32, dark: UInt32) {
-        self.init(nsColor: NSColor(light: light, dark: dark))
-    }
 }
 
 // MARK: - Metrics and type
@@ -289,8 +262,13 @@ enum AppFonts {
     }
 
     static func onest(size: CGFloat, weight: Font.Weight = .regular) -> Font {
-        register()
-            ? Font.custom("Onest", size: size).weight(weight)
-            : Font.system(size: size, weight: weight)
+        guard register() else { return .system(size: size, weight: weight) }
+        #if os(iOS)
+        // The same design, but the text follows Dynamic Type so larger
+        // accessibility sizes remain usable on a phone.
+        return Font.custom("Onest", size: size, relativeTo: .body).weight(weight)
+        #else
+        return Font.custom("Onest", size: size).weight(weight)
+        #endif
     }
 }

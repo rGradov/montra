@@ -1,8 +1,12 @@
-import AppKit
 import Combine
 import Network
 import Security
 import SwiftData
+#if os(macOS)
+import AppKit
+#else
+import UIKit
+#endif
 
 @MainActor
 final class LocalIntegration: ObservableObject {
@@ -27,7 +31,9 @@ final class LocalIntegration: ObservableObject {
 
     init(container: ModelContainer, available: Bool, defaults: UserDefaults = .standard) {
         self.defaults = defaults
-        self.available = available && container.configurations.allSatisfy { !$0.isStoredInMemoryOnly }
+        self.available = available
+            && AppPlatform.supportsLocalIntegration
+            && container.configurations.allSatisfy { !$0.isStoredInMemoryOnly }
         enabled = self.available && defaults.bool(forKey: Self.enabledKey)
         // A legacy grant can carry over only if it covered every deletion command.
         allowDelete = (defaults.object(forKey: Self.deleteKey) as? Bool)
@@ -86,8 +92,12 @@ final class LocalIntegration: ObservableObject {
 
     func copyToken() {
         guard active, let token else { return }
+        #if os(macOS)
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(token, forType: .string)
+        #else
+        UIPasteboard.general.string = token
+        #endif
     }
 
     /// Restores the switches that travel in a backup. The access token does not:
@@ -120,8 +130,15 @@ final class LocalIntegration: ObservableObject {
 }
 
 private enum LocalAPIToken {
-    private static let directory = FileManager.default.homeDirectoryForCurrentUser
-        .appendingPathComponent("Library/Application Support/Montra/LocalAPI", isDirectory: true)
+    private static let directory: URL = {
+        #if os(macOS)
+        FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent("Library/Application Support/Montra/LocalAPI", isDirectory: true)
+        #else
+        FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("Montra/LocalAPI", isDirectory: true)
+        #endif
+    }()
 
     static func loadOrCreate() throws -> String {
         let files = FileManager.default

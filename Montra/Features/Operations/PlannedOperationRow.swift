@@ -114,7 +114,7 @@ struct PlannedOperationRow: View {
         .animation(.easeOut(duration: 0.12), value: isHovering)
         .pointingHandOnHover()
         .accessibilityLabel(accessibilityText)
-        .help(String(localized: "schedule.open_scheduled_payment"))
+        .platformHelp(String(localized: "schedule.open_scheduled_payment"))
     }
 
     private var accessibilityText: String {

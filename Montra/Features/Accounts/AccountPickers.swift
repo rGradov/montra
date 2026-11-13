@@ -76,7 +76,7 @@ struct IconPicker: View {
                 }
                 .buttonStyle(.plain)
                 .pointingHandOnHover()
-                .help(option.title)
+                .platformHelp(option.title)
                 .accessibilityLabel(option.title)
                 .accessibilityAddTraits(selection == symbol ? .isSelected : [])
             }

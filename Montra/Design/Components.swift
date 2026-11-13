@@ -1,4 +1,3 @@
-import AppKit
 import SwiftUI
 
 // MARK: - Buttons
@@ -90,19 +89,36 @@ struct MontraButtonStyle: ButtonStyle {
         }
 
         private var height: CGFloat {
+            #if os(iOS)
+            // Touch-first sizes. The macOS metrics stay exactly as they were.
+            switch size {
+            case .small: 32
+            case .regular: 44
+            case .large: 50
+            }
+            #else
             switch size {
             case .small: 24
             case .regular: 30
             case .large: 38
             }
+            #endif
         }
 
         private var horizontalPadding: CGFloat {
+            #if os(iOS)
+            switch size {
+            case .small: 12
+            case .regular: 16
+            case .large: 22
+            }
+            #else
             switch size {
             case .small: 10
             case .regular: 14
             case .large: 20
             }
+            #endif
         }
 
         private var font: AppStyle.TextStyle {
@@ -257,15 +273,15 @@ struct IconTile: View {
 
     var body: some View {
         Group {
-            if let imageName, NSImage(named: imageName) != nil {
+            if let imageName, AppAssets.image(named: imageName) != nil {
                 Image(imageName)
                     .resizable()
                     .interpolation(.high)
                     .scaledToFit()
-            } else if let symbol, !symbol.isEmpty, let asset = NSImage(named: symbol) {
+            } else if let symbol, !symbol.isEmpty, let asset = AppAssets.image(named: symbol) {
                 // A custom asset the user added under the icon's name: it is the
                 // whole tile, drawn as supplied.
-                Image(nsImage: asset)
+                Image(platformImage: asset)
                     .resizable()
                     .interpolation(.high)
                     .scaledToFit()
@@ -753,9 +769,23 @@ extension View {
 
 private struct PointingHandModifier: ViewModifier {
     let enabled: Bool
-    @State private var isPushed = false
 
     func body(content: Content) -> some View {
+        #if os(macOS)
+        PointingHandCursorBody(content: content, enabled: enabled)
+        #else
+        content.platformPointerHover(enabled)
+        #endif
+    }
+}
+
+#if os(macOS)
+private struct PointingHandCursorBody<Content: View>: View {
+    let content: Content
+    let enabled: Bool
+    @State private var isPushed = false
+
+    var body: some View {
         content.onHover { hovering in
             guard enabled else { return }
             if hovering, !isPushed {
@@ -774,6 +804,7 @@ private struct PointingHandModifier: ViewModifier {
         }
     }
 }
+#endif
 
 // MARK: - Switch
 //
@@ -849,14 +880,76 @@ struct RowCheckbox: View {
     var accessibilityLabel: String
 
     var body: some View {
+        #if os(macOS)
         Toggle(accessibilityLabel, isOn: .constant(isOn))
             .labelsHidden()
+            #if os(macOS)
             .toggleStyle(.checkbox)
+            #else
+            .toggleStyle(.touchCheckbox)
+            #endif
             .tint(AppColors.actionPrimary)
             .allowsHitTesting(false)
             .accessibilityHidden(true)
             .frame(width: 14)
+        #else
+        RoundedRectangle(cornerRadius: 3.5, style: .continuous)
+            .fill(isOn ? AppColors.actionPrimary : .clear)
+            .overlay {
+                RoundedRectangle(cornerRadius: 3.5, style: .continuous)
+                    .strokeBorder(isOn ? .clear : AppColors.borderStrong, lineWidth: 1)
+            }
+            .overlay {
+                if isOn {
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 8, weight: .bold))
+                        .foregroundStyle(AppColors.onActionPrimary)
+                }
+            }
+            .frame(width: 14, height: 14)
+            .allowsHitTesting(false)
+            .accessibilityHidden(true)
+        #endif
     }
+}
+
+/// The same checkbox idea on touch platforms: a 22 pt target with a clear
+/// on/off state, since the native `.checkbox` toggle style is macOS-only.
+struct TouchCheckboxStyle: ToggleStyle {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    func makeBody(configuration: Configuration) -> some View {
+        Button {
+            withAnimation(reduceMotion ? nil : .easeOut(duration: 0.12)) {
+                configuration.isOn.toggle()
+            }
+        } label: {
+            RoundedRectangle(cornerRadius: 5, style: .continuous)
+                .fill(configuration.isOn ? AppColors.actionPrimary : .clear)
+                .overlay {
+                    RoundedRectangle(cornerRadius: 5, style: .continuous)
+                        .strokeBorder(
+                            configuration.isOn ? .clear : AppColors.borderStrong,
+                            lineWidth: 1.25
+                        )
+                }
+                .overlay {
+                    if configuration.isOn {
+                        Image(systemName: "checkmark")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundStyle(AppColors.onActionPrimary)
+                    }
+                }
+                .frame(width: 22, height: 22)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityValue(configuration.isOn ? String(localized: "common.on") : String(localized: "common.off"))
+    }
+}
+
+extension ToggleStyle where Self == TouchCheckboxStyle {
+    static var touchCheckbox: TouchCheckboxStyle { TouchCheckboxStyle() }
 }
 
 // MARK: - Empty state

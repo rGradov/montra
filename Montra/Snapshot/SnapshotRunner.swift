@@ -1,3 +1,4 @@
+#if os(macOS)
 import AppKit
 import SwiftData
 import SwiftUI
@@ -907,3 +908,4 @@ private extension Color {
         )
     }
 }
+#endif

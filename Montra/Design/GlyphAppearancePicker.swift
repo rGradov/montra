@@ -217,7 +217,7 @@ struct GlyphAppearancePicker: View {
         }
         .buttonStyle(.plain)
         .pointingHandOnHover()
-        .help(String(localized: "common.more"))
+        .platformHelp(String(localized: "common.more"))
         .accessibilityLabel(String(localized: "common.more"))
         .popover(isPresented: $isPickerPresented, arrowEdge: .bottom) {
             GlyphPickerPanel(
@@ -275,7 +275,7 @@ struct GlyphTile: View {
         }
         .buttonStyle(.plain)
         .pointingHandOnHover()
-        .help(title)
+        .platformHelp(title)
         .accessibilityLabel(title)
         .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
@@ -368,7 +368,7 @@ struct ColorPickerRow: View {
                 }
                 .buttonStyle(.plain)
                 .pointingHandOnHover()
-                .help(color.title)
+                .platformHelp(color.title)
                 .accessibilityLabel(color.title)
                 .accessibilityAddTraits(selection == color ? .isSelected : [])
             }

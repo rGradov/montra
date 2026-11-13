@@ -298,7 +298,9 @@ struct NumberStepper: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @FocusState private var isFocused: Bool
     @State private var text: String = ""
+    #if os(macOS)
     @State private var outsideClickMonitor: Any?
+    #endif
 
     private var canDecrease: Bool { value - step >= range.lowerBound }
     private var canIncrease: Bool { value + step <= range.upperBound }
@@ -334,7 +336,7 @@ struct NumberStepper: View {
                             let digits = String(newValue.filter(\.isNumber).prefix(maxDigits))
                             if digits != newValue { text = digits }
                         }
-                        .onExitCommand {
+                        .platformExitCommand {
                             text = "\(value)"
                             isFocused = false
                         }
@@ -361,7 +363,7 @@ struct NumberStepper: View {
             .padding(.horizontal, AppStyle.Spacing.xxSmall)
             .contentShape(Rectangle())
             .onTapGesture { isFocused = true }
-            .help(String(localized: "common.enter_a_number_from_to \(range.lowerBound) \(range.upperBound)"))
+            .platformHelp(String(localized: "common.enter_a_number_from_to \(range.lowerBound) \(range.upperBound)"))
             .animation(reduceMotion ? nil : .easeInOut(duration: 0.12), value: isFocused)
 
             StepButton(
@@ -418,6 +420,7 @@ struct NumberStepper: View {
     /// Clicking a row or empty space must commit the typed number, and SwiftUI
     /// does not always resign a field's first responder for such clicks.
     private func installOutsideClickResign() {
+        #if os(macOS)
         guard outsideClickMonitor == nil else { return }
         outsideClickMonitor = NSEvent.addLocalMonitorForEvents(matching: .leftMouseDown) { event in
             guard let window = event.window,
@@ -427,13 +430,16 @@ struct NumberStepper: View {
             window.makeFirstResponder(nil)
             return event
         }
+        #endif
     }
 
     private func removeOutsideClickResign() {
+        #if os(macOS)
         if let monitor = outsideClickMonitor {
             NSEvent.removeMonitor(monitor)
             outsideClickMonitor = nil
         }
+        #endif
     }
 
     private func adjust(_ delta: Int) {
@@ -485,7 +491,7 @@ private struct StepButton: View {
         .disabled(!enabled)
         .onHover { isHovering = $0 }
         .animation(.easeOut(duration: 0.12), value: isHovering)
-        .help(help)
+        .platformHelp(help)
         .accessibilityLabel(help)
     }
 }

@@ -1,7 +1,11 @@
-import AppKit
 import AVFoundation
 import ImageIO
 import SwiftUI
+#if os(macOS)
+import AppKit
+#else
+import UIKit
+#endif
 
 // MARK: - Timeline
 //
@@ -260,7 +264,7 @@ struct OnboardingIntroView: View {
                 .buttonStyle(.plain)
                 .foregroundStyle(AppColors.textTertiary)
                 .pointingHandOnHover()
-                .help(isMuted ? String(localized: "onboarding.intro.turn_sound_on") : String(localized: "onboarding.intro.turn_sound_off"))
+                .platformHelp(isMuted ? String(localized: "onboarding.intro.turn_sound_on") : String(localized: "onboarding.intro.turn_sound_off"))
                 .accessibilityLabel(isMuted ? String(localized: "onboarding.intro.turn_sound_on") : String(localized: "onboarding.intro.turn_sound_off"))
 
                 Spacer()
@@ -400,7 +404,7 @@ private struct MoriRevealView: View {
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.moriFlightPreview) private var previewProgress
-    @State private var frameImage: NSImage?
+    @State private var frameImage: PlatformImage?
     @State private var showsStill = false
     @State private var floats = false
     @State private var isPlaying = false
@@ -408,7 +412,7 @@ private struct MoriRevealView: View {
     var body: some View {
         ZStack {
             if let frameImage {
-                Image(nsImage: frameImage)
+                Image(platformImage: frameImage)
                     .resizable()
                     .interpolation(.high)
                     .aspectRatio(contentMode: .fit)

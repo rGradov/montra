@@ -1,4 +1,3 @@
-import AppKit
 import SwiftData
 import SwiftUI
 
@@ -196,7 +195,9 @@ struct OnboardingFlowView: View {
             }
         }
         .animation(reduceMotion ? nil : .easeInOut(duration: 0.45), value: step)
+        #if os(macOS)
         .frame(minWidth: AppWindowLayout.width, minHeight: AppWindowLayout.minHeight)
+        #endif
     }
 
     @ViewBuilder
@@ -297,7 +298,7 @@ struct OnboardingFlowView: View {
                             }
                         }
                         .buttonStyle(.plain)
-                        .help(String(localized: "onboarding.account_icon_and_color"))
+                        .platformHelp(String(localized: "onboarding.account_icon_and_color"))
                         .accessibilityLabel(String(localized: "onboarding.account_icon_and_color"))
                         .popover(isPresented: $showsStylePicker, arrowEdge: .bottom) {
                             OnboardingAccountStylePicker(icon: $accountIcon, color: $accountColor)
@@ -927,7 +928,7 @@ private struct OnboardingAccountStylePicker: View {
                     }
                     .buttonStyle(.plain)
                     .pointingHandOnHover()
-                    .help(item.title)
+                    .platformHelp(item.title)
                     .accessibilityLabel(item.title)
                     .accessibilityAddTraits(color == item ? .isSelected : [])
                 }

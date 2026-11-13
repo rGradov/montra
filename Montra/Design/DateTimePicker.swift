@@ -169,7 +169,7 @@ struct MontraDateTimePicker: View {
                     commitTime()
                     isTimeFocused = false
                 }
-                .onExitCommand {
+                .platformExitCommand {
                     timeText = Self.timeFormatter.string(from: date)
                     isTimeFocused = false
                 }

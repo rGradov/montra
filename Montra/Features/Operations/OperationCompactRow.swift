@@ -19,7 +19,11 @@ struct OperationCompactRow: View {
             if isSelectable {
                 Toggle("", isOn: Binding(get: { isSelected }, set: { _ in onToggle() }))
                     .labelsHidden()
-                    .toggleStyle(.checkbox)
+                    #if os(macOS)
+            .toggleStyle(.checkbox)
+            #else
+            .toggleStyle(.switch)
+            #endif
                     .tint(AppColors.actionPrimary)
                     .accessibilityLabel(String(localized: "common.select_transaction"))
             }

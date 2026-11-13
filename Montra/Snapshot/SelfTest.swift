@@ -1,3 +1,4 @@
+#if os(macOS)
 import AppKit
 import Foundation
 import SwiftData
@@ -1335,3 +1336,4 @@ enum SelfTest {
         return Calendar.current.component(.year, from: date)
     }
 }
+#endif

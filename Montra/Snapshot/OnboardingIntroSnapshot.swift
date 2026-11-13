@@ -1,3 +1,4 @@
+#if os(macOS)
 import AppKit
 import SwiftData
 import SwiftUI
@@ -256,3 +257,4 @@ enum OnboardingHandOffCapture {
     /// How many stills the flight is cut into.
     static let steps: Int = 36
 }
+#endif

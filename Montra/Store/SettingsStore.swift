@@ -1,6 +1,8 @@
-import AppKit
 import Combine
 import SwiftUI
+#if os(macOS)
+import AppKit
+#endif
 
 /// Everything the app remembers between launches. Kept in UserDefaults (through
 /// one type, so a future iCloud key-value sync plugs in here) and published for
@@ -22,13 +24,6 @@ final class SettingsStore: ObservableObject {
             }
         }
 
-        var nsAppearance: NSAppearance? {
-            switch self {
-            case .auto: nil
-            case .light: NSAppearance(named: .aqua)
-            case .dark: NSAppearance(named: .darkAqua)
-            }
-        }
     }
 
     enum PeriodMode: String, CaseIterable, Identifiable {
@@ -194,7 +189,10 @@ final class SettingsStore: ObservableObject {
     }
 
     private func applyAppearance() {
+        #if os(macOS)
         NSApplication.shared.appearance = appearance.nsAppearance
+        #endif
+        // iOS applies `appearance.colorScheme` at the root of the scene.
     }
 }
 

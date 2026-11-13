@@ -476,7 +476,7 @@ struct OperationSheet: View {
                 }
                 .buttonStyle(.montra(.secondary, width: .square))
                 .padding(.top, 23)
-                .help(String(localized: "transaction.form.swap_accounts"))
+                .platformHelp(String(localized: "transaction.form.swap_accounts"))
                 .accessibilityLabel(String(localized: "transaction.form.swap_accounts"))
 
                 accountPicker(title: String(localized: "common.to"), selected: toAccount, onSelect: selectTo)
@@ -899,7 +899,7 @@ struct OperationSheet: View {
                     }
                     .buttonStyle(.montra(.secondary, width: .square))
                     .frame(width: 32, height: 32)
-                    .help(String(localized: "transaction.form.use_my_location"))
+                    .platformHelp(String(localized: "transaction.form.use_my_location"))
                     .disabled(location.isLocating)
                     .accessibilityLabel(String(localized: "transaction.form.use_my_location"))
                 }

@@ -1,3 +1,4 @@
+#if os(macOS)
 import AppKit
 import SwiftUI
 
@@ -470,3 +471,4 @@ private func symbolImage(_ name: String, description: String) -> NSImage {
     NSImage(systemSymbolName: name, accessibilityDescription: description)
         ?? NSImage(size: NSSize(width: 1, height: 1))
 }
+#endif

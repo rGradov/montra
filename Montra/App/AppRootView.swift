@@ -32,10 +32,13 @@ struct AppRootView: View {
     @State private var heroShowsChrome = true
     @State private var hiddenSidebarAccountID: UUID?
 
-    init(initialRoute: Route = .overview, needsOnboarding: Bool = false) {
+    private let initialSheet: AppSheet?
+
+    init(initialRoute: Route = .overview, needsOnboarding: Bool = false, initialSheet: AppSheet? = nil) {
         _app = StateObject(wrappedValue: AppModel(route: initialRoute))
         _showsOnboarding = State(initialValue: needsOnboarding)
         _showsOnboardingIntro = State(initialValue: needsOnboarding)
+        self.initialSheet = initialSheet
     }
 
     var body: some View {
@@ -99,6 +102,7 @@ struct AppRootView: View {
         .onPreferenceChange(OnboardingWelcomeArtworkKey.self) { welcomeArtworkFrame = $0 ?? .zero }
         .animation(.easeInOut(duration: 0.45), value: isOnboardingExiting)
         .background {
+            #if os(macOS)
             TouchBarHost(
                 accounts: accounts.map {
                     .init(id: $0.id, name: $0.name, iconName: $0.iconName, isSavings: $0.isSavings)
@@ -117,6 +121,7 @@ struct AppRootView: View {
                     }
                 )
             )
+            #endif
         }
         .sheet(item: $app.sheet) { sheet in
             sheetContent(sheet)
@@ -126,7 +131,10 @@ struct AppRootView: View {
             // The welcome flow creates the categories and the first account; a
             // launch that opens onboarding must not seed the full default set
             // behind it.
-            if !showsOnboarding { bootstrap() }
+            if !showsOnboarding {
+                bootstrap()
+                if let initialSheet { app.present(initialSheet) }
+            }
             // With Reduce Motion on the intro is skipped; mark it consumed so
             // toggling the setting later cannot make it appear retroactively.
             if reduceMotion { showsOnboardingIntro = false }
@@ -177,6 +185,7 @@ struct AppRootView: View {
     }
 
     private var appShell: some View {
+        #if os(macOS)
         HStack(spacing: 0) {
             SidebarView(
                 route: $app.route,
@@ -202,7 +211,47 @@ struct AppRootView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(AppColors.surfaceBase)
+        #else
+        VStack(spacing: 0) {
+            detail
+            temporaryIOSTabBar
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(AppColors.surfaceBase)
+        #endif
     }
+
+    #if os(iOS)
+    /// A structural placeholder for the Liquid Glass bottom navigation. The
+    /// real tab shell replaces it in the navigation phase; this keeps every
+    /// screen reachable while the port compiles and runs.
+    private var temporaryIOSTabBar: some View {
+        HStack(spacing: 0) {
+            ForEach(Route.iOSTabs, id: \.self) { route in
+                Button {
+                    app.open(route)
+                } label: {
+                    VStack(spacing: 3) {
+                        Image(systemName: route.iOSSymbol)
+                            .font(.system(size: 17, weight: .medium))
+                        Text(route.iOSTitle)
+                            .font(.system(size: 10, weight: .medium))
+                            .lineLimit(1)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .foregroundStyle(app.route.sidebarSection == route ? AppColors.textPrimary : AppColors.textTertiary)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(route.iOSTitle)
+                .accessibilityAddTraits(app.route.sidebarSection == route ? .isSelected : [])
+            }
+        }
+        .padding(.top, 8)
+        .padding(.bottom, 6)
+        .background(.bar)
+    }
+    #endif
 
     private var isCovered: Bool {
         showsOnboarding || onboardingReplay != nil
@@ -541,3 +590,33 @@ private struct OnboardingReplay: Identifiable {
     let container: ModelContainer
     let settings: SettingsStore
 }
+
+#if os(iOS)
+extension Route {
+    static let iOSTabs: [Route] = [.overview, .operations, .categories, .analytics, .settings]
+
+    var iOSTitle: String {
+        switch self {
+        case .overview: String(localized: "navigation.overview")
+        case .operations: String(localized: "transaction.all")
+        case .categories: String(localized: "navigation.categories")
+        case .analytics: String(localized: "navigation.analytics")
+        case .settings: String(localized: "navigation.settings")
+        case .about: String(localized: "common.about")
+        case .account: String(localized: "common.account")
+        }
+    }
+
+    var iOSSymbol: String {
+        switch self {
+        case .overview: "square.grid.2x2"
+        case .operations: "list.bullet"
+        case .categories: "tag"
+        case .analytics: "chart.bar"
+        case .settings: "gearshape"
+        case .about: "info.circle"
+        case .account: "creditcard"
+        }
+    }
+}
+#endif

@@ -369,7 +369,7 @@ struct OverviewView: View {
         }
         .buttonStyle(.plain)
         .pointingHandOnHover()
-        .help(String(localized: "overview.open_an_account_to_show"))
+        .platformHelp(String(localized: "overview.open_an_account_to_show"))
         .accessibilityLabel(String(localized: "overview.hidden_from_overview_manage \(Finance.accountsCountText(hiddenAccounts.count))"))
     }
 

@@ -12,20 +12,28 @@ Montra has the prerequisites for iCloud sync. Follow these steps to enable it.
    `OperationRepository`, `CategoryRepository`, and `PeriodService`.
 4. **Status and UI.** `SyncService` exposes `CloudSyncState`. The sidebar shows
    that iCloud is disconnected and Settings includes an explanatory sheet.
-5. **Entitlements template.** See `Docs/Montra.entitlements`.
+5. **Entitlements template.** See `Docs/Montra.entitlements`. The local
+   `Montra/Montra.entitlements` already targets `iCloud.app.finance.montra`.
 6. **Separate settings store.** `SettingsStore` uses `UserDefaults`. To sync
    settings, switch it to `NSUbiquitousKeyValueStore` and call `synchronize()`.
+7. **One universal App ID.** macOS, iPhone and iPad use the same bundle id
+   `app.finance.montra`, so they share one iCloud container. Adding the iOS
+   destination must not create a second container.
 
 ## Steps
 
 1. In your Apple Developer account, go to **Certificates, Identifiers & Profiles**
-   → **iCloud Containers** and create `iCloud.com.vladrudenua.montra`. If you use
+   → **iCloud Containers** and create `iCloud.app.finance.montra`. If you use
    another domain, update `SyncService.containerIdentifier` and the entitlements.
-2. Under **Signing & Capabilities** for the Montra target, add **iCloud**. Enable
-   CloudKit and select `iCloud.com.vladrudenua.montra`. Xcode can create
-   `Montra.entitlements`, or you can copy the template and set the target's
-   `CODE_SIGN_ENTITLEMENTS` to the copied file. Signing the iCloud entitlement
-   requires a development team.
+2. Under **Signing & Capabilities** for the Montra target, add **iCloud** for
+   **both** the macOS and iOS/iPadOS destinations. Enable CloudKit and select
+   `iCloud.app.finance.montra`. Xcode can create `Montra.entitlements`, or you
+   can copy the template and set the target's `CODE_SIGN_ENTITLEMENTS` to the
+   copied file. Signing the iCloud entitlement requires a development team.
+   For iOS, also enable **Push Notifications** when sync is turned on (CloudKit
+   uses silent pushes to refresh the store) and add the `remote-notification`
+   background mode. The port leaves sync disabled, so it ships without that
+   background mode.
 
    ```bash
    cp Docs/Montra.entitlements Montra/Montra.entitlements
@@ -39,9 +47,10 @@ Montra has the prerequisites for iCloud sync. Follow these steps to enable it.
    cloudKitDatabase: .private(SyncService.containerIdentifier)
    ```
 
-4. Run the app with the container enabled. SwiftData creates records in the
-   development environment. Inspect them in **CloudKit Console → Database**,
-   then deploy the schema to production before distributing the build.
+4. Run the app with the container enabled on a Mac and on an iPhone/iPad signed
+   into the same Apple ID. SwiftData creates records in the development
+   environment. Inspect them in **CloudKit Console → Database**, then deploy the
+   schema to production before distributing the build.
 5. To replace the default `.notConfigured` status with live status, pass a
    provider. A `CloudKitProvider: SyncProvider` can use an
    `NSPersistentCloudKitContainer`-style setup to track status and retries for
@@ -51,8 +60,8 @@ Montra has the prerequisites for iCloud sync. Follow these steps to enable it.
    await SyncService.shared.start(provider: CloudKitProvider())
    ```
 
-6. Create a transaction on one Mac and check for it on another device using
-   the same Apple ID. If it does not appear, verify that both devices use the
+6. Create a transaction on the Mac and check for it on the iPhone/iPad (and
+   vice versa) using the same Apple ID. If it does not appear, verify that both devices use the
    same container and that you deployed the schema. Filter Console.app by
    `CloudKit` and `Montra`.
 

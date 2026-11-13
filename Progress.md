@@ -442,5 +442,16 @@ Local API / MCP remains a macOS feature; nothing is needed for it on iOS.
   is deprecated and not used; privacy manifest added.
 - Known state: the iOS shell is still the temporary bottom strip in
   `AppRootView` (Builder A replaces it); the macOS shell is untouched.
-- Next: Builder A (navigation, Settings/About, sheets, iPad shell features) and
-  Builder B (onboarding, screens, file/system flows) in separate worktrees.
+- Builder A (navigation, Settings/About, sheets, iPad shell features) and
+  Builder B (onboarding, screens, file/system flows) are running in parallel
+  worktrees `build/wt-nav` (`codex/ios-nav`) and `build/wt-screens`
+  (`codex/ios-screens`), both branched from the foundation commit.
+- Verified bundle metadata: iPhone + iPad orientations, scene manifest with
+  `UIApplicationSupportsMultipleScenes = true`, generated launch screen, 1024
+  icon, privacy manifest in the bundle, location usage string. Replaced the
+  iOS icon with an opaque `icon_ios_1024.png` (the macOS icon keeps its alpha)
+  so App Store validation cannot reject it for transparency.
+- Known macOS snapshot caveat: the demo transfers use `.now`, so their clock
+  text changes between runs; that is the only expected diff.
+- Next: merge the two builder branches, then functional / code / App Store
+  critics.

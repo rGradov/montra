@@ -16,7 +16,6 @@ Montra 20*/
 # Private ledger data, local signing settings, and packaged builds.
 /Montra-import-summary-*.md
 /Montra.local.xcconfig
-/Montra/Montra.entitlements
 *.montra
 *.csv
 *.sqlite

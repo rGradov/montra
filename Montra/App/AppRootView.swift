@@ -185,7 +185,7 @@ struct AppRootView: View {
                 accounts: accounts,
                 categoryCount: categories.count,
                 iCloudConnected: sync.isConnected,
-                iCloudStatusText: sync.state.title,
+                iCloudStatusText: sync.appearance.compact,
                 hiddenAccountID: hiddenSidebarAccountID,
                 onNewAccount: { app.present(.newAccount(isSavings: false)) },
                 onNewSavingsAccount: { app.present(.newAccount(isSavings: true)) },

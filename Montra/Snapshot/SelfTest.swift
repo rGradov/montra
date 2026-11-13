@@ -1310,6 +1310,134 @@ enum SelfTest {
         check(!bar.defaultItemIdentifiers.contains(MontraTouchBarController.accountsIdentifier),
               "без счетов полоса тачбара не занимает место")
 
+        // 13. iCloud sync reports an honest state and never wakes the network.
+        let syncStates: [(CloudSyncState, String)] = [
+            (.notConfigured, "common.not_connected"),
+            (.noAccount, "sync.no_icloud_account"),
+            (.restricted, "sync.icloud_restricted"),
+            (.unknown, "sync.icloud_unknown"),
+            (.active(lastChange: nil), "sync.active"),
+            (.active(lastChange: date(year: 2026, month: 11, day: 13)), "sync.updated %@"),
+            (.failed("boom"), "common.error"),
+        ]
+        check(syncStates.allSatisfy { !$0.0.title.isEmpty && $0.0.title != $0.1 },
+              "у каждого состояния iCloud есть локализованный заголовок")
+        check(syncStates.map(\.0.title).allSatisfy { !$0.isEmpty },
+              "заголовок состояния iCloud не пустой в текущем языке")
+
+        // Both catalogs must resolve every key the title switch uses, so a
+        // machine whose language differs from the launch language still reads it.
+        func localizedInBothLanguages(_ key: String) -> Bool {
+            ["en", "ru"].allSatisfy { language in
+                guard let path = Bundle.main.path(forResource: language, ofType: "lproj"),
+                      let bundle = Bundle(path: path) else { return false }
+                let value = bundle.localizedString(forKey: key, value: "\u{0}missing", table: "Localizable")
+                return !value.isEmpty && value != key && value != "\u{0}missing"
+            }
+        }
+        let syncKeys = Set(syncStates.map(\.1))
+        check(syncKeys.allSatisfy(localizedInBothLanguages),
+              "все ключи состояния iCloud переведены на en и ru")
+
+        let oneOfEachState: [CloudSyncState] = [
+            .notConfigured, .noAccount, .restricted, .unknown,
+            .active(lastChange: nil), .failed("boom"),
+        ]
+        check(oneOfEachState.filter(\.isConnected) == [.active(lastChange: nil)],
+              "подключённым считается только состояние active")
+        check(!CloudSyncState.notConfigured.isConnected
+              && !CloudSyncState.noAccount.isConnected
+              && !CloudSyncState.restricted.isConnected
+              && !CloudSyncState.unknown.isConnected
+              && !CloudSyncState.failed("boom").isConnected,
+              "остальные состояния не выдают себя за подключённые")
+
+        let relative = SyncService.relativeText(for: Date().addingTimeInterval(-180))
+        check(!relative.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+              "«обновлено» возвращает непустой текст")
+        check(!SyncService.relativeText(for: .now).isEmpty
+              && !SyncService.relativeText(for: date(year: 2026, month: 1, day: 1)).isEmpty,
+              "«обновлено» работает и для текущего, и для прошлого момента")
+
+        // The signature is the heartbeat's only input: it must move on inserts
+        // and stay put when nothing happens, or the timer would lie every 2 min.
+        let syncContainer = ModelContainerFactory.make(inMemory: true)
+        let syncContext = ModelContext(syncContainer)
+        let signatureBase = StoreSignature(context: syncContext)
+        check(signatureBase == StoreSignature(context: syncContext),
+              "подпись книги стабильна, пока ничего не меняется")
+        check(signatureBase.operations == 0 && signatureBase.newestCreatedAt == nil,
+              "пустая книга даёт пустую подпись")
+
+        let syncAccount = Account(name: "Синхро", currency: .byn, initialAmount: 0,
+                                  iconName: "creditcard.fill", color: .blue)
+        syncContext.insert(syncAccount)
+        let earlier = Date().addingTimeInterval(-3600)
+        let older = Operation(kind: .expense, amount: 5, currency: .byn, date: earlier,
+                              account: syncAccount, category: nil)
+        older.createdAt = earlier
+        syncContext.insert(older)
+        try? syncContext.save()
+
+        let signatureInserted = StoreSignature(context: syncContext)
+        check(signatureInserted != signatureBase, "подпись меняется после вставки операции")
+        check(signatureInserted.operations == 1 && signatureInserted.accounts == 1,
+              "подпись считает операции и счета")
+        check(signatureInserted.newestCreatedAt != nil
+              && StoreSignature(context: syncContext) == signatureInserted,
+              "подпись стабильна после сохранения")
+
+        let newer = Operation(kind: .income, amount: 7, currency: .byn, date: .now,
+                              account: syncAccount, category: nil)
+        syncContext.insert(newer)
+        try? syncContext.save()
+        let signatureNewer = StoreSignature(context: syncContext)
+        check(signatureNewer.newestCreatedAt == newer.createdAt
+              && signatureNewer.date == newer.createdAt,
+              "подпись запоминает самую новую операцию")
+        check(signatureNewer.operations == 2 && signatureNewer != signatureInserted,
+              "вторая операция снова меняет подпись")
+
+        // Known limitation, asserted on purpose: an edit does not change counts
+        // or `createdAt`, so "updated N ago" stays silent until a new row lands.
+        older.amount = 999
+        try? syncContext.save()
+        check(StoreSignature(context: syncContext) == signatureNewer,
+              "правка строки не меняет подпись — известное ограничение «обновлено»")
+
+        // An in-memory store must keep the whole service dormant: no timer, no
+        // CKContainer request, no status claim.
+        let offlineSync = SyncService.shared
+        offlineSync.start(container: syncContainer, inMemory: true)
+        check(offlineSync.state == .notConfigured && !offlineSync.isConnected,
+              "в памяти iCloud выключен")
+        offlineSync.refresh()
+        check(offlineSync.state == .notConfigured,
+              "refresh в памяти не трогает сеть и не меняет состояние")
+        offlineSync.flush()
+        check(offlineSync.state == .notConfigured, "flush в памяти ничего не включает")
+
+        let inMemoryConfiguration = ModelContainerFactory.make(inMemory: true).configurations
+        check(inMemoryConfiguration.allSatisfy { $0.isStoredInMemoryOnly },
+              "контейнер самотеста целиком в памяти")
+        check(inMemoryConfiguration.allSatisfy { $0.cloudKitContainerIdentifier == nil },
+              "у контейнера в памяти нет идентификатора CloudKit")
+
+        // CloudKit refuses a schema with a missing inverse, a `.deny` rule or a
+        // unique constraint, so the mirroring build would fail to open at all.
+        let syncEntities = ModelContainerFactory.schema.entities
+        let syncRelationships = syncEntities.flatMap { $0.relationships }
+        check(syncRelationships.count >= 8, "схема объявляет связи всех моделей")
+        check(syncRelationships.allSatisfy { $0.inverseName != nil },
+              "у каждой связи есть обратная")
+        check(syncRelationships.allSatisfy { $0.deleteRule != .deny },
+              "ни одна связь не запрещает удаление")
+        check(syncEntities.allSatisfy { $0.uniquenessConstraints.isEmpty },
+              "в схеме нет уникальных ограничений")
+        check(syncEntities.allSatisfy { entity in entity.attributes.allSatisfy { !$0.isUnique } },
+              "у полей нет уникальных атрибутов")
+        check(syncEntities.count == 5, "в схеме пять моделей книги")
+
         print(failures == 0 ? "ALL CHECKS PASSED" : "\(failures) CHECK(S) FAILED")
         exit(failures == 0 ? 0 : 1)
     }

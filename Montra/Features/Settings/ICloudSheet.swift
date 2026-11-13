@@ -1,105 +1,112 @@
 import AppKit
 import SwiftUI
 
-/// Explains what iCloud is doing right now. Everything here comes from
-/// `SyncService`: the account state plus the last time the ledger changed.
-/// Nothing claims to know about a transfer in flight, because SwiftData does not
-/// report one.
+/// Explains what iCloud is doing right now. Every word comes from
+/// `CloudSyncState`'s appearance, so this sheet, the sidebar and the Settings
+/// row can never disagree.
 struct ICloudSheet: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var sync: SyncService
 
     var body: some View {
+        let appearance = sync.appearance
+
         VStack(spacing: 0) {
             SheetHeader(
                 title: String(localized: "common.icloud_sync"),
-                subtitle: sync.state.title,
+                subtitle: appearance.sentence,
                 onClose: { dismiss() }
             )
 
             ScrollView {
                 VStack(alignment: .leading, spacing: AppStyle.Spacing.medium) {
                     InsetCard {
-                        statusRow
+                        statusRow(appearance)
                         InsetCardDivider()
-                        valueRow(title: String(localized: "common.container"), value: SyncService.containerIdentifier)
-                        InsetCardDivider()
-                        valueRow(title: String(localized: "common.storage"), value: String(localized: "common.swiftdata"))
+                        valueRow(title: String(localized: "sync.state_label"), value: appearance.badge)
+
+                        if case .failed(let message) = sync.state {
+                            InsetCardDivider()
+                            valueRow(title: String(localized: "common.error"), value: message, wraps: true)
+                        }
                     }
 
-                    Text(String(localized: "sync.transfers_are_automatic"))
+                    Text(String(localized: "sync.why_icloud"))
                         .font(AppStyle.Typography.callout)
                         .foregroundStyle(AppColors.textSecondary)
                         .fixedSize(horizontal: false, vertical: true)
                         .padding(.horizontal, AppStyle.Spacing.xxSmall)
 
-                    if case .noAccount = sync.state {
-                        VStack(alignment: .leading, spacing: AppStyle.Spacing.xxSmall) {
-                            Text(String(localized: "sync.not_signed_in_hint"))
-                                .font(AppStyle.Typography.callout)
-                                .foregroundStyle(AppColors.textSecondary)
-                                .fixedSize(horizontal: false, vertical: true)
-
-                            Button(String(localized: "sync.no_icloud_account")) {
-                                openAppleAccountSettings()
-                            }
-                            .buttonStyle(.montra(.secondary))
-                        }
+                    Text(String(localized: "sync.transfers_are_automatic"))
+                        .font(AppStyle.Typography.metadata)
+                        .foregroundStyle(AppColors.textTertiary)
+                        .fixedSize(horizontal: false, vertical: true)
                         .padding(.horizontal, AppStyle.Spacing.xxSmall)
-                    }
                 }
                 .padding(.horizontal, AppStyle.Spacing.large)
                 .padding(.bottom, AppStyle.Spacing.medium)
             }
-            .frame(maxHeight: 480)
 
             SheetFooter {
                 Spacer(minLength: AppStyle.Spacing.small)
-                Button(String(localized: "common.ok")) { dismiss() }
+
+                if let action = appearance.action {
+                    Button(action) {
+                        if case .unknown = sync.state {
+                            sync.refresh()
+                        } else if case .failed = sync.state {
+                            sync.refresh()
+                        } else {
+                            openAppleAccountSettings()
+                        }
+                    }
+                    .buttonStyle(.montra(.secondary))
+                }
+
+                Button(String(localized: "common.done")) { dismiss() }
                     .buttonStyle(.montra(.primary))
                     .keyboardShortcut(.defaultAction)
             }
         }
-        .frame(width: 470, height: 520)
+        .frame(width: 470, height: 470)
         .background(AppColors.surfaceBase)
         .onAppear { sync.refresh() }
     }
 
-    private var statusRow: some View {
+    private func statusRow(_ appearance: CloudSyncAppearance) -> some View {
         HStack(spacing: AppStyle.Spacing.small) {
             IconTile(
-                symbol: sync.isConnected ? "checkmark.icloud" : "icloud.slash",
-                color: sync.isConnected ? AppColors.statusSafeText : AppColors.Chart.neutralTile
+                symbol: appearance.symbol,
+                color: appearance.needsAttention
+                    ? AppColors.statusCheckText
+                    : AppColors.Chart.neutralTile
             )
             VStack(alignment: .leading, spacing: AppStyle.Spacing.xxxSmall) {
                 Text(String(localized: "common.icloud"))
                     .font(AppStyle.Typography.headline)
-                Text(sync.state.title)
+                Text(appearance.sentence)
                     .font(AppStyle.Typography.callout)
                     .foregroundStyle(AppColors.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
             Spacer(minLength: AppStyle.Spacing.small)
-            AppBadge(
-                text: sync.isConnected
-                    ? String(localized: "sync.active")
-                    : String(localized: "common.not_connected"),
-                tone: sync.isConnected ? .safe : .warning
-            )
+            AppBadge(text: appearance.badge, tone: appearance.tone)
         }
         .padding(.horizontal, AppStyle.Spacing.medium)
         .padding(.vertical, AppStyle.Spacing.small)
     }
 
-    private func valueRow(title: String, value: String) -> some View {
-        HStack(spacing: AppStyle.Spacing.small) {
+    private func valueRow(title: String, value: String, wraps: Bool = false) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: AppStyle.Spacing.small) {
             Text(title)
                 .font(AppStyle.Typography.body)
             Spacer(minLength: AppStyle.Spacing.small)
             Text(value)
                 .font(AppStyle.Typography.callout)
                 .foregroundStyle(AppColors.textSecondary)
-                .lineLimit(1)
-                .truncationMode(.middle)
+                .lineLimit(wraps ? 3 : 1)
+                .multilineTextAlignment(.trailing)
+                .truncationMode(.tail)
         }
         .padding(.horizontal, AppStyle.Spacing.medium)
         .padding(.vertical, AppStyle.Spacing.small)

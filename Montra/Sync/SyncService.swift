@@ -6,9 +6,8 @@ import SwiftData
 ///
 /// SwiftData mirrors the store through `NSPersistentCloudKitContainer`, which
 /// uploads and downloads on the system's own schedule and exposes no way to
-/// force a transfer. So there is no "sync now" state: the app can report
-/// whether iCloud is usable and when it last saw the ledger change, and that is
-/// all it pretends to know.
+/// force a transfer. So there is no "syncing" state: the app reports whether
+/// iCloud is usable and when the ledger last changed, and that is all it claims.
 enum CloudSyncState: Equatable {
     /// No iCloud capability in this build, or sync was switched off.
     case notConfigured
@@ -23,28 +22,37 @@ enum CloudSyncState: Equatable {
     case failed(String)
 
     var isConnected: Bool {
-        switch self {
-        case .active: true
-        default: false
-        }
+        if case .active = self { return true }
+        return false
     }
 
-    var title: String {
+    /// `.unknown` is not an error and not a success, so it is the only state
+    /// that stays neutral.
+    var needsAttention: Bool {
         switch self {
-        case .notConfigured: String(localized: "common.not_connected")
-        case .noAccount: String(localized: "sync.no_icloud_account")
-        case .restricted: String(localized: "sync.icloud_restricted")
-        case .unknown: String(localized: "sync.icloud_unknown")
-        case .active(let date):
-            if let date { String(localized: "sync.updated \(SyncService.relativeText(for: date))") }
-            else { String(localized: "sync.active") }
-        case .failed: String(localized: "common.error")
+        case .noAccount, .restricted, .failed, .notConfigured: true
+        case .unknown, .active: false
         }
     }
 }
 
-/// Reads iCloud availability and tracks when the ledger last changed, so the
-/// UI can show "updated 3 minutes ago" instead of inventing a sync progress.
+/// Presentation for the state. Kept beside the enum so every surface shows the
+/// same words, symbol and tone instead of inventing its own.
+struct CloudSyncAppearance {
+    let symbol: String
+    let tone: AppBadge.Tone
+    /// One or two words for a badge.
+    let badge: String
+    /// A full sentence for a sheet subtitle or a Settings value.
+    let sentence: String
+    /// Short form that fits the 240 pt sidebar.
+    let compact: String
+    /// Action offered when the state is actionable.
+    let action: String?
+}
+
+/// Reads iCloud availability and tracks when the ledger last changed, so the UI
+/// can show the real state instead of inventing progress.
 @MainActor
 final class SyncService: ObservableObject {
     static let shared = SyncService()
@@ -54,16 +62,109 @@ final class SyncService: ObservableObject {
     /// CloudKit containers are named `iCloud.<bundle id>`.
     nonisolated static let containerIdentifier = "iCloud.\(Bundle.main.bundleIdentifier ?? "com.example.montra")"
 
-    @Published private(set) var state: CloudSyncState = .notConfigured
+    /// `nil` while the first account check is still running, so nothing flashes
+    /// "not connected" during launch.
+    @Published private(set) var state: CloudSyncState?
 
-    /// Set when the store is in memory: tests and snapshots must stay offline.
     private var isEnabled = false
     private var lastSignature: StoreSignature?
     private var timer: Timer?
+    private var container: ModelContainer?
 
     private init() {}
 
-    var isConnected: Bool { state.isConnected }
+    var isConnected: Bool { state?.isConnected ?? false }
+
+    var appearance: CloudSyncAppearance {
+        Self.appearance(for: state)
+    }
+
+    static func appearance(for state: CloudSyncState?) -> CloudSyncAppearance {
+        guard let state else {
+            return CloudSyncAppearance(
+                symbol: "icloud",
+                tone: .neutral,
+                badge: String(localized: "sync.badge_checking"),
+                sentence: String(localized: "sync.checking"),
+                compact: String(localized: "sync.compact_checking"),
+                action: nil
+            )
+        }
+        switch state {
+        case .active(let lastChange):
+            return CloudSyncAppearance(
+                symbol: "checkmark.icloud",
+                tone: .safe,
+                badge: String(localized: "sync.badge_on"),
+                sentence: lastChangeText(lastChange),
+                compact: compactText(lastChange),
+                action: nil
+            )
+        case .noAccount:
+            return CloudSyncAppearance(
+                symbol: "icloud.slash",
+                tone: .warning,
+                badge: String(localized: "sync.badge_off"),
+                sentence: String(localized: "sync.no_account_sentence"),
+                compact: String(localized: "sync.compact_no_account"),
+                action: String(localized: "sync.open_icloud_settings")
+            )
+        case .restricted:
+            return CloudSyncAppearance(
+                symbol: "lock.icloud",
+                tone: .warning,
+                badge: String(localized: "sync.badge_off"),
+                sentence: String(localized: "sync.restricted_sentence"),
+                compact: String(localized: "sync.compact_restricted"),
+                action: String(localized: "sync.open_icloud_settings")
+            )
+        case .unknown:
+            return CloudSyncAppearance(
+                symbol: "icloud",
+                tone: .neutral,
+                badge: String(localized: "sync.badge_unknown"),
+                sentence: String(localized: "sync.unknown_sentence"),
+                compact: String(localized: "sync.compact_unknown"),
+                action: String(localized: "sync.try_again")
+            )
+        case .failed:
+            return CloudSyncAppearance(
+                symbol: "exclamationmark.icloud",
+                tone: .danger,
+                badge: String(localized: "sync.badge_failed"),
+                sentence: String(localized: "sync.failed_sentence"),
+                compact: String(localized: "sync.compact_failed"),
+                action: String(localized: "sync.try_again")
+            )
+        case .notConfigured:
+            return CloudSyncAppearance(
+                symbol: "icloud.slash",
+                tone: .neutral,
+                badge: String(localized: "sync.badge_off"),
+                sentence: String(localized: "sync.not_configured_sentence"),
+                compact: String(localized: "sync.compact_off"),
+                action: nil
+            )
+        }
+    }
+
+    /// An absolute time, because "3 min ago" was being read as a sync time while
+    /// the value really describes the last edit to the ledger.
+    private static func lastChangeText(_ date: Date?) -> String {
+        guard let date else { return String(localized: "sync.no_changes_yet") }
+        let calendar = Calendar.current
+        let time = date.formatted(date: .omitted, time: .shortened)
+        if calendar.isDateInToday(date) {
+            return String(localized: "sync.last_change_today \(time)")
+        }
+        return String(localized: "sync.last_change \(date.formatted(date: .abbreviated, time: .shortened))")
+    }
+
+    private static func compactText(_ date: Date?) -> String {
+        guard let date else { return String(localized: "sync.compact_on") }
+        let time = date.formatted(date: .omitted, time: .shortened)
+        return String(localized: "sync.compact_on_at \(time)")
+    }
 
     /// Starts the heartbeat. `inMemory` keeps everything off so `-selftest` and
     /// the snapshot runs never touch the network.
@@ -76,9 +177,8 @@ final class SyncService: ObservableObject {
         self.container = container
         refresh()
         timer?.invalidate()
-        // CloudKit itself decides when to transfer; polling only notices the
-        // result. Two minutes is frequent enough to feel live and cheap enough
-        // to ignore.
+        // CloudKit decides when to transfer; polling only notices the result.
+        // Two minutes is frequent enough to feel live and cheap enough to ignore.
         timer = Timer.scheduledTimer(withTimeInterval: 120, repeats: true) { [weak self] _ in
             Task { @MainActor in self?.refresh() }
         }
@@ -88,11 +188,11 @@ final class SyncService: ObservableObject {
         timer?.invalidate()
         timer = nil
         isEnabled = false
-        state = .notConfigured
+        state = nil
     }
 
     /// Re-reads the account state and notices ledger changes. Called at launch,
-    /// on a timer, when the window becomes active, and before the app quits.
+    /// on a timer, when the window becomes active, and from the sheet.
     func refresh() {
         guard isEnabled else { return }
         Task { @MainActor in
@@ -100,8 +200,6 @@ final class SyncService: ObservableObject {
             updateLastChange()
         }
     }
-
-    private var container: ModelContainer?
 
     private func refreshStatus() async {
         do {
@@ -125,7 +223,7 @@ final class SyncService: ObservableObject {
     }
 
     /// A cheap fingerprint of the ledger. When it changes while the app itself
-    /// is idle, CloudKit has just delivered something from another Mac.
+    /// is idle, CloudKit has delivered something from another Mac.
     private func updateLastChange() {
         guard let context = container?.mainContext else { return }
         let signature = StoreSignature(context: context)
@@ -145,17 +243,11 @@ final class SyncService: ObservableObject {
             try? context.save()
         }
     }
-
-    /// Shown in the sidebar, the Settings row and the explanation sheet.
-    nonisolated static func relativeText(for date: Date) -> String {
-        let formatter = RelativeDateTimeFormatter()
-        formatter.unitsStyle = .short
-        return formatter.localizedString(for: date, relativeTo: .now)
-    }
 }
 
-/// Counts rows and remembers the newest `createdAt`, which is enough to notice
-/// that the store changed without loading the rows themselves.
+/// Counts rows and remembers the newest `createdAt`. Enough to notice that the
+/// store gained or lost rows, without loading them. Edits to an existing row are
+/// not detected, which is why the UI says "last change" and not "last sync".
 private struct StoreSignature: Equatable {
     let operations: Int
     let accounts: Int

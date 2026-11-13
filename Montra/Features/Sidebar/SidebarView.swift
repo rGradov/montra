@@ -194,11 +194,13 @@ struct SidebarView: View {
         Button(action: onOpenICloud) {
             HStack(spacing: AppStyle.Spacing.xSmall) {
                 Image(systemName: iCloudConnected ? "checkmark.icloud" : "icloud.slash")
-                    .font(.system(size: 12, weight: .medium))
+                    .font(AppStyle.Typography.callout.weight(.medium))
                     .foregroundStyle(iCloudConnected ? AppColors.statusSafeText : AppColors.textSecondary)
                     .accessibilityHidden(true)
 
                 Text(iCloudStatusText)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
                     .font(AppStyle.Typography.callout.weight(.medium))
                     .foregroundStyle(AppColors.textSecondary)
 
@@ -216,7 +218,10 @@ struct SidebarView: View {
         .buttonStyle(.plain)
         .focusEffectDisabled()
         .pointingHandOnHover()
-        .accessibilityLabel(iCloudConnected ? String(localized: "common.icloud_connected") : String(localized: "sidebar.icloud_not_connected_open_sync"))
+        .accessibilityLabel(
+            Text("\(String(localized: "common.icloud")), \(iCloudStatusText)")
+        )
+        .accessibilityHint(Text(String(localized: "sidebar.icloud_status_hint")))
     }
 }
 

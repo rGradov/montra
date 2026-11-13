@@ -11,9 +11,10 @@ multiple currencies, expenses and income, mandatory expense categories, and an
 adjustable **payday-to-payday financial month**.
 
 The stack is SwiftUI and SwiftData with no third-party dependencies. The single
-target supports macOS 15 and later. Data stays local. The app has groundwork
-for iCloud and CloudKit sync, which is disabled in this version.
-[iCloud setup](Docs/iCloud-Setup.md)
+target supports macOS 15 and later. The ledger is local-first and mirrors through
+iCloud/CloudKit into the person's private database, with no sign-in screen: the
+Apple Account already signed in on the Mac is the identity.
+[Operator runbook](Docs/iCloud-Setup.md)
 
 ## 2. User and scenario
 
@@ -382,7 +383,7 @@ The placeholder uses no fictional figures.
   Open the period sheet from Periods.
 - **Exchange rates.** Show the source (official, public feed, cache, or approximate),
   USD/EUR/USDT/BTC rates against BYN, refresh time, and a Refresh button with loading state.
-- **Data.** Primary currency, iCloud disconnected status and explanatory sheet,
+- **Data.** Primary currency, live iCloud status with an explanation sheet,
   CSV export, and Delete All Data with confirmation.
 - **About.** Show `MontraArtwork` (`artwork.png`), name, version, a total across
   accounts, account and transaction count, feature summary, and footer.
@@ -415,8 +416,9 @@ The placeholder uses no fictional figures.
 
 - Xcode uses `PBXFileSystemSynchronizedRootGroup`, `SWIFT_VERSION = 5.0`,
   and `MACOSX_DEPLOYMENT_TARGET = 15.0`, with no dependencies.
-- One `ModelContainer`. `ModelContainerFactory` is the CloudKit switch point
-  from `.none` to `.private("iCloud.com.vladrudenua.montra")`.
+- One `ModelContainer`. `ModelContainerFactory` uses
+  `.private("iCloud.app.finance.montra")` for the persistent store and `.none`
+  for in-memory stores, so tests and snapshots stay offline and deterministic.
 - Use CloudKit-compatible models and repository writes.
 - `RateStore` loads cached rates immediately, refreshes from official and
   public sources with a short timeout off the UI path, and preserves currencies

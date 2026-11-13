@@ -349,7 +349,7 @@ struct SettingsView: View {
             linkRow(
                 title: String(localized: "common.icloud_sync"),
                 caption: String(localized: "sync.settings_caption"),
-                value: sync.state.title
+                value: sync.appearance.compact
             ) {
                 onOpenICloud()
             }

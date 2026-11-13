@@ -10249,6 +10249,23 @@
         }
       }
     },
+    "sidebar.icloud_status_hint": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open sync settings"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Открыть настройки синхронизации"
+          }
+        }
+      }
+    },
     "spotlight.balance_dialog %@ %@": {
       "extractionState": "manual",
       "localizations": {
@@ -11014,6 +11031,261 @@
         }
       }
     },
+    "sync.badge_checking": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Checking"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Проверка"
+          }
+        }
+      }
+    },
+    "sync.badge_failed": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Failed"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ошибка"
+          }
+        }
+      }
+    },
+    "sync.badge_off": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Off"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Выключена"
+          }
+        }
+      }
+    },
+    "sync.badge_on": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "On"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Включена"
+          }
+        }
+      }
+    },
+    "sync.badge_unknown": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unknown"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Неизвестно"
+          }
+        }
+      }
+    },
+    "sync.checking": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Checking your iCloud account"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Проверяем аккаунт iCloud"
+          }
+        }
+      }
+    },
+    "sync.compact_checking": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Проверка…"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Проверка…"
+          }
+        }
+      }
+    },
+    "sync.compact_failed": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ошибка подключения"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ошибка подключения"
+          }
+        }
+      }
+    },
+    "sync.compact_no_account": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Вход в iCloud"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Вход в iCloud"
+          }
+        }
+      }
+    },
+    "sync.compact_off": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Выключено"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Выключено"
+          }
+        }
+      }
+    },
+    "sync.compact_on": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Включено"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Включено"
+          }
+        }
+      }
+    },
+    "sync.compact_on_at %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Updated %@"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Изменено в %@"
+          }
+        }
+      }
+    },
+    "sync.compact_restricted": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Доступ ограничен"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Доступ ограничен"
+          }
+        }
+      }
+    },
+    "sync.compact_unknown": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось проверить"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось проверить"
+          }
+        }
+      }
+    },
+    "sync.failed_sentence": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn't connect to iCloud"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось подключиться к iCloud"
+          }
+        }
+      }
+    },
     "sync.icloud_restricted": {
       "extractionState": "manual",
       "localizations": {
@@ -11048,6 +11320,74 @@
         }
       }
     },
+    "sync.last_change %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Last change %@"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Последнее изменение %@"
+          }
+        }
+      }
+    },
+    "sync.last_change_today %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Last change at %@"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Последнее изменение в %@"
+          }
+        }
+      }
+    },
+    "sync.no_account_sentence": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not signed in to iCloud on this Mac"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Нет входа в iCloud на этом Mac"
+          }
+        }
+      }
+    },
+    "sync.no_changes_yet": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No changes yet"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Изменений пока нет"
+          }
+        }
+      }
+    },
     "sync.no_icloud_account": {
       "extractionState": "manual",
       "localizations": {
@@ -11061,6 +11401,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Войдите в iCloud"
+          }
+        }
+      }
+    },
+    "sync.not_configured_sentence": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iCloud sync is off in this build"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Синхронизация iCloud выключена в этой сборке"
           }
         }
       }
@@ -11082,6 +11439,23 @@
         }
       }
     },
+    "sync.open_icloud_settings": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open iCloud Settings"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Открыть настройки iCloud"
+          }
+        }
+      }
+    },
     "sync.ready_to_set_up": {
       "extractionState": "manual",
       "localizations": {
@@ -11099,19 +11473,36 @@
         }
       }
     },
+    "sync.restricted_sentence": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iCloud is restricted by a policy on this Mac"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Доступ к iCloud ограничен политикой этого Mac"
+          }
+        }
+      }
+    },
     "sync.settings_caption": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Kept up to date through your iCloud account"
+            "value": "Sync across your Macs"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Обновляется через ваш аккаунт iCloud"
+            "value": "Синхронизация между вашими Mac"
           }
         }
       }
@@ -11129,6 +11520,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "1. Создать контейнер %1$@ в аккаунте разработчика.\n2. Добавить entitlement из Docs/Montra.entitlements.\n3. Переключить cloudKitDatabase в ModelContainerFactory на .private(…)."
+          }
+        }
+      }
+    },
+    "sync.state_label": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "State"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Состояние"
           }
         }
       }
@@ -11156,13 +11564,47 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Transfers run on their own schedule; the system reports when the ledger last changed."
+            "value": "Synchronization runs on the system's schedule."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Обмен идёт по расписанию системы; приложение показывает, когда книга менялась в последний раз."
+            "value": "Синхронизация выполняется по расписанию системы."
+          }
+        }
+      }
+    },
+    "sync.try_again": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Try again"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Повторить"
+          }
+        }
+      }
+    },
+    "sync.unknown_sentence": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn't check iCloud right now"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось проверить iCloud"
           }
         }
       }
@@ -11180,6 +11622,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Обновлено %@"
+          }
+        }
+      }
+    },
+    "sync.why_icloud": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your ledger stays in your private iCloud. Montra never sees it."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Данные лежат в вашем приватном iCloud — Montra их не видит."
           }
         }
       }

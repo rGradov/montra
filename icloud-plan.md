@@ -50,9 +50,9 @@ about what syncs and what stays per-Mac.
 | B1 | ~~A local Developer ID signing identity~~ **done 2026-11-13** |  **Root cause found.** The team `97S3QGCCV4` has two users: `mainrudenua@gmail.com` is `ACCOUNT_HOLDER` + `ADMIN`, `rudenua.dev@gmail.com` is only `APP_MANAGER`. Every attempt so far used the App Manager: Xcode's Manage Certificates and an App Store Connect API key both answer *"This operation can only be performed by the Account Holder"*. The two `Developer ID Application Managed` certificates are cloud-managed, carry no local private key, and `find-identity` never lists them | `Developer ID Application: Uladzislau Rudzenia (97S3QGCCV4)` is installed, paired with its private key, signs a test binary and verifies non-interactively. Expires 2027-12-13. The CSR lives at `~/Desktop/montra-csr/montra.certSigningRequest`; keep the private key on this Mac |
 | B2 | Real bundle identifier | **Done.** App ID `app.finance.montra` exists as resource `GLZRJPQQU6`, name "montra finance app", platform `UNIVERSAL`, `seedId 97S3QGCCV4`. The project still says `com.example.montra` in `Montra.xcconfig` | Set `app.finance.montra` everywhere, and migrate the `UserDefaults` domain (below) |
 | B3 | ~~Development team~~ **done** | `DEVELOPMENT_TEAM = 97S3QGCCV4` now lives in `Montra.local.xcconfig`, which is gitignored, so each Mac keeps its own team | Nothing |
-| B4 | iCloud container attached to the App ID | The App ID has the iCloud capability, but **zero containers attached**: the generated development profile contains `com.apple.developer.icloud-container-identifiers = []`. The ASC API cannot manage iCloud containers (every path 404s), so this is portal-only | In the portal as the Account Holder: Identifiers → App IDs → `app.finance.montra` → iCloud → Edit → tick `iCloud.app.finance.montra` (create it if the list is empty) → Save, then regenerate the profile |
+| B4 | ~~iCloud container~~ **done** | The container `iCloud.app.finance.montra` is attached to the App ID, and the regenerated profile reports `com.apple.developer.icloud-container-identifiers = ['iCloud.app.finance.montra']` with `aps-environment = development` | Nothing |
 | B5 | ~~Entitlements on the target~~ **done** | `Montra/Montra.entitlements` (Development environment, `aps-environment = development`) for Debug and `Montra/Montra-DeveloperID.entitlements` (Production, `production`) for Release, both wired through `CODE_SIGN_ENTITLEMENTS`. Both are gitignored, matching the repo's existing rule | Nothing |
-| B6 | Provisioning profiles | **Dev side done via API**: the Mac is registered (`C2653XQWXD`, hardware UUID `E59E61C0-556B-52FB-82D7-71499049FA1C`), an `Apple Development` certificate exists for `97S3QGCCV4`, and a `MAC_APP_DEVELOPMENT` profile `Montra Mac Development` is ACTIVE. It is useless until B4 is fixed, because it carries no container. The Developer ID profile for the DMG is still missing | Fix B4, regenerate both profiles, then build |
+| B6 | Provisioning profiles | **Development done**: the Mac is registered twice under the two identifiers Apple uses (hardware UUID and the Apple Silicon provisioning UDID `00008103-001859E821A2001E`; the profile matches only the latter), `Apple Development` cert `666UX7NZA6` exists, and profile `Montra Mac Development` (`J2WBQXS722`) is installed. The Debug build signs with it and passes `-selftest`. A Developer ID profile for the DMG is still missing | Create the Developer ID profile before packaging |
 | B6b | Notarization credentials | `make-dmg.sh --distribute` runs `xcrun notarytool history --keychain-profile montra-notary` first, and no such profile exists in the keychain; there are no App Store Connect API keys either, so notarization would fail even after signing works | `xcrun notarytool store-credentials montra-notary --apple-id <id> --team-id 97S3QGCCV4 --password <app-specific password>` |
 | B7 | CloudKit schema deployed to production | No schema exists yet | Deploy the development schema to production in CloudKit Console **before** shipping the DMG, otherwise release builds see no records |
 | B8 | Container environment entitlement | Absent | `com.apple.developer.icloud-container-environment` (`Production` for the DMG build, `Development` for local builds) |
@@ -331,9 +331,10 @@ have no local artifact; confirm those in the developer portal. A downloaded
 6. Keep the current behavior: the container stays `.none`, so the app still
    works offline and stores nothing in iCloud.
 
-Exit criteria: `codesign -d --entitlements -` shows the iCloud and push keys in a
-Debug build and in a `--distribute` build, and `-selftest` still passes without
-an iCloud account.
+Exit criteria: **met for Debug on 2026-11-13.** `codesign -d --entitlements :-`
+reports `97S3QGCCV4.app.finance.montra`, `iCloud.app.finance.montra`, `CloudKit`,
+`com.apple.developer.aps-environment = development`, and the build prints
+`ALL CHECKS PASSED`. The Developer ID half waits for its profile.
 
 ### Phase 2a: Container, inverse, honest status (revertible, no user switch)
 

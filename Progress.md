@@ -473,5 +473,30 @@ Local API / MCP remains a macOS feature; nothing is needed for it on iOS.
   fixtures use `.now`, so after midnight the committed baseline no longer
   matches. Compare fresh before/after pairs from the same worktree and verify
   layout, not clock text.
-- Next: merge the two builder branches, then functional / code / App Store
-  critics.
+- Builder B merged into `codex/ios-liquid-glass` (merge commit `23e2352`,
+  source `6c59991`): onboarding adaptation, shared-header wrapping, content
+  screen fixes, all nine sheets flexible on iOS, iOS Analytics popup dismissal,
+  context menus, `common.duplicate` localization. macOS snapshot diff was
+  limited to demo clock text and one sparkle phase before the merge.
+- Builder A still running. `SettingsView` findings and the sheet-detent
+  contract were relayed to it.
+- Merged branch verified: macOS build, `-selftest` 182/ALL CHECKS PASSED, iPhone
+  build, audit 6 passed / 0 failures (DMG-freshness warning only).
+- Privacy manifest now declares UserDefaults (`CA92.1`) and file metadata
+  (`C617.1`) — the two required-reason categories the app actually uses.
+- Pending App Store prep after the shell merge: a tracked iOS entitlements file
+  without the unused `aps-environment`; iCloud/CloudKit capability for the
+  universal App ID; final DMG signing strategy.
+- Builder A merged (merge `298f067`, source `6c79112`): native iPhone TabView,
+  custom iPad Liquid Glass bottom bar, per-tab NavigationStacks, About sheet,
+  Settings iOS pass, central BottomSheetHost, iPad multi-window and commands,
+  QA fixtures mirroring the macOS snapshot data, 5 new localization keys.
+- Integration verified on the merged branch: macOS build + `-selftest` 182,
+  iPhone/iPad builds, audit 6/0. Builder A's two P0 concerns (fixed-width
+  sheets and phone overflow) were artifacts of its pre-merge worktree; after
+  the merge, Periods/New Account/About/Settings render correctly on iPhone and
+  iPad, and Overview fits with no clipping.
+- Evidence captured for integration: `build/check/iphone-{overview,settings,
+  periods,newaccount,about,onboarding}.png`, `build/check/ipad-{overview,
+  settings,periods,about}.png` (ignored).
+- Next: functional / code / App Store critics.

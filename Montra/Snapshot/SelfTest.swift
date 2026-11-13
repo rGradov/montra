@@ -1356,8 +1356,9 @@ enum SelfTest {
               "остальные состояния не выдают себя за подключённые")
 
         // The compact form is the row under the sidebar list, so it must stay
-        // one short line; the label it replaced is the measured budget.
-        let sidebarLabelBudget = max(String(localized: "sidebar.icloud_not_connected").count, 12)
+        // one short line. 20 characters is what the 172 pt card fits at 12 pt
+        // Onest before it wraps; measured when the row was introduced.
+        let sidebarLabelBudget = 20
         check(syncAppearances.allSatisfy {
             $0.1.compact.count < 30 && !$0.1.compact.contains("\n") && $0.1.compact.count <= sidebarLabelBudget
         }, "короткая подпись iCloud влезает в строку сайдбара")

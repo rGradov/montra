@@ -505,6 +505,22 @@ change:
     never rename, never retype, never delete a record type. Write this into
     `Docs/iCloud-Setup.md` so it is read before the next model change.
 
+## 5b. Delivery status (2026-11-13)
+
+| Step | State |
+|---|---|
+| Phase 0 prerequisites | Done: App ID, container, capabilities, certificates, both profiles, notary credentials |
+| Phase 1 signing | Done: Debug and Developer ID builds carry iCloud + push entitlements |
+| Phase 2a mirroring | Done: `.private(container)` for the persistent store, inverses added, live status in sidebar/Settings/sheet |
+| Phase 2b switch/onboarding | **Not done**: sync is always on for the persistent store; there is no user switch, no first-run choice, and the second-Mac onboarding gate is still a risk |
+| Phase 3 settings sync | Not done by design: settings stay per-Mac, documented |
+| Localization | Done: `ru` and `en`, 654 call sites resolve |
+| Backup / API / MCP | No new persisted field or action, so no payload change; audit confirms |
+| `-selftest` | 218 checks, `ALL CHECKS PASSED` |
+| `audit-feature-sync --require-dmg` | 7 passed, 0 failures |
+| DMG | Built and signed with the Developer ID profile, Production entitlements verified inside the image; notarization accepted by Apple not yet confirmed |
+| CloudKit production schema | **Not deployed**: CloudKit creates schema in development only, and `cktool` needs a management token from CloudKit Console, so this is a portal action |
+
 ## 6. Sync risks that the code does not handle yet
 
 | Risk | Symptom | Mitigation |

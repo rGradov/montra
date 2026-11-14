@@ -573,4 +573,10 @@ Local API / MCP remains a macOS feature; nothing is needed for it on iOS.
   iPad Split View/Slide Over screenshot; Release/Archive + notarized DMG were
   not produced (local DMG is ad-hoc); `Montra/Montra.entitlements` remains local
   and git-ignored for macOS signing.
-- Next: PR/local PR description and the final report.
+- Branch pushed to `origin/codex/ios-liquid-glass`. GitHub PR creation link:
+  https://github.com/rGradov/montra/pull/new/codex/ios-liquid-glass
+  (base `codex/new-operation-sheet`). `gh` is not installed, so the PR body is
+  prepared in `Docs/PR-ios-liquid-glass.md`; open the link and paste it.
+- Final QA DMG: `build/Montra-1.0-ios-liquid-glass.dmg`, 12.2 MB, ad-hoc signed
+  (local QA only, not notarized). Audit with `--require-dmg`: 7/7.
+- Final report: see the chat summary and `Docs/PR-ios-liquid-glass.md`.

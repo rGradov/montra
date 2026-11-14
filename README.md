@@ -212,6 +212,31 @@ xcrun simctl launch booted app.finance.montra
 `CODE_SIGNING_ALLOWED=NO` is for local simulator builds without a provisioning
 profile. Device and App Store builds use normal signing.
 
+### TestFlight
+
+A TestFlight build needs distribution signing, which is not part of a normal
+simulator build. One-time setup:
+
+1. Xcode → **Settings → Accounts**: add the Apple ID for team `97S3QGCCV4`.
+2. Developer portal → **Identifiers** → `app.finance.montra`: enable iOS and
+   iCloud/CloudKit with the container `iCloud.app.finance.montra`. A universal
+   App Store record is needed too.
+3. Let Xcode create/download an **Apple Distribution** certificate and an
+   **App Store** provisioning profile (Automatic signing).
+
+Then:
+
+```bash
+Scripts/make-testflight.sh
+# or, for a second upload:
+BUILD_NUMBER=2 Scripts/make-testflight.sh
+```
+
+The script archives Release for generic iOS, exports `build/TestFlight/Montra.ipa`
+and prints the Transporter steps. It stops with the exact provisioning error when
+the account or the iCloud capability is missing. The local ad-hoc DMG from
+`Scripts/make-dmg.sh` is a separate, non-TestFlight artifact.
+
 ## App language
 
 Montra supports English and Russian and follows the system language on every

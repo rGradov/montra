@@ -580,3 +580,26 @@ Local API / MCP remains a macOS feature; nothing is needed for it on iOS.
 - Final QA DMG: `build/Montra-1.0-ios-liquid-glass.dmg`, 12.2 MB, ad-hoc signed
   (local QA only, not notarized). Audit with `--require-dmg`: 7/7.
 - Final report: see the chat summary and `Docs/PR-ios-liquid-glass.md`.
+
+### 2026-11-14 — TestFlight attempt
+
+- Release iOS build for `generic/platform=iOS` with signing disabled:
+  **BUILD SUCCEEDED** — the Release code path is healthy.
+- App Store archive failed at signing:
+  - `No Accounts` — Xcode CLI has no signed-in Apple ID.
+  - `iOS Team Provisioning Profile: *` does not include the installed Apple
+    Development certificate, iCloud capability, or the
+    `iCloud.app.finance.montra` container.
+  - There is no **Apple Distribution** identity and no iOS App Store profile;
+    only macOS Developer ID/Mac profiles and a wildcard iOS development profile
+    exist.
+- Prepared `Scripts/make-testflight.sh` (Release archive, `-allowProvisioningUpdates`,
+  `app-store-connect` export, actionable errors) and documented the one-time
+  steps in `README.md`. No IPA was produced because the certificate/profile/
+  account are user-side portal work.
+- Once the account is signed in and the App ID has iOS + iCloud/CloudKit, run
+  `Scripts/make-testflight.sh` (or ask the main agent to run it) to produce
+  `build/TestFlight/Montra.ipa` for Transporter. Bump `BUILD_NUMBER` per upload.
+- Fallback if enabling iCloud for iOS is blocked: a TestFlight beta can be built
+  without the iOS iCloud entitlement (sync is off anyway), but it still needs
+  the Apple Distribution certificate, App Store profile and account.

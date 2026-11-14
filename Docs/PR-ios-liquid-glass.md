@@ -62,7 +62,7 @@ Base branch: `codex/new-operation-sheet` · Head branch: `codex/ios-liquid-glass
   CSV, settings, onboarding launch rules).
 - Synchronization audit: `python3 Scripts/audit-feature-sync.py --require-dmg`
   → **7 passed, 0 failures**.
-- Local QA DMG: `build/Montra-1.0-ui-feedback.dmg` (12.2 MB, ad-hoc signed;
+- Local QA DMG: `build/Montra-1.0-onboarding-cleanup.dmg` (12.2 MB, ad-hoc signed;
   not notarized and not for distribution).
 - Evidence script: `Scripts/ios-port-evidence.sh` renders the comparison set
   above; raw captures are in `build/evidence-raw/`.
@@ -142,7 +142,8 @@ User review of the first iPhone sheets and iPad bar:
 Verification for this follow-up: iOS build and iPhone/iPad captures; iOS
 `-iostest` **ALL IOS CHECKS PASSED**; macOS build + `-selftest` **182**; audit
 `--require-dmg` **7 passed, 0 failures**; DMG
-`build/Montra-1.0-ui-feedback.dmg` (12.2 MB, ad-hoc QA only).
+`build/Montra-1.0-onboarding-cleanup.dmg` (12.2 MB, ad-hoc QA only; includes
+the sheet, Analytics and intro changes).
 
 Xcode's automatic string extraction is disabled (`SWIFT_EMIT_LOC_STRINGS = NO`)
 so archives no longer rewrite the manual catalog; the UI change adds no new

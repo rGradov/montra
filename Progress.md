@@ -665,3 +665,5 @@ User feedback on the iPhone sheets, Analytics calendar and iPad bar.
 - Verification: iOS build, iPhone intro capture (no controls), macOS build +
   `-selftest` 182, iOS `-iostest` ALL IOS CHECKS PASSED.
 - Evidence: `Docs/screenshots/ios-port/feedback-onboarding-intro.png`.
+- DMG: `build/Montra-1.0-onboarding-cleanup.dmg` (12.2 MB, ad-hoc local
+  sign); audit `--require-dmg`: **7 passed, 0 failures**.

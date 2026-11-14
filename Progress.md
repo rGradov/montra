@@ -499,4 +499,18 @@ Local API / MCP remains a macOS feature; nothing is needed for it on iOS.
 - Evidence captured for integration: `build/check/iphone-{overview,settings,
   periods,newaccount,about,onboarding}.png`, `build/check/ipad-{overview,
   settings,periods,about}.png` (ignored).
-- Next: functional / code / App Store critics.
+- Three independent critics launched in parallel on the merged branch:
+  functional (simulator matrix + macOS regression), code review (full diff
+  `bf7550f..HEAD`), App Store/HIG (bundle, privacy, entitlements, custom iPad
+  bar, review guidelines). Reports will be `Docs/iOS-Functional-Critic-Report.md`,
+  `Docs/iOS-Code-Review.md`, `Docs/iOS-AppStore-Review.md`.
+- **Incident 2026-11-14:** the parallel critic phase ran the machine out of
+  memory/CPU and macOS rebooted (uptime 3 min at 11:09; load average 103 from
+  system startup). All three critic subagents ended inactive and wrote no
+  reports. Build artifacts survived (`build/DerivedData-final`,
+  `build/DerivedData-final-ios`, `build/check`).
+- Recovery plan: run the critics **sequentially, static-only** (no Xcode
+  builds, no simultaneous simulators), then one light simulator pass, then the
+  fixes, evidence, DMG and PR. Do not run parallel xcodebuild/simctl jobs.
+- Next after the reports: fix P0/P1 findings, final comparison screenshots,
+  DMG, README/PR.

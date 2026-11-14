@@ -227,6 +227,7 @@ struct GlyphAppearancePicker: View {
                 onSelect: choose,
                 onClose: { isPickerPresented = false }
             )
+            .montraPopoverContent()
         }
     }
 }

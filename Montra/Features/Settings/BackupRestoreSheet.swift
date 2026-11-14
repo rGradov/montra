@@ -271,7 +271,7 @@ struct BackupRestoreSheet: View {
             )
             #if os(iOS)
             exportDocument = BackupFile.document(for: backup)
-            exportFileName = "Montra-\(currentStamp())-before-restore"
+            exportFileName = "Montra-\(currentStamp())-before-restore.\(BackupFile.fileExtension)"
             isExporting = true
             #else
             if let url = try BackupFile.export(backup, suggestedName: "Montra-\(currentStamp())-before-restore.\(BackupFile.fileExtension)") {

@@ -74,39 +74,15 @@ private struct SheetContentFrame: ViewModifier {
             content.frame(width: macWidth)
         }
         #else
-        // `maxWidth: .infinity` alone lets the content report its widest child's
-        // ideal width, which can be wider than a phone: the sheet then lays the
-        // form out past both screen edges and the first and last characters of
-        // every row are cut. A phone sheet is always exactly the screen wide, so
-        // the content is given that width; an iPad sheet keeps the flexible
-        // width the shell's presentation sizing asks for.
-        if let phoneWidth = SheetContentFrame.phoneWidth {
-            content
-                .frame(width: phoneWidth)
-                .frame(maxHeight: .infinity)
-        } else {
-            content.frame(maxWidth: .infinity, maxHeight: .infinity)
-        }
+        // The sheet's own container decides the width: that is the presented
+        // sheet on iPhone, the form-sheet card on iPad, and a narrow column in
+        // Split View. Reading the screen here would ignore all three.
+        content
+            .containerRelativeFrame(.horizontal)
+            .frame(maxHeight: .infinity)
         #endif
     }
 }
-
-#if os(iOS)
-extension SheetContentFrame {
-    /// The screen width on an iPhone; nil on iPad. Read from the active window
-    /// scene so a rotating phone picks up the new width on the next layout pass.
-    @MainActor
-    static var phoneWidth: CGFloat? {
-        guard AppPlatform.isPhone else { return nil }
-        let scene = UIApplication.shared.connectedScenes
-            .compactMap { $0 as? UIWindowScene }
-            .first { $0.activationState == .foregroundActive }
-            ?? UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first
-        let width = scene?.screen.bounds.width ?? 0
-        return width > 1 ? width : nil
-    }
-}
-#endif
 
 extension View {
     /// The sheet's size: fixed on the Mac, filling the presented sheet on iOS.
@@ -266,7 +242,7 @@ struct PopoverMenu<Option: Hashable, Label: View>: View {
         .buttonStyle(.plain)
         .pointingHandOnHover()
         .popover(isPresented: $isPresented, arrowEdge: .bottom) {
-            menuContent
+            menuContent.montraPopoverContent()
         }
     }
 
@@ -366,6 +342,7 @@ struct DatePickerField: View {
             MontraDateTimePicker(date: $date, showsTime: showsTime, range: range)
                 .padding(AppStyle.Spacing.small)
                 .background(AppColors.surfaceBase)
+                .montraPopoverContent()
         }
     }
 }

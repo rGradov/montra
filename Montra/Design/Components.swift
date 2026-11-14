@@ -870,6 +870,7 @@ struct InfoButton: View {
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(AppStyle.Spacing.medium)
                 .frame(width: 260, alignment: .leading)
+                .montraPopoverContent()
         }
     }
 }

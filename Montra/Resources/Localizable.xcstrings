@@ -4814,23 +4814,6 @@
         }
       }
     },
-    "common.duplicate": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Duplicate"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Дублировать"
-          }
-        }
-      }
-    },
     "common.edit": {
       "extractionState": "manual",
       "localizations": {

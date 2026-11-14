@@ -512,5 +512,35 @@ Local API / MCP remains a macOS feature; nothing is needed for it on iOS.
 - Recovery plan: run the critics **sequentially, static-only** (no Xcode
   builds, no simultaneous simulators), then one light simulator pass, then the
   fixes, evidence, DMG and PR. Do not run parallel xcodebuild/simctl jobs.
-- Next after the reports: fix P0/P1 findings, final comparison screenshots,
+### 2026-11-14 — code review and fixes
+
+- Independent static code review: `Docs/iOS-Code-Review.md`. Verdict was
+  "not merge-ready": 3 P0, 6 P1, 8 P2. Findings were behavioral and
+  verification gaps, not crash/data-loss paths.
+- Fixed:
+  - P0-2: all six popovers now use `montraPopoverContent()`
+    (`.presentationCompactAdaptation(.popover)`), so pickers inside New
+    Operation/onboarding stay anchored instead of stacking sheets on iPhone.
+  - P0-1: the shell chooses the native phone tab bar when the *window* is
+    compact (iPad Slide Over / Stage Manager / narrow Split View), not by device
+    idiom; Overview's share hides by size class; onboarding gutters follow the
+    window width.
+  - P1-1: sheet width comes from `containerRelativeFrame(.horizontal)` instead
+    of `UIScreen`.
+  - P1-3: root and pushed headers are isolated (only the visible page forwards;
+    publishing moved out of the view-update pass).
+  - P1-4: the iOS save-before-restore file gets the `.montra` extension.
+  - P1-5: the "Duplicate operation" feature was removed — it was a new feature,
+    not a port, and would have required the full release pass.
+  - P0-3 (partial): added a Debug-only `-iostest` that runs the money, period,
+    transfer, archive, CSV, settings and onboarding-launch checks on iOS.
+    Verified on the iPhone simulator: **ALL IOS CHECKS PASSED**. A UI-test
+    target is still the remaining verification gap.
+- Verified after fixes: iOS build green, iPhone New Account sheet fills the
+  sheet without clipping, iPhone Periods unchanged, iPad regular-width shell
+  and glass bar unchanged, macOS build + `-selftest` 182/ALL CHECKS PASSED.
+- Still unverified by automation: tap-level behaviour (tab re-tap, popover
+  appearance, header pop, sheet dismissal, file pickers). Needs the functional
+  simulator pass or a UI-test target.
+- Next: App Store/HIG critic (static), functional pass, comparison screenshots,
   DMG, README/PR.

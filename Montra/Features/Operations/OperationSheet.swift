@@ -689,6 +689,7 @@ struct OperationSheet: View {
                 .pointingHandOnHover()
                 .popover(isPresented: $isCategoryPickerPresented, arrowEdge: .bottom) {
                     CategoryPickerPopover(categories: availableCategories, selection: $categoryID)
+                        .montraPopoverContent()
                 }
                 .accessibilityLabel(String(localized: "common.all_categories"))
             }

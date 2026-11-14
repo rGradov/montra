@@ -518,6 +518,8 @@ struct OverviewView: View {
 // MARK: - Rows
 
 private struct AccountOverviewRow: View {
+    @Environment(\.horizontalSizeClass) private var sizeClass
+
     let account: Account
     let share: Double?
     let converted: Decimal?
@@ -552,7 +554,7 @@ private struct AccountOverviewRow: View {
                     // A phone row cannot hold the share, the balance and the
                     // account's metadata on one line; the share is the one figure
                     // Analytics also shows, so it is the one that makes way.
-                    if let share, !AppPlatform.isPhone {
+                    if let share, sizeClass != .compact {
                         Text(Finance.shareText(share))
                             .font(AppStyle.Typography.metadata.numbers)
                             .foregroundStyle(AppColors.textTertiary)

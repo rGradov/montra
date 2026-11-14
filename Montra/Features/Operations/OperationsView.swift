@@ -817,27 +817,7 @@ struct OperationsView: View {
             masked: settings.hideBalances,
             onToggle: { toggle(operation) },
             onEdit: { onEditOperation(operation) },
-            onDuplicate: { duplicate(operation) },
             onDelete: { requestDelete([operation]) }
-        )
-    }
-
-    /// A copy of an operation, saved at once. The new row lands next to the
-    /// original (the list is date-sorted) and the usual new-row highlight makes
-    /// the copy obvious. A transfer leg is never duplicated: the pair would
-    /// disagree with the accounts.
-    private func duplicate(_ operation: Operation) {
-        guard !operation.isTransfer, let account = operation.account else { return }
-        _ = OperationRepository(context: context).create(
-            kind: operation.kind,
-            amount: operation.amount,
-            account: account,
-            category: operation.category,
-            date: operation.date,
-            place: operation.place,
-            latitude: operation.latitude,
-            longitude: operation.longitude,
-            note: operation.note
         )
     }
 
@@ -882,7 +862,6 @@ struct OperationListRow: View {
     let masked: Bool
     let onToggle: () -> Void
     let onEdit: () -> Void
-    var onDuplicate: (() -> Void)?
     let onDelete: () -> Void
 
     @State private var isHovering = false
@@ -959,11 +938,6 @@ struct OperationListRow: View {
         .animation(AppMotion.highlight, value: isNew)
         .contextMenu {
             Button(operation.isTransfer ? String(localized: "common.open_transfer") : String(localized: "common.edit_2"), action: onEdit)
-            if !operation.isTransfer, let onDuplicate {
-                Button(action: onDuplicate) {
-                    Label(String(localized: "common.duplicate"), systemImage: "plus.square.on.square")
-                }
-            }
             Divider()
             Button(String(localized: "common.delete"), role: .destructive, action: onDelete)
         }

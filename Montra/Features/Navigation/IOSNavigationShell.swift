@@ -26,15 +26,19 @@ final class TabHeaderStore: ObservableObject {
 private struct DockedHeader: View {
     let source: DetailHeaderHost
     let showsBack: Bool
+    /// Only the header of the visible page forwards. A tab root stops listening
+    /// while a page is pushed, so it keeps its own title for the pop; the pushed
+    /// page is the only one that follows the screen's later header changes.
+    let isActive: Bool
 
-    /// The header draws from its own host: a pushed page's title must not leak
-    /// back into the tab root's header when the page is popped.
     @StateObject private var display = DetailHeaderHost()
 
     var body: some View {
         SharedDetailHeader(host: display)
-            .onAppear { forward(source.config) }
-            .onReceive(source.$config) { forward($0) }
+            .onAppear { if isActive { forward(source.config) } }
+            .onReceive(source.$config) { config in
+                if isActive { forward(config) }
+            }
     }
 
     private func forward(_ config: DetailHeaderConfig) {
@@ -43,7 +47,9 @@ private struct DockedHeader: View {
             next.backTitle = nil
             next.onBack = nil
         }
-        display.config = next
+        // `onReceive` can land during a view update; publishing the header from
+        // there would push another update in the same pass.
+        DispatchQueue.main.async { display.config = next }
     }
 }
 
@@ -64,6 +70,9 @@ struct IOSNavigationShell: View {
     /// screen keeps its scroll position and its own stack.
     @State private var visitedTabs: Set<AppTab>
     @Environment(\.openWindow) private var openWindow
+    /// Split View / Slide Over / Stage Manager can put any iPad in a compact
+    /// window. The shell must follow the window, not the device.
+    @Environment(\.horizontalSizeClass) private var sizeClass
 
     init(
         app: AppModel,
@@ -78,10 +87,10 @@ struct IOSNavigationShell: View {
 
     var body: some View {
         Group {
-            if AppPlatform.isPad {
-                padShell
-            } else {
+            if AppPlatform.isPhone || sizeClass == .compact {
                 phoneShell
+            } else {
+                padShell
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -173,9 +182,10 @@ struct IOSNavigationShell: View {
 
     private func tabStack(_ tab: AppTab) -> some View {
         let header = headers.host(for: tab)
+        let path = app.path(for: tab)
         return NavigationStack(path: pathBinding(tab)) {
             VStack(spacing: 0) {
-                DockedHeader(source: header, showsBack: false)
+                DockedHeader(source: header, showsBack: false, isActive: path.isEmpty)
                 rootContent(tab)
                     .environmentObject(header)
             }
@@ -184,7 +194,11 @@ struct IOSNavigationShell: View {
             .toolbar(.hidden, for: .navigationBar)
             .navigationDestination(for: Route.self) { route in
                 VStack(spacing: 0) {
-                    DockedHeader(source: header, showsBack: true)
+                    DockedHeader(
+                        source: header,
+                        showsBack: true,
+                        isActive: app.path(for: tab).last == route
+                    )
                     destinationContent(route)
                         .environmentObject(header)
                 }

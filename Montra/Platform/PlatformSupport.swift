@@ -146,6 +146,19 @@ extension View {
         #endif
     }
 
+    /// On iPhone a `.popover` adapts to a sheet by default. Inside a form sheet
+    /// (New Operation, onboarding) that stacks a second modal over the form, so
+    /// the app asks for a real anchored popover at compact width. iPad keeps its
+    /// native popover either way.
+    @ViewBuilder
+    func montraPopoverContent() -> some View {
+        #if os(iOS)
+        self.presentationCompactAdaptation(.popover)
+        #else
+        self
+        #endif
+    }
+
     /// Escape handling is a hardware-keyboard affordance. On iOS `onExitCommand`
     /// does not exist; dismissing a field happens through the keyboard/toolbar.
     @ViewBuilder

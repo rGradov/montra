@@ -20,6 +20,8 @@ struct MontraApp: App {
         #if os(macOS)
         if SelfTest.runIfRequested() { exit(0) }
         if OnboardingIntroSnapshot.renderIfRequested() { exit(0) }
+        #else
+        if let code = IOSSelfTest.runIfRequested() { exit(code) }
         #endif
 
         // `-preview-onboarding` runs the welcome flow on a throwaway store, so it

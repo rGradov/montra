@@ -121,6 +121,7 @@ struct OnboardingFlowView: View {
     @EnvironmentObject private var settings: SettingsStore
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.welcomeArtworkWaitsForMori) private var welcomeArtworkWaitsForMori
+    @Environment(\.horizontalSizeClass) private var sizeClass
     @Query(sort: [SortDescriptor(\Category.sortIndex, order: .forward)]) private var categories: [Category]
 
     let onFinish: () -> Void
@@ -192,6 +193,25 @@ struct OnboardingFlowView: View {
         createdAccount != nil && expenseAmount != nil && categoryID != nil
     }
 
+    /// The Mac keeps the reference's 48/40 gutters. A compact window (an iPhone,
+    /// or an iPad in Slide Over) gets the phone's 24/28 so the column, buttons
+    /// and forms always fit.
+    private var horizontalPadding: CGFloat {
+        #if os(macOS)
+        OnboardingLayout.horizontalPadding
+        #else
+        sizeClass == .compact ? 24 : 48
+        #endif
+    }
+
+    private var verticalPadding: CGFloat {
+        #if os(macOS)
+        OnboardingLayout.verticalPadding
+        #else
+        sizeClass == .compact ? 28 : 40
+        #endif
+    }
+
     private var displayCurrency: Currency {
         createdAccount?.currency ?? currency
     }
@@ -220,13 +240,13 @@ struct OnboardingFlowView: View {
                 .id(step)
                 .transition(OnboardingTransitions.step(reduceMotion: reduceMotion))
                 .frame(maxWidth: OnboardingLayout.contentMaxWidth, maxHeight: .infinity)
-                .padding(.horizontal, OnboardingLayout.horizontalPadding)
-                .padding(.top, OnboardingLayout.verticalPadding)
+                .padding(.horizontal, horizontalPadding)
+                .padding(.top, verticalPadding)
 
             footer
-                .padding(.horizontal, OnboardingLayout.horizontalPadding)
+                .padding(.horizontal, horizontalPadding)
                 .padding(.top, AppStyle.Spacing.medium)
-                .padding(.bottom, OnboardingLayout.verticalPadding)
+                .padding(.bottom, verticalPadding)
         }
     }
 
@@ -246,17 +266,17 @@ struct OnboardingFlowView: View {
                             minHeight: max(0, proxy.size.height - footerHeight),
                             alignment: .center
                         )
-                        .padding(.horizontal, OnboardingLayout.horizontalPadding)
-                        .padding(.top, OnboardingLayout.verticalPadding)
+                        .padding(.horizontal, horizontalPadding)
+                        .padding(.top, verticalPadding)
                         .padding(.bottom, AppStyle.Spacing.medium)
                 }
                 .scrollDismissesKeyboard(.interactively)
                 .scrollBounceBehavior(.basedOnSize)
 
                 footer
-                    .padding(.horizontal, OnboardingLayout.horizontalPadding)
+                    .padding(.horizontal, horizontalPadding)
                     .padding(.top, AppStyle.Spacing.medium)
-                    .padding(.bottom, OnboardingLayout.verticalPadding)
+                    .padding(.bottom, verticalPadding)
                     .background {
                         GeometryReader { footerProxy in
                             Color.clear
@@ -373,6 +393,7 @@ struct OnboardingFlowView: View {
                         .accessibilityLabel(String(localized: "onboarding.account_icon_and_color"))
                         .popover(isPresented: $showsStylePicker, arrowEdge: .bottom) {
                             OnboardingAccountStylePicker(icon: $accountIcon, color: $accountColor)
+                                .montraPopoverContent()
                         }
 
                         MontraTextField(placeholder: String(localized: "onboarding.for_example_cash"), text: $accountName)

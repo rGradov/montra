@@ -165,10 +165,16 @@ struct AccountSheet: View {
                 Text(String(localized: "account.hide_from_overview"))
                     .font(AppStyle.Typography.body)
                     .foregroundStyle(AppColors.textPrimary)
-                Text(String(localized: "account.stays_in_the_sidebar"))
-                    .font(AppStyle.Typography.metadata)
-                    .foregroundStyle(AppColors.textSecondary)
-                    .modifier(SheetCaptionStyle(scalesToFit: true))
+                Group {
+                    #if os(iOS)
+                    Text(String(localized: "account.stays_out_of_overview"))
+                    #else
+                    Text(String(localized: "account.stays_in_the_sidebar"))
+                    #endif
+                }
+                .font(AppStyle.Typography.metadata)
+                .foregroundStyle(AppColors.textSecondary)
+                .modifier(SheetCaptionStyle(scalesToFit: true))
             }
 
             Spacer(minLength: AppStyle.Spacing.xSmall)

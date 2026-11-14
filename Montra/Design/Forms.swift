@@ -143,7 +143,7 @@ struct MontraTextField: View {
     @Binding var text: String
     var axis: Axis = .horizontal
     var lineLimit: ClosedRange<Int> = 1...1
-    var height: CGFloat = 32
+    var height: CGFloat = AppPlatform.isMac ? 32 : 44
     var font: AppStyle.TextStyle = AppStyle.Typography.body
 
     @FocusState private var isFocused: Bool
@@ -265,7 +265,7 @@ struct PopoverMenu<Option: Hashable, Label: View>: View {
                     }
                     .foregroundStyle(AppColors.textPrimary)
                     .padding(.horizontal, AppStyle.Spacing.xSmall)
-                    .frame(height: 24)
+                    .frame(height: AppPlatform.isMac ? 24 : 44)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .background(
                         hovered == option ? AppColors.fillSecondary : .clear,
@@ -325,7 +325,7 @@ struct DatePickerField: View {
                     .foregroundStyle(AppColors.textSecondary)
             }
             .padding(.horizontal, AppStyle.Spacing.small)
-            .frame(height: 32)
+            .frame(height: AppPlatform.isMac ? 32 : 44)
             .background(
                 AppColors.surfaceRaised,
                 in: RoundedRectangle(cornerRadius: AppStyle.Radius.md, style: .continuous)
@@ -546,7 +546,7 @@ private struct StepButton: View {
         Button(action: action) {
             Image(systemName: symbol)
                 .font(.system(size: 10, weight: .semibold))
-                .frame(width: 28, height: AppStyle.Control.height)
+                .frame(width: AppPlatform.isMac ? 28 : 44, height: AppStyle.Control.height)
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

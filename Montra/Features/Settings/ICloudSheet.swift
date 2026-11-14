@@ -21,6 +21,7 @@ struct ICloudSheet: View {
                         valueRow(title: String(localized: "common.storage"), value: String(localized: "common.swiftdata"))
                     }
 
+                    #if os(macOS)
                     VStack(alignment: .leading, spacing: AppStyle.Spacing.xSmall) {
                         Text(String(localized: "common.whats_ready"))
                             .font(AppStyle.Typography.metadataEmphasis)
@@ -37,7 +38,9 @@ struct ICloudSheet: View {
                             bullet(String(localized: "sync.app_settings_are_stored_separately"))
                         }
                     }
+                    #endif
 
+                    #if os(macOS)
                     VStack(alignment: .leading, spacing: AppStyle.Spacing.xxSmall) {
                         Text(String(localized: "sync.to_enable_sync"))
                             .font(AppStyle.Typography.callout.weight(.semibold))
@@ -47,6 +50,13 @@ struct ICloudSheet: View {
                             .fixedSize(horizontal: false, vertical: true)
                     }
                     .padding(.top, AppStyle.Spacing.xxSmall)
+                    #else
+                    Text(String(localized: "sync.not_connected_user_explanation"))
+                        .font(AppStyle.Typography.callout)
+                        .foregroundStyle(AppColors.textSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.top, AppStyle.Spacing.xxSmall)
+                    #endif
                 }
                 .padding(.horizontal, AppStyle.Spacing.large)
                 .padding(.bottom, AppStyle.Spacing.medium)
@@ -71,9 +81,15 @@ struct ICloudSheet: View {
             VStack(alignment: .leading, spacing: AppStyle.Spacing.xxxSmall) {
                 Text(String(localized: "common.icloud"))
                     .font(AppStyle.Typography.headline)
-                Text(String(localized: "sync.your_data_stays_on_this"))
-                    .font(AppStyle.Typography.callout)
-                    .foregroundStyle(AppColors.textSecondary)
+                Group {
+                    #if os(iOS)
+                    Text(String(localized: "sync.your_data_stays_on_this_device"))
+                    #else
+                    Text(String(localized: "sync.your_data_stays_on_this"))
+                    #endif
+                }
+                .font(AppStyle.Typography.callout)
+                .foregroundStyle(AppColors.textSecondary)
             }
             Spacer(minLength: AppStyle.Spacing.small)
             AppBadge(text: String(localized: "common.not_connected"), tone: .warning)

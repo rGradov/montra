@@ -103,7 +103,12 @@ enum AppStyle {
     }
 
     enum Control {
+        #if os(iOS)
+        /// Touch-first controls. The Mac keeps its 28 pt desktop density.
+        static let height: CGFloat = 44
+        #else
         static let height: CGFloat = 28
+        #endif
     }
 
     enum Spacing {

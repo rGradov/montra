@@ -36,7 +36,9 @@ struct BottomSheetHost<Content: View>: View {
              .newCategory, .editCategory,
              .about:
             [.large]
-        case .transferDetails, .planActions, .periods, .iCloud:
+        case .periods, .iCloud:
+            [.large]
+        case .transferDetails, .planActions:
             [.medium, .large]
         }
     }

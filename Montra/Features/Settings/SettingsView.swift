@@ -794,13 +794,13 @@ private struct AppearanceOptionButton: View {
         Group {
             switch appearance {
             case .dark:
-                MiniWindow(isDark: true)
+                preview(isDark: true)
             case .light:
-                MiniWindow(isDark: false)
+                preview(isDark: false)
             case .auto:
                 ZStack {
-                    MiniWindow(isDark: true)
-                    MiniWindow(isDark: false)
+                    preview(isDark: true)
+                    preview(isDark: false)
                         .mask {
                             GeometryReader { geometry in
                                 HStack(spacing: 0) {
@@ -814,6 +814,63 @@ private struct AppearanceOptionButton: View {
         }
         .frame(width: 64, height: 44)
         .clipShape(shape)
+    }
+
+    @ViewBuilder
+    private func preview(isDark: Bool) -> some View {
+        #if os(iOS)
+        IOSMiniWindow(isDark: isDark)
+        #else
+        MiniWindow(isDark: isDark)
+        #endif
+    }
+}
+
+/// The iOS equivalent of `MiniWindow`: an app surface with a title and two
+/// cards, with no desktop sidebar or traffic lights. The Mac keeps its window
+/// sketch so the existing macOS screenshots do not change.
+private struct IOSMiniWindow: View {
+    let isDark: Bool
+
+    private var background: Color { isDark ? Color(hex: 0x171615) : Color(hex: 0xF6F5F3) }
+    private var card: Color { isDark ? Color(hex: 0x2B2A28) : Color(hex: 0xEFEDEA) }
+    private var cardBorder: Color { isDark ? Color(hex: 0x353330) : Color(hex: 0xE2DFDA) }
+    private var ink: Color { isDark ? Color(hex: 0xECEAE6) : Color(hex: 0x2E2D2B) }
+    private let tile = Color(hex: 0x3A94D0)
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Capsule()
+                .fill(ink.opacity(0.35))
+                .frame(width: 18, height: 2)
+            cardRow(filled: true)
+            cardRow(filled: false)
+        }
+        .padding(5)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .background(background)
+    }
+
+    private func cardRow(filled: Bool) -> some View {
+        HStack(spacing: 3) {
+            RoundedRectangle(cornerRadius: 1.5, style: .continuous)
+                .fill(filled ? tile : tile.opacity(0.5))
+                .frame(width: 7, height: 7)
+            VStack(alignment: .leading, spacing: 1.5) {
+                Capsule().fill(ink.opacity(0.55)).frame(width: 14, height: 1.6)
+                Capsule().fill(ink.opacity(0.25)).frame(width: 22, height: 1.2)
+            }
+        }
+        .padding(3)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 3, style: .continuous)
+                .fill(card)
+                .overlay {
+                    RoundedRectangle(cornerRadius: 3, style: .continuous)
+                        .strokeBorder(cardBorder, lineWidth: 0.5)
+                }
+        )
     }
 }
 

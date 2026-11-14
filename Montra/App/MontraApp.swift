@@ -57,6 +57,9 @@ struct MontraApp: App {
             let previewDefaults = UserDefaults(suiteName: "montra.preview") ?? .standard
             previewDefaults.removePersistentDomain(forName: "montra.preview")
             settings = SettingsStore(defaults: previewDefaults)
+            #if DEBUG
+            if let appearance = QAFixtures.appearance { settings.appearance = appearance }
+            #endif
         } else {
             settings = SettingsStore()
         }
@@ -203,6 +206,7 @@ struct MontraApp: App {
             }
             #if os(iOS)
             .preferredColorScheme(settings.appearance.colorScheme)
+            .tint(AppColors.accent)
             #endif
     }
 }

@@ -449,11 +449,17 @@ struct OnboardingFlowView: View {
             .frame(maxWidth: OnboardingLayout.formWidth)
             .onboardingBlurIn(index: 1)
 
-            Text(String(localized: "onboarding.your_data_stays_on_this"))
-                .font(AppStyle.Typography.metadata)
-                .foregroundStyle(AppColors.textTertiary)
-                .multilineTextAlignment(.center)
-                .onboardingBlurIn(index: 2)
+            Group {
+                #if os(iOS)
+                Text(String(localized: "onboarding.your_data_stays_on_this_device"))
+                #else
+                Text(String(localized: "onboarding.your_data_stays_on_this"))
+                #endif
+            }
+            .font(AppStyle.Typography.metadata)
+            .foregroundStyle(AppColors.textTertiary)
+            .multilineTextAlignment(.center)
+            .onboardingBlurIn(index: 2)
         }
     }
 

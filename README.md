@@ -1,8 +1,10 @@
 # Montra
 
-Montra is a personal finance app for macOS. Track accounts in multiple currencies,
-expenses and income, mandatory spending, and a financial month that runs **from
-payday to payday**.
+Montra is a personal finance app for macOS, iPhone and iPad. Track accounts in
+multiple currencies, expenses and income, mandatory spending, and a financial
+month that runs **from payday to payday**. The Mac keeps its sidebar; iPhone and
+iPad move the same sections into a bottom Liquid Glass menu, with every form in a
+bottom sheet.
 
 Built with SwiftUI and SwiftData without third-party dependencies. The interface
 uses Onest typography, SF Rounded numerals, warm graphite tones, and raised cards.
@@ -30,6 +32,40 @@ uses Onest typography, SF Rounded numerals, warm graphite tones, and raised card
 | Analytics | Analytics (light) |
 |---|---|
 | ![Analytics](Docs/screenshots/analytics.png) | ![Analytics light](Docs/screenshots/analytics-light.png) |
+
+## iPhone and iPad
+
+The port keeps the Mac's screens, data, onboarding and animations, and changes
+only the way they are reached.
+
+| | macOS | iPhone | iPad |
+|---|---|---|---|
+| Navigation | sidebar | native bottom tab bar | custom bottom Liquid Glass bar |
+| Settings | sidebar page | rightmost tab | rightmost tab |
+| About | sidebar page | bottom sheet from Settings | bottom sheet from Settings |
+| Forms | sheets | bottom sheets with detents | bottom sheets / form sheets |
+
+![Overview on macOS, iPhone and iPad](Docs/screenshots/ios-port/compare-overview.png)
+
+| Settings | Analytics |
+|---|---|
+| ![Settings on macOS, iPhone and iPad](Docs/screenshots/ios-port/compare-settings.png) | ![Analytics on macOS, iPhone and iPad](Docs/screenshots/ios-port/compare-analytics.png) |
+
+| About | Onboarding |
+|---|---|
+| ![About on macOS, iPhone and iPad](Docs/screenshots/ios-port/compare-about.png) | ![Onboarding on macOS, iPhone and iPad](Docs/screenshots/ios-port/compare-onboarding.png) |
+
+The five destinations are **Overview**, **Transactions**, **Categories**,
+**Analytics** and **Settings**. Accounts and savings accounts open from Overview;
+About and iCloud sync live inside Settings. iPadOS adds multi-window
+(`⌥⌘N`), the menu bar and hardware keyboard shortcuts, pointer hover, context
+menus, Stage Manager/Split View resizing, and all four orientations. The iPad
+bar is built from `GlassEffectContainer` and `glassEffect` because iPadOS has no
+system bottom tab bar; iPhone uses the native `TabView`.
+
+The Local API, MCP bridge, Touch Bar and Spotlight integration remain macOS
+features. iCloud sync is still the documented configuration change, not enabled
+in the app.
 
 ## Onboarding
 
@@ -153,18 +189,35 @@ The Local API token stays on its Mac. [Backup format, fields, and compatibility]
 ## Build and run
 
 ```bash
+# macOS
 xcodebuild -project Montra.xcodeproj -scheme Montra -configuration Debug build
 open ~/Library/Developer/Xcode/DerivedData/Montra-*/Build/Products/Debug/Montra.app
 ```
 
-You can also open `Montra.xcodeproj` in Xcode and press ⌘R. Montra requires macOS
-15+ and Xcode 16+. The project was built with Xcode 27.
+Open `Montra.xcodeproj` in Xcode, choose the Montra scheme, and press ⌘R. The
+scheme offers the Mac, iPhone and iPad destinations. Montra requires macOS 15+
+and Xcode 16+ for the Mac, and iOS/iPadOS 26+ for the phone and tablet. The
+project was built with Xcode 27 and the iOS 27 SDK.
+
+For a simulator build from the command line:
+
+```bash
+xcodebuild -project Montra.xcodeproj -scheme Montra -configuration Debug \
+  -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
+  OTHER_SWIFT_FLAGS=-disable-sandbox CODE_SIGNING_ALLOWED=NO build
+xcrun simctl install booted build/DerivedData-*/Build/Products/Debug-iphonesimulator/Montra.app
+xcrun simctl launch booted app.finance.montra
+```
+
+`CODE_SIGNING_ALLOWED=NO` is for local simulator builds without a provisioning
+profile. Device and App Store builds use normal signing.
 
 ## App language
 
-Montra supports English and Russian and follows the macOS language. To set a
-language for Montra only, add it under **System Settings → General → Language
-& Region → Applications**, choose a language, and reopen the app.
+Montra supports English and Russian and follows the system language on every
+platform. On the Mac, to set a language for Montra only, add it under
+**System Settings → General → Language & Region → Applications**. On iPhone and
+iPad the app follows **Settings → General → Language & Region**.
 
 The Xcode string catalogs in `Montra/Resources` are `Localizable.xcstrings` for
 the interface, `AppShortcuts.xcstrings` for Spotlight phrases, and
@@ -176,8 +229,9 @@ the interface, `AppShortcuts.xcstrings` for Spotlight phrases, and
 |---|---|
 | ⌘N | New transaction |
 | ⇧⌘N | New account |
-| ⌘1…⌘4 | Overview, Transactions, Categories, Analytics |
-| ⌘, | Settings |
+| ⌘1…⌘5 | Overview, Transactions, Categories, Analytics, Settings (iPad) |
+| ⌘, | Settings (iPad) |
+| ⌥⌘N | New window on a tab (iPad) |
 
 Exchange rates refresh automatically. The Exchange Rates group in Settings
 shows the source and rate table and offers a manual refresh.
@@ -188,7 +242,8 @@ The open account is preselected in the new transaction form.
 
 ## Spotlight
 
-On macOS 26+, after onboarding, press ⌘Space and then ⌘3. Search for Add Expense,
+On macOS 26+, after onboarding, press ⌘Space and then ⌘3. (Spotlight and App
+Intents are not ported to iOS/iPadOS yet.) Search for Add Expense,
 Add Income, Transfer Between Accounts, Create Account, Create Category, Create
 Subcategory, Account Balance, or All Accounts. Fill in the fields in Spotlight
 and press Enter. For cross-currency transfers, enter both amounts. All Accounts
@@ -202,6 +257,14 @@ shows balances and the total in the selected currency.
 
 # Render all screens to PNG using an in-memory store
 .../Montra.app/Contents/MacOS/Montra -snapshot /tmp/montra-snaps
+
+# Check the data layer on iOS (money, periods, transfers, .montra, settings)
+xcrun simctl launch booted app.finance.montra -iostest
+# Read Documents/iostest.log from the app container for the result.
+
+# Capture the same screens on macOS, iPhone and iPad and build the comparison
+# images under Docs/screenshots/ios-port.
+Scripts/ios-port-evidence.sh
 
 # Preview onboarding with a temporary store
 open -n -a .../Montra.app --args -preview-onboarding
@@ -231,6 +294,8 @@ Scripts/make-dmg.sh <tag> --open
 ```
 Montra/
   App/          Entry point, window, routing, app model
+  Platform/     Cross-platform shims, QA fixtures, iOS self-test
+  Features/Navigation/  iPhone tab shell, iPad glass bar, bottom-sheet host
   Design/       Tokens, components, forms, branding
   Models/       Currency, Account, Category, Operation, Period
   Store/        Settings, periods, finance math, repositories, seed data, CSV

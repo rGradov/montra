@@ -17,6 +17,23 @@
           }
         }
       }
+    },
+    "NSLocationWhenInUseUsageDescription": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Montra uses your location to fill in where a payment was made."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Montra использует геопозицию только для того, чтобы подставить место платежа."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

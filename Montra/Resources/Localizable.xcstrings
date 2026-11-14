@@ -4814,6 +4814,41 @@
         }
       }
     },
+    "onboarding.your_data_stays_on_this_device": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Your data stays on this device. You can enable iCloud later." } },
+        "ru": { "stringUnit": { "state": "translated", "value": "Данные остаются на этом устройстве. iCloud можно включить позже." } }
+      }
+    },
+    "account.stays_out_of_overview": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "The account stays out of Overview and keeps its own page" } },
+        "ru": { "stringUnit": { "state": "translated", "value": "Счёт не показывается в обзоре и остаётся на своей странице" } }
+      }
+    },
+    "sync.your_data_stays_on_this_device": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Your data stays on this device for now." } },
+        "ru": { "stringUnit": { "state": "translated", "value": "Пока данные остаются на этом устройстве." } }
+      }
+    },
+    "sync.not_connected_user_explanation": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Sync is not connected yet. When it is enabled, Montra will use your own iCloud account; until then everything stays on this device." } },
+        "ru": { "stringUnit": { "state": "translated", "value": "Синхронизация пока не подключена. Когда она появится, Montra будет использовать ваш собственный iCloud; до этого всё остаётся на этом устройстве." } }
+      }
+    },
+    "overview.hidden_accounts_are_excluded_from_device": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Hidden accounts are excluded from the total, balance bar, and list. You can still open them from here." } },
+        "ru": { "stringUnit": { "state": "translated", "value": "Скрытые счета не попадают в итог, полосу и этот список. Открыть их можно здесь." } }
+      }
+    },
     "common.edit": {
       "extractionState": "manual",
       "localizations": {

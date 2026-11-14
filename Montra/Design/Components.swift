@@ -834,7 +834,8 @@ struct MontraSwitchStyle: ToggleStyle {
                         .padding(2)
                         .shadow(color: .black.opacity(0.22), radius: 1, y: 0.5)
                 }
-                .contentShape(Capsule())
+                .frame(width: AppPlatform.isMac ? 38 : 44, height: AppPlatform.isMac ? 22 : 44)
+                .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .pointingHandOnHover()
@@ -860,6 +861,10 @@ struct InfoButton: View {
             Image(systemName: "info.circle")
                 .font(.system(size: 11, weight: .medium))
                 .foregroundStyle(AppColors.textTertiary)
+                #if os(iOS)
+                .frame(width: 44, height: 44)
+                .contentShape(Rectangle())
+                #endif
         }
         .buttonStyle(.plain)
         .accessibilityLabel(title)
@@ -942,9 +947,11 @@ struct TouchCheckboxStyle: ToggleStyle {
                     }
                 }
                 .frame(width: 22, height: 22)
+                .frame(width: 44, height: 44)
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .accessibilityLabel { _ in configuration.label }
         .accessibilityValue(configuration.isOn ? String(localized: "common.on") : String(localized: "common.off"))
     }
 }

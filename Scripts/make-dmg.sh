@@ -5,6 +5,10 @@
 # Usage:
 #   Scripts/make-dmg.sh <tag> [--open] [--distribute]
 #
+# For a local QA image without a Developer ID provisioning profile, set
+# MONTRA_LOCAL_SIGN=1: the app is built unsigned and ad-hoc signed before the
+# image is created. The default path keeps the normal signing behaviour.
+#
 # Example:
 #   Scripts/make-dmg.sh hidden-accounts
 #   -> build/Montra-1.0-hidden-accounts.dmg
@@ -73,6 +77,11 @@ if [[ "${MONTRA_DISABLE_MACRO_SANDBOX:-1}" == "1" ]]; then
     build_flags+=("OTHER_SWIFT_FLAGS=-disable-sandbox")
 fi
 
+local_sign="${MONTRA_LOCAL_SIGN:-0}"
+if [[ "$local_sign" == "1" ]]; then
+    build_flags+=("CODE_SIGNING_ALLOWED=NO")
+fi
+
 if [[ "$distribute" == "1" ]]; then
     notary_profile="${MONTRA_NOTARY_PROFILE:-montra-notary}"
     identities="$(security find-identity -v -p codesigning)"
@@ -111,6 +120,11 @@ xcodebuild \
 
 [[ -d "$app" ]] || { echo "build finished without $app" >&2; exit 1; }
 
+if [[ "$local_sign" == "1" ]]; then
+    # Ad-hoc signature: valid locally, but not notarized and not for distribution.
+    codesign --force --deep --sign - "$app" >/dev/null
+fi
+
 echo "==> Running the money and period self-test"
 "$app/Contents/MacOS/Montra" -selftest
 
@@ -140,6 +154,11 @@ codesign --verify --deep --strict "$mount_point/Montra.app"
 image_version="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$mount_point/Montra.app/Contents/Info.plist")"
 image_build="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$mount_point/Montra.app/Contents/Info.plist")"
 detach_image
+
+local_sign="${MONTRA_LOCAL_SIGN:-0}"
+if [[ "$local_sign" == "1" ]]; then
+    build_flags+=("CODE_SIGNING_ALLOWED=NO")
+fi
 
 if [[ "$distribute" == "1" ]]; then
     echo "==> Signing the disk image with the app's Developer ID"

@@ -542,5 +542,35 @@ Local API / MCP remains a macOS feature; nothing is needed for it on iOS.
 - Still unverified by automation: tap-level behaviour (tab re-tap, popover
   appearance, header pop, sheet dismissal, file pickers). Needs the functional
   simulator pass or a UI-test target.
-- Next: App Store/HIG critic (static), functional pass, comparison screenshots,
-  DMG, README/PR.
+### 2026-11-14 — App Store review and release evidence
+
+- App Store/HIG critic report: `Docs/iOS-AppStore-Review.md` (NOT READY: 3 P0,
+  10 P1). Fixes applied:
+  - P0-1 light tab contrast: root `.tint(AppColors.accent)` on iOS; the shared
+    accent asset was reverted so macOS is untouched. Light Settings now shows a
+    blue, legible selected tab.
+  - P0-2 touch targets: iOS control height 44, text fields/date/popover rows 44,
+    switch/checkbox/info hit areas 44; TouchCheckbox now forwards its label.
+  - P0-3 entitlements: tracked `Montra/Montra-iOS.entitlements` with CloudKit
+    only (no APNs, no KVS), wired per SDK; `ITSAppUsesNonExemptEncryption=NO`;
+    location strings localised for `NSLocationWhenInUseUsageDescription`.
+  - P1 copy: iOS says device instead of Mac/sidebar; the developer setup steps
+    in the iCloud sheet are macOS-only; user-facing explanation on iOS.
+  - P1 visuals/accessibility: iOS appearance thumbnails no longer look like
+    macOS windows; hidden shell is `accessibilityHidden` during onboarding;
+    Periods/iCloud use the tall detent for their pinned footers.
+- Verification: iOS build green; iPhone light Settings, iCloud, Periods, New
+  Account and onboarding checked; macOS build + `-selftest` 182; iOS `-iostest`
+  ALL IOS CHECKS PASSED; audit `--require-dmg` **7 passed / 0 failures**; local
+  ad-hoc DMG `build/Montra-1.0-ios-liquid-glass.dmg` (12.2 MB).
+- Final evidence: `Docs/screenshots/ios-port/compare-{overview,analytics,
+  settings,about,new-operation,onboarding}.png`, captured with
+  `Scripts/ios-port-evidence.sh` on the same fixtures.
+- Known remaining (documented, not silently shipped): no XCUITest target;
+  Dynamic Type at accessibility XXXL still truncates toolbar labels; no
+  privacy/support URLs in-app (the user must provide the URLs); the New Account
+  sheet still has a lower blank band and Periods scrolls under its footer; no
+  iPad Split View/Slide Over screenshot; Release/Archive + notarized DMG were
+  not produced (local DMG is ad-hoc); `Montra/Montra.entitlements` remains local
+  and git-ignored for macOS signing.
+- Next: PR/local PR description and the final report.

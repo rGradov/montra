@@ -47,6 +47,7 @@ struct AppRootView: View {
                 .opacity(showsOnboarding && !isOnboardingExiting ? 0 : 1)
                 .blur(radius: showsOnboarding && !isOnboardingExiting ? 10 : 0)
                 .allowsHitTesting(!showsOnboarding)
+                .accessibilityHidden(showsOnboarding || onboardingReplay != nil)
 
             if showsOnboarding {
                 OnboardingFlowView(

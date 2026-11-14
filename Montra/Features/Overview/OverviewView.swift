@@ -331,7 +331,13 @@ struct OverviewView: View {
                         EmptyState(
                             symbol: "eye.slash",
                             title: String(localized: "overview.all_accounts_are_hidden"),
-                            message: String(localized: "overview.hidden_accounts_are_excluded_from"),
+                            message: {
+                                #if os(iOS)
+                                String(localized: "overview.hidden_accounts_are_excluded_from_device")
+                                #else
+                                String(localized: "overview.hidden_accounts_are_excluded_from")
+                                #endif
+                            }(),
                             actionTitle: String(localized: "common.open_account"),
                             action: {
                                 if let first = hiddenAccounts.first { onOpenAccount(first) }

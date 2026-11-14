@@ -257,6 +257,19 @@ struct OperationSheet: View {
             }
 
             SheetFooter {
+                #if os(iOS)
+                VStack(spacing: AppStyle.Spacing.xSmall) {
+                    if isEditing {
+                        SheetActionButton(title: String(localized: "common.delete"), role: .destructive) {
+                            isConfirmingDelete = true
+                        }
+                    }
+                    SheetActionButton(title: footerTitle) { save() }
+                        .disabled(isTransfer ? !transferIsValid : (repeats && !isEditing ? (!isValid || !planIsValid) : !isValid))
+                        .keyboardShortcut(.defaultAction)
+                }
+                .frame(maxWidth: .infinity)
+                #else
                 if isEditing {
                     Button(String(localized: "common.delete")) { isConfirmingDelete = true }
                         .buttonStyle(.montra(.destructive))
@@ -268,6 +281,7 @@ struct OperationSheet: View {
                     .buttonStyle(.montra(.primary))
                     .disabled(isTransfer ? !transferIsValid : (repeats && !isEditing ? (!isValid || !planIsValid) : !isValid))
                     .keyboardShortcut(.defaultAction)
+                #endif
             }
         }
         .sheetContentFrame(width: 470)

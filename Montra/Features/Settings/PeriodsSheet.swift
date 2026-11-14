@@ -77,6 +77,10 @@ struct PeriodsSheet: View {
             .sheetKeyboardScrolling()
 
             SheetFooter {
+                #if os(iOS)
+                SheetActionButton(title: String(localized: "common.done")) { dismiss() }
+                    .keyboardShortcut(.defaultAction)
+                #else
                 Text(String(localized: "period.adjacent_periods_will_move_with"))
                     .font(AppStyle.Typography.metadata)
                     .foregroundStyle(AppColors.textTertiary)
@@ -84,6 +88,7 @@ struct PeriodsSheet: View {
                 Button(String(localized: "common.done")) { dismiss() }
                     .buttonStyle(.montra(.primary))
                     .keyboardShortcut(.defaultAction)
+                #endif
             }
         }
         .sheetContentFrame(width: 520, height: 660)

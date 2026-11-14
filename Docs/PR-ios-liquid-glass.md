@@ -111,3 +111,33 @@ Base branch: `codex/new-operation-sheet` · Head branch: `codex/ios-liquid-glass
   (the comparison images above are 1320×2868 and 2048×2732 source captures).
 - Team `97S3QGCCV4`, distribution certificate and App Store profile. The local
   DMG is ad-hoc and only for QA.
+
+## Review follow-up (November 14)
+
+User review of the first iPhone sheets and iPad bar:
+
+- **No Cancel in iOS sheets.** The header X and the drag indicator close the
+  sheet; the primary action now spans the sheet width with horizontal padding.
+  Destructive actions stack above it. The Mac keeps its desktop footers.
+- **Periods hint removed on iOS.** Done is full width; macOS keeps the hint.
+- **Analytics day is a bottom sheet on iOS.** Tapping a heat-map cell presents
+  a medium/large sheet with the day's category groups and amount; macOS keeps
+  the anchored popup.
+- **iPad bar is one glass platter.** The five per-item glass capsules are now
+  one `GlassEffectContainer` platter with an accent selection fill; the iPhone
+  keeps the native system tab bar.
+- **Static Liquid Glass audit:** `Docs/iOS-Liquid-Glass-Audit.md`. Its P0 is the
+  iPad platter fix above. The proposed Overview quick-add FAB, onboarding
+  glass and Operations chrome remain follow-ups; the audit also rejects
+  glass-on-glass sheets, cards and close buttons.
+
+| New Operation: before / after | Periods: before / after |
+|---|---|
+| ![Operation](Docs/screenshots/ios-port/feedback-operation-before-after.png) | ![Periods](Docs/screenshots/ios-port/feedback-periods-before-after.png) |
+
+| iPad bar: before / after | Analytics day sheet |
+|---|---|
+| ![iPad bar](Docs/screenshots/ios-port/feedback-ipad-bar-before-after.png) | ![Analytics sheet](Docs/screenshots/ios-port/feedback-analytics-sheet.png) |
+
+Verification for this follow-up: iOS build and iPhone/iPad captures; iOS
+`-iostest` **ALL IOS CHECKS PASSED**; macOS build + `-selftest` **182**.

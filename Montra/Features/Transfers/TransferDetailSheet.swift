@@ -72,10 +72,15 @@ struct TransferDetailSheet: View {
             .sheetKeyboardScrolling()
 
             SheetFooter {
+                #if os(iOS)
+                SheetActionButton(title: String(localized: "common.done")) { dismiss() }
+                    .keyboardShortcut(.defaultAction)
+                #else
                 Spacer(minLength: 0)
                 Button(String(localized: "common.done")) { dismiss() }
                     .buttonStyle(.montra(.primary))
                     .keyboardShortcut(.defaultAction)
+                #endif
             }
         }
         .sheetContentFrame(width: 470, height: 380)

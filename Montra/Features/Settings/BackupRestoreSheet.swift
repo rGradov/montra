@@ -128,6 +128,13 @@ struct BackupRestoreSheet: View {
             .sheetKeyboardScrolling()
 
             SheetFooter {
+                #if os(iOS)
+                SheetActionButton(title: String(localized: "backup.restore_action"), role: .destructive) {
+                    performRestore()
+                }
+                .keyboardShortcut(.defaultAction)
+                .disabled(isRestoring)
+                #else
                 Spacer(minLength: AppStyle.Spacing.small)
 
                 Button(String(localized: "common.cancel")) { dismiss() }
@@ -139,6 +146,7 @@ struct BackupRestoreSheet: View {
                     .buttonStyle(.montra(.destructive))
                     .keyboardShortcut(.defaultAction)
                     .disabled(isRestoring)
+                #endif
             }
         }
     }

@@ -91,6 +91,21 @@ struct AccountSheet: View {
             .sheetKeyboardScrolling()
 
             SheetFooter {
+                #if os(iOS)
+                VStack(spacing: AppStyle.Spacing.xSmall) {
+                    if isEditing {
+                        SheetActionButton(title: String(localized: "common.delete"), role: .destructive) {
+                            isConfirmingDelete = true
+                        }
+                    }
+                    SheetActionButton(
+                        title: isEditing ? String(localized: "common.save") : String(localized: "common.create_account")
+                    ) { save() }
+                        .disabled(!isValid)
+                        .keyboardShortcut(.defaultAction)
+                }
+                .frame(maxWidth: .infinity)
+                #else
                 if isEditing {
                     Button(String(localized: "common.delete")) { isConfirmingDelete = true }
                         .buttonStyle(.montra(.destructive))
@@ -102,6 +117,7 @@ struct AccountSheet: View {
                     .buttonStyle(.montra(.primary))
                     .disabled(!isValid)
                     .keyboardShortcut(.defaultAction)
+                #endif
             }
         }
         .sheetContentFrame(width: 470, height: 650)

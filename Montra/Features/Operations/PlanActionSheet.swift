@@ -334,6 +334,29 @@ struct PlanActionSheet: View {
 
     private func footer(_ plan: PlannedOperation) -> some View {
         SheetFooter {
+            #if os(iOS)
+            VStack(spacing: AppStyle.Spacing.xSmall) {
+                if mode == .link {
+                    SheetActionButton(title: String(localized: "common.back"), role: .quiet) {
+                        mode = .actions
+                    }
+                }
+                if mode == .actions {
+                    SheetActionButton(title: String(localized: "schedule.link_to_transaction"), role: .secondary) {
+                        mode = .link
+                    }
+                    .disabled(operations.isEmpty)
+                    SheetActionButton(title: String(localized: "schedule.record_as_transaction")) {
+                        onSaveAsFact(plan)
+                    }
+                } else {
+                    SheetActionButton(title: String(localized: "schedule.record_as_transaction")) {
+                        onSaveAsFact(plan)
+                    }
+                }
+            }
+            .frame(maxWidth: .infinity)
+            #else
             if mode == .link {
                 Button(String(localized: "common.back")) { mode = .actions }
                     .buttonStyle(.montra(.quiet))
@@ -349,6 +372,7 @@ struct PlanActionSheet: View {
                 Button(String(localized: "schedule.record_as_transaction")) { onSaveAsFact(plan) }
                     .buttonStyle(.montra(.primary))
             }
+            #endif
         }
     }
 

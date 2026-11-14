@@ -57,6 +57,25 @@ struct SheetFooter<Content: View>: View {
     }
 }
 
+/// The main action of a sheet footer. On iOS it spans the sheet (there is no
+/// Cancel: the header's X and the drag indicator close the sheet). The Mac keeps
+/// its compact desktop button.
+struct SheetActionButton: View {
+    let title: String
+    var role: MontraButtonStyle.Role = .primary
+    let action: () -> Void
+
+    var body: some View {
+        #if os(iOS)
+        Button(title, action: action)
+            .buttonStyle(.montra(role, width: .fill))
+        #else
+        Button(title, action: action)
+            .buttonStyle(.montra(role))
+        #endif
+    }
+}
+
 // MARK: - Sheet sizing
 
 /// A sheet's outer frame. The Mac keeps the exact fixed size its window flow

@@ -283,9 +283,11 @@ struct AnalyticsView: View {
                 }
                 .task { await prepareDebugLaunch(proxy) }
             }
+            #if os(macOS)
             .overlayPreferenceValue(AnalyticsHeatAnchorKey.self) { anchors in
                 popupOverlay(anchors)
             }
+            #endif
         }
         .background(AppColors.surfaceBase)
         .onAppear {
@@ -328,6 +330,7 @@ struct AnalyticsView: View {
             closePopup()
         }
         #endif
+        #if os(macOS)
         .modifier(
             AnalyticsPopupDismissModifier(
                 isActive: popupDay != nil,
@@ -336,24 +339,12 @@ struct AnalyticsView: View {
                 onDismiss: closePopup
             )
         )
-        #if os(iOS)
-        // The Mac closes the popup through an `NSEvent` monitor, which does not
-        // exist here: the UIKit equivalent is installed below. Escape works on a
-        // hardware keyboard the same way it does on the Mac.
-        .background {
-            AnalyticsTapOutsideCatcher(
-                isActive: popupDay != nil,
-                popupFrame: popupFrameGlobal,
-                anchorFrame: popupAnchorFrameGlobal,
-                onDismiss: closePopup
-            )
-        }
-        .background {
-            Button("") { closePopup() }
-                .keyboardShortcut(.escape, modifiers: [])
-                .opacity(0)
-                .frame(width: 0, height: 0)
-                .accessibilityHidden(true)
+        #else
+        .sheet(item: $popupDay) { day in
+            AnalyticsDaySheet(day: day, currency: displayCurrency, masked: masked)
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
+                .presentationContentInteraction(.scrolls)
         }
         #endif
     }
@@ -488,7 +479,8 @@ struct AnalyticsView: View {
     /// Scrolls the heat card into view and opens the requested day, then reports
     /// the layout to the screenshot harness.
     private func prepareDebugLaunch(_ proxy: ScrollViewProxy) async {
-        guard isShotMode || debugPopupDay != nil || ProcessInfo.processInfo.environment["MONTRA_ANALYTICS_SCOPE"] != nil else {
+        let popupRequest = ProcessInfo.processInfo.environment["MONTRA_ANALYTICS_POPUP"]
+        guard isShotMode || popupRequest != nil || ProcessInfo.processInfo.environment["MONTRA_ANALYTICS_SCOPE"] != nil else {
             return
         }
         // The first pass still reads `@Query` and applies the debug scope.
@@ -502,7 +494,9 @@ struct AnalyticsView: View {
             proxy.scrollTo(heatCardID, anchor: anchor)
             try? await Task.sleep(nanoseconds: 450_000_000)
         }
-        if let id = debugPopupDay, let day = snapshot?.days.first(where: { $0.id == id }) {
+        if ProcessInfo.processInfo.environment["MONTRA_ANALYTICS_POPUP"] == "first" {
+            popupDay = snapshot?.days.first(where: { !$0.groups.isEmpty })
+        } else if let id = debugPopupDay, let day = snapshot?.days.first(where: { $0.id == id }) {
             popupDay = day.groups.isEmpty ? nil : day
         }
         guard isShotMode else { return }
@@ -2224,6 +2218,79 @@ private struct AnalyticsDayPopup: View {
 
     private func groupAccessibility(_ group: AnalyticsDayGroup) -> String {
         "\(group.title), \(expenseText(group.amount)), \(Finance.operationsCountText(group.count))"
+    }
+}
+
+/// The iOS day detail. It mirrors the Mac popup's groups, but as a bottom
+/// sheet: the sheet's material, detents and drag indicator are native, and the
+/// rows are full-width touch targets.
+private struct AnalyticsDaySheet: View {
+    let day: AnalyticsDay
+    let currency: Currency
+    let masked: Bool
+
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        VStack(spacing: 0) {
+            SheetHeader(
+                title: AppDate.short(day.date),
+                subtitle: MoneyFormat.string(day.amount, currency: currency, masked: masked),
+                onClose: { dismiss() }
+            )
+
+            ScrollView {
+                VStack(spacing: 0) {
+                    InsetCard {
+                        ForEach(Array(day.groups.enumerated()), id: \.element.id) { index, group in
+                            if index > 0 { InsetCardDivider() }
+                            row(group)
+                        }
+                    }
+                }
+                .padding(.horizontal, AppStyle.Spacing.large)
+                .padding(.bottom, AppStyle.Spacing.large)
+            }
+        }
+        .background(AppColors.surfaceBase)
+    }
+
+    private func row(_ group: AnalyticsDayGroup) -> some View {
+        HStack(spacing: AppStyle.Spacing.small) {
+            ListRowIcon(
+                symbol: group.sample.displayIcon,
+                color: group.sample.displayColor,
+                frameSize: 26
+            )
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(figures: group.title, style: AppStyle.Typography.body)
+                    .lineLimit(1)
+                Text(figures: Finance.operationsCountText(group.count), style: AppStyle.Typography.metadata)
+                    .foregroundStyle(AppColors.textTertiary)
+            }
+
+            Spacer(minLength: AppStyle.Spacing.small)
+
+            Text(
+                figures: MoneyFormat.string(
+                    -group.amount,
+                    currency: currency,
+                    sign: .always,
+                    masked: masked
+                ),
+                style: AppStyle.Typography.body.weight(.semibold)
+            )
+            .monospacedDigit()
+            .lineLimit(1)
+        }
+        .frame(minHeight: 44)
+        .padding(.horizontal, AppStyle.Spacing.medium)
+        .padding(.vertical, AppStyle.Spacing.xxSmall)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(
+            "\(group.title), \(MoneyFormat.string(-group.amount, currency: currency, sign: .always, masked: masked)), \(Finance.operationsCountText(group.count))"
+        )
     }
 }
 

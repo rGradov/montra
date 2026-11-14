@@ -258,6 +258,10 @@ struct GlassTabBar: View {
                 }
             }
             .padding(AppStyle.Spacing.xxSmallPlus)
+            // One platter, like the system tab bar. Five separate glass
+            // capsules read as outlined pills and hide the material.
+            .glassEffect(.regular.interactive(), in: .capsule)
+            .glassEffectID("tabbar", in: glassNamespace)
         }
         .padding(.horizontal, AppStyle.Spacing.large)
         .padding(.bottom, AppStyle.Spacing.xxSmallPlus)
@@ -283,16 +287,15 @@ struct GlassTabBar: View {
             .foregroundStyle(isSelected ? AppColors.accent : AppColors.textSecondary)
             .frame(minWidth: showsCaptions ? itemMinWidth : 46, minHeight: itemHeight)
             .padding(.horizontal, AppStyle.Spacing.xxSmall)
+            .background {
+                if isSelected {
+                    Capsule(style: .continuous)
+                        .fill(AppColors.accent.opacity(0.16))
+                }
+            }
             .contentShape(.capsule)
         }
         .buttonStyle(.plain)
-        .glassEffect(
-            isSelected
-                ? .regular.tint(AppColors.accent.opacity(0.16)).interactive()
-                : .regular.interactive(),
-            in: .capsule
-        )
-        .glassEffectID(tab.rawValue, in: glassNamespace)
         .hoverEffect(.automatic)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(tab.title)

@@ -104,6 +104,21 @@ struct CategorySheet: View {
             .sheetKeyboardScrolling()
 
             SheetFooter {
+                #if os(iOS)
+                VStack(spacing: AppStyle.Spacing.xSmall) {
+                    if isEditing, editingCategory?.isSystem == false {
+                        SheetActionButton(title: String(localized: "common.delete"), role: .destructive) {
+                            isConfirmingDelete = true
+                        }
+                    }
+                    SheetActionButton(
+                        title: isEditing ? String(localized: "common.save") : String(localized: "common.create")
+                    ) { save() }
+                        .disabled(!isValid)
+                        .keyboardShortcut(.defaultAction)
+                }
+                .frame(maxWidth: .infinity)
+                #else
                 if isEditing, editingCategory?.isSystem == false {
                     Button(String(localized: "common.delete")) { isConfirmingDelete = true }
                         .buttonStyle(.montra(.destructive))
@@ -115,6 +130,7 @@ struct CategorySheet: View {
                     .buttonStyle(.montra(.primary))
                     .disabled(!isValid)
                     .keyboardShortcut(.defaultAction)
+                #endif
             }
         }
         .sheetContentFrame(width: 470)

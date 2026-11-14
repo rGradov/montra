@@ -420,7 +420,28 @@ Use a 980×700 window with a 240 pt sidebar and `hiddenTitleBar`.
     chart, click a day cell to open and close its popup, then verify the empty
     state on a store without spending.
 
-## 8. Coverage priorities
+
+## 8. iOS / iPadOS presentation
+
+As of **November 14, 2026**. These checks cover the iOS/iPadOS shell and its
+differences from the Mac. Automated coverage is the iOS data self-test
+(`-iostest`, all iOS checks) plus the iOS screenshot pass; macOS keeps its 182
+`-selftest` checks.
+
+| ID | Check | Type | Priority |
+|---|---|---|---|
+| `IOS-SHEET-01` | iOS bottom sheets close with the header X or a downward swipe. There is no Cancel button in a sheet footer; the primary action spans the sheet width with horizontal padding. Destructive actions stack above the primary. | `ui` | P1 |
+| `IOS-SHEET-02` | A sheet's only primary action is disabled until its form is valid; the disabled state keeps the full-width shape. | `ui` | P1 |
+| `IOS-ANA-01` | Tapping an Analytics heat-map day presents a bottom sheet (medium/large detents, drag indicator, scrollable groups), not an anchored popup. macOS keeps the anchored popup. | `ui` | P1 |
+| `IOS-PER-01` | The Periods sheet omits the adjacent-periods hint on iOS and makes Done full width. macOS keeps the hint. | `ui` | P2 |
+| `IOS-BAR-01` | iPad uses one glass platter for the custom bottom bar with an accent selection fill; iPhone uses the native system tab bar. | `visual` | P1 |
+| `IOS-BAR-02` | The iPad bar keeps 44 pt targets, VoiceOver labels/selected traits, Dynamic Type clamping and pointer hover. | `a11y` | P1 |
+
+Manual checks: open New Operation and New Category (no Cancel, full-width
+primary); open Periods (no hint); tap a heat-map day in Analytics (bottom
+sheet); compare the iPad bar at full width and in a narrow Split View.
+
+## 9. Coverage priorities
 
 1. **P0 money logic.** `Finance`, `PeriodService`, `PlanSchedule`,
    `MoneyFormat`, `CSVExporter`, and repository writes, cascades, and fallbacks.

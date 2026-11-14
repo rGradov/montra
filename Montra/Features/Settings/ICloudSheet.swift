@@ -65,10 +65,15 @@ struct ICloudSheet: View {
             .sheetKeyboardScrolling()
 
             SheetFooter {
+                #if os(iOS)
+                SheetActionButton(title: String(localized: "common.ok")) { dismiss() }
+                    .keyboardShortcut(.defaultAction)
+                #else
                 Spacer(minLength: AppStyle.Spacing.small)
                 Button(String(localized: "common.ok")) { dismiss() }
                     .buttonStyle(.montra(.primary))
                     .keyboardShortcut(.defaultAction)
+                #endif
             }
         }
         .sheetContentFrame(width: 470, height: 580)

@@ -581,6 +581,32 @@ Local API / MCP remains a macOS feature; nothing is needed for it on iOS.
   (local QA only, not notarized). Audit with `--require-dmg`: 7/7.
 - Final report: see the chat summary and `Docs/PR-ios-liquid-glass.md`.
 
+### 2026-11-14 — iOS review follow-up
+
+User feedback on the iPhone sheets, Analytics calendar and iPad bar.
+
+- Removed every Cancel button from iOS sheet footers; the header X and the
+  drag indicator close the sheet. The primary action is now full width with the
+  sheet's horizontal padding. Destructive actions (Delete, Restore) stack above
+  it. macOS footers are unchanged.
+- New Operation / New Category / Account / Category / Periods / iCloud /
+  Transfer / Backup / Delete / Plan action footers all follow the rule.
+- Periods no longer shows the adjacent-periods hint on iOS; Done is full width.
+- Analytics heat-map day tap now presents a native bottom sheet (medium/large,
+  drag indicator, scrollable groups) on iOS. macOS keeps the anchored popup.
+- iPad bar is one glass platter with an accent selection fill instead of five
+  per-item glass capsules; iPhone keeps the native tab bar.
+- Added `SWIFT_EMIT_LOC_STRINGS = NO` so Xcode does not rewrite the manual
+  string catalog during archives (it had added 23 untracked extraction keys).
+- Added the static Liquid Glass audit: `Docs/iOS-Liquid-Glass-Audit.md`. Its P0
+  (iPad platter) is implemented; the FAB/onboarding/Operations ideas remain
+  follow-ups.
+- Verification: iOS build, iPhone captures (new operation, new category,
+  periods, analytics sheet), iPad capture, iOS `-iostest` ALL CHECKS PASSED,
+  macOS build + `-selftest` 182. DMG pending.
+- Evidence: `Docs/screenshots/ios-port/feedback-*.png`.
+
+
 ### 2026-11-14 — TestFlight attempt
 
 - Release iOS build for `generic/platform=iOS` with signing disabled:

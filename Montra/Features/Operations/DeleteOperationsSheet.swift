@@ -205,6 +205,22 @@ struct DeleteOperationsSheet: View {
                 .fill(AppColors.borderSubtle)
                 .frame(height: 0.5)
 
+            #if os(iOS)
+            VStack(spacing: AppStyle.Spacing.xSmall) {
+                Text(String(localized: "transaction.delete.to_be_deleted \(items.count) \(totalText)"))
+                    .font(AppStyle.Typography.metadata)
+                    .foregroundStyle(AppColors.textSecondary)
+                    .lineLimit(1)
+
+                SheetActionButton(title: String(localized: "transaction.delete.delete \(items.count)"), role: .destructive) {
+                    performDelete()
+                }
+                .keyboardShortcut(.defaultAction)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.horizontal, AppStyle.Spacing.large)
+            .padding(.vertical, AppStyle.Spacing.small + 2)
+            #else
             HStack(spacing: AppStyle.Spacing.small) {
                 Text(String(localized: "transaction.delete.to_be_deleted \(items.count) \(totalText)"))
                     .font(AppStyle.Typography.metadata)
@@ -223,6 +239,7 @@ struct DeleteOperationsSheet: View {
             }
             .padding(.horizontal, AppStyle.Spacing.large)
             .padding(.vertical, AppStyle.Spacing.small + 2)
+            #endif
         }
         .background(AppColors.surfaceBase)
     }
@@ -306,11 +323,18 @@ struct DeleteSuccessView: View {
             .font(AppStyle.Typography.callout)
             .foregroundStyle(AppColors.textTertiary)
 
+            #if os(iOS)
+            SheetActionButton(title: String(localized: "common.done")) { onDone() }
+                .keyboardShortcut(.defaultAction)
+                .padding(.top, AppStyle.Spacing.small + 2)
+                .padding(.bottom, AppStyle.Spacing.large)
+            #else
             Button(String(localized: "common.done"), action: onDone)
                 .buttonStyle(.montra(.primary, size: .large, width: .fixed(280)))
                 .keyboardShortcut(.defaultAction)
                 .padding(.top, AppStyle.Spacing.small + 2)
                 .padding(.bottom, AppStyle.Spacing.large)
+            #endif
         }
         .padding(.horizontal, AppStyle.Spacing.large)
         .sheetContentFrame(width: 540, height: 600)

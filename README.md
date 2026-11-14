@@ -35,6 +35,11 @@ uses Onest typography, SF Rounded numerals, warm graphite tones, and raised card
 
 ## iPhone and iPad
 
+On iOS, sheets close with the header **X** or a downward swipe; there is no
+Cancel button, and the primary action spans the sheet. The Analytics heat-map
+day detail is a bottom sheet. The iPad bottom bar is one glass platter with an
+accent selection fill; the iPhone uses the system tab bar.
+
 The port keeps the Mac's screens, data, onboarding and animations, and changes
 only the way they are reached.
 

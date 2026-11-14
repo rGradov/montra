@@ -603,3 +603,20 @@ Local API / MCP remains a macOS feature; nothing is needed for it on iOS.
 - Fallback if enabling iCloud for iOS is blocked: a TestFlight beta can be built
   without the iOS iCloud entitlement (sync is off anyway), but it still needs
   the Apple Distribution certificate, App Store profile and account.
+- Rechecked after the user's portal setup:
+  - `xcodebuild archive -allowProvisioningUpdates` **succeeded** and embedded
+    `iOS Team Provisioning Profile: app.finance.montra`; the archived app does
+    contain the `iCloud.app.finance.montra` CloudKit entitlement, so the App ID
+    iCloud setup is in place.
+  - The profile is **development** (`get-task-allow=true`, no
+    `beta-reports-active`), and the archive is signed with Apple Development.
+  - `xcodebuild -exportArchive` with `app-store-connect` fails with
+    `No Accounts` and `No profiles for app.finance.montra were found` (no iOS
+    App Store profile).
+  - `security find-identity` still has **no Apple Distribution** identity;
+    `~/Library/Developer/Xcode/UserData/Accounts` is still absent.
+  - Therefore the remaining work is Apple Distribution signing, not code:
+    sign in to Xcode with the team account, create/download an Apple
+    Distribution certificate, let Xcode create the App Store profile (or create
+    it in the portal), then export. The development profile/archive cannot be
+    uploaded to TestFlight.

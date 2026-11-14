@@ -603,8 +603,13 @@ User feedback on the iPhone sheets, Analytics calendar and iPad bar.
   follow-ups.
 - Verification: iOS build, iPhone captures (new operation, new category,
   periods, analytics sheet), iPad capture, iOS `-iostest` ALL CHECKS PASSED,
-  macOS build + `-selftest` 182. DMG pending.
-- Evidence: `Docs/screenshots/ios-port/feedback-*.png`.
+  macOS build + `-selftest` 182.
+- `SWIFT_EMIT_LOC_STRINGS = NO` added to both configurations: archives no
+  longer rewrite the manual string catalog (it had added 23 untracked keys).
+- DMG: `build/Montra-1.0-ui-feedback.dmg` (12.2 MB, ad-hoc local sign), audit
+  `--require-dmg`: **7 passed, 0 failures**.
+- Evidence: `Docs/screenshots/ios-port/feedback-*.png` (including before/after
+  for New Operation, Periods and the iPad bar).
 
 
 ### 2026-11-14 — TestFlight attempt

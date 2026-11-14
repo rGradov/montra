@@ -651,3 +651,17 @@ User feedback on the iPhone sheets, Analytics calendar and iPad bar.
     Distribution certificate, let Xcode create the App Store profile (or create
     it in the portal), then export. The development profile/archive cannot be
     uploaded to TestFlight.
+
+### 2026-11-14 — Onboarding intro cleanup
+
+- Removed the intro's **Skip** and **sound toggle** on macOS and iOS. Space and
+  Escape no longer skip it either; the intro runs its timeline and hands off to
+  Welcome. The soundtrack still plays (there is no mute control).
+- Kept the step-level Skip on Categories and Expense: they are the only way to
+  finish without starter categories or a first expense. If those should go too,
+  the flow needs a "continue without" primary instead of a dead end.
+- No new user-facing strings. No persisted model, backup, Local API or MCP
+  surface changed.
+- Verification: iOS build, iPhone intro capture (no controls), macOS build +
+  `-selftest` 182, iOS `-iostest` ALL IOS CHECKS PASSED.
+- Evidence: `Docs/screenshots/ios-port/feedback-onboarding-intro.png`.

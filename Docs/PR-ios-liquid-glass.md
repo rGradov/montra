@@ -148,3 +148,13 @@ Xcode's automatic string extraction is disabled (`SWIFT_EMIT_LOC_STRINGS = NO`)
 so archives no longer rewrite the manual catalog; the UI change adds no new
 user-facing strings. No persisted model, backup, Local API or MCP surface
 changed.
+
+### Onboarding intro
+
+The intro no longer shows a **Skip** button or a sound toggle on macOS, iPhone
+or iPad; Space/Escape skip was removed with them. It runs its timeline and hands
+off to Welcome. The soundtrack remains enabled. The Categories and Expense
+steps keep their step-level Skip so onboarding can finish without categories or
+a first expense.
+
+![Onboarding intro](Docs/screenshots/ios-port/feedback-onboarding-intro.png)

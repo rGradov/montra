@@ -74,6 +74,11 @@ in the app.
 
 ## Onboarding
 
+The Mori intro has no Skip button and no sound toggle: it runs its timeline and
+hands off to the welcome step. The Categories and Expense steps keep their
+step-level Skip, because they are the only way to finish without choosing
+starter categories or recording a first expense.
+
 | Welcome | First account |
 |---|---|
 | ![Welcome](Docs/screenshots/onboarding-welcome.png) | ![First account](Docs/screenshots/onboarding-account.png) |

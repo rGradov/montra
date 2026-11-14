@@ -57,7 +57,6 @@ struct OnboardingIntroView: View {
     @State private var revealsMori = false
     @State private var showsCaption = false
     @State private var isDismissing = false
-    @State private var isMuted = false
     @State private var didStart = false
 
     /// Where the welcome icon sits. The root view hands this down once the
@@ -130,9 +129,6 @@ struct OnboardingIntroView: View {
             }
             .offset(y: -6)
 
-            controls
-                .opacity(copyAsideOpacity)
-                .animation(.easeOut(duration: OnboardingIntroTiming.copyAside), value: isDismissing)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .onGeometryChange(for: CGSize.self) { proxy in
@@ -150,16 +146,6 @@ struct OnboardingIntroView: View {
         .onChange(of: landing, initial: true) { _, newValue in
             guard let newValue else { return }
             target = newValue
-        }
-        .background {
-            // Keyboard access without a visible control taking focus.
-            Group {
-                Button(String(localized: "common.skip"), action: skip).keyboardShortcut(.space, modifiers: [])
-                Button(String(localized: "common.skip"), action: skip).keyboardShortcut(.escape, modifiers: [])
-            }
-            .frame(width: 0, height: 0)
-            .opacity(0)
-            .accessibilityHidden(true)
         }
         .task {
             guard previewProgress != nil else {
@@ -272,40 +258,6 @@ struct OnboardingIntroView: View {
         .accessibilityHidden(!showsCaption)
     }
 
-    private var controls: some View {
-        VStack {
-            Spacer()
-            HStack(alignment: .center) {
-                Button(action: toggleMute) {
-                    Image(systemName: isMuted ? "speaker.slash.fill" : "speaker.wave.1.fill")
-                        .font(.system(size: 11, weight: .semibold))
-                        .frame(width: IntroControlMetrics.muteSize, height: IntroControlMetrics.muteSize)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .foregroundStyle(AppColors.textTertiary)
-                .pointingHandOnHover()
-                .platformHelp(isMuted ? String(localized: "onboarding.intro.turn_sound_on") : String(localized: "onboarding.intro.turn_sound_off"))
-                .accessibilityLabel(isMuted ? String(localized: "onboarding.intro.turn_sound_on") : String(localized: "onboarding.intro.turn_sound_off"))
-
-                Spacer()
-
-                Button(String(localized: "common.skip"), action: skip)
-                    .buttonStyle(.plain)
-                    .font(AppStyle.Typography.metadata)
-                    .foregroundStyle(AppColors.textSecondary)
-                    .pointingHandOnHover()
-                    // A comfortable touch target on a phone, where the label is
-                    // the smallest thing on screen.
-                    .frame(minWidth: IntroControlMetrics.skipMinWidth, minHeight: IntroControlMetrics.muteSize)
-                    .contentShape(Rectangle())
-                    .accessibilityLabel(String(localized: "common.skip_onboarding"))
-            }
-            .padding(.horizontal, IntroControlMetrics.horizontalPadding)
-            .padding(.bottom, IntroControlMetrics.bottomPadding)
-        }
-    }
-
     // MARK: Timeline
 
     @MainActor
@@ -389,33 +341,6 @@ struct OnboardingIntroView: View {
             onFinished()
         }
     }
-
-    private func skip() {
-        guard !isDismissing else { return }
-        handOff(quick: true)
-    }
-
-    private func toggleMute() {
-        guard playsSound, !isDismissing else { return }
-        isMuted.toggle()
-        soundtrack.setMuted(isMuted)
-    }
-}
-
-/// The intro's two corner controls: the Mac keeps its compact 24 pt targets, a
-/// touch screen gets 44 pt.
-private enum IntroControlMetrics {
-    #if os(iOS)
-    static let muteSize: CGFloat = 44
-    static let skipMinWidth: CGFloat = 64
-    static let horizontalPadding = AppStyle.Spacing.large
-    static let bottomPadding = AppStyle.Spacing.medium
-    #else
-    static let muteSize: CGFloat = 24
-    static let skipMinWidth: CGFloat = 0
-    static let horizontalPadding = AppStyle.Spacing.xLarge
-    static let bottomPadding = AppStyle.Spacing.large
-    #endif
 }
 
 /// The hand-off this screen used before the mascot flew: the whole intro fades

@@ -105,6 +105,7 @@ Use a 980×700 window with a 240 pt sidebar and `hiddenTitleBar`.
 | ONB-12 | Account transition | Completion moves and scales the account card into its sidebar row. The row stays hidden until landing. Reduce Motion or missing frame measurements use a fade | ui |
 | ONB-11 | Onboarding categories | No categories before the category step. Create selected system categories and Other for both kinds. Skip creates only Other. Repeating creates no duplicates | unit/ui |
 | ONB-14 | Mascot hand-off into the icon | After the intro, the mascot flies into the welcome icon and shrinks onto the mascot painted inside it. Position and scale come from the eyes measured in both PNGs. While it flies, the icon is defocused and the copy and the button are hidden by opacity only, so the icon never shifts. It dissolves while the icon is still soft, so the swap is invisible, and the icon then focuses up. Reduce Motion, or a missing measurement, falls back to the old cross-fade | ui |
+| ONB-15 | Intro controls | No Skip button and no sound toggle on macOS, iPhone or iPad. The intro runs its timeline and hands off to Welcome; Space/Escape no longer skip it. The Categories and Expense steps keep their step-level Skip so the flow cannot dead-end without categories or an expense | ui | P1 |
 
 ### 2.3 Accounts
 
